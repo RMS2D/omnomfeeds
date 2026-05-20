@@ -89,14 +89,15 @@ header nav a:hover { color: var(--accent-cyan); }
   margin-bottom: 72px;
 }
 .hero .feast {
-  display: inline-block;
   text-align: left;
-  margin-bottom: 22px;
-  max-width: 100%;
+  margin: 0 auto 22px;
+  max-width: 640px;
+  width: 100%;
+  overflow: hidden;
 }
 .hero .feast-line {
   font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(11px, 1.7vw, 16px);
+  font-size: clamp(10px, 1.5vw, 14px);
   line-height: 1.4;
   color: var(--accent);
   text-shadow: 0 0 10px rgba(0,229,160,0.35);
@@ -105,6 +106,7 @@ header nav a:hover { color: var(--accent-cyan); }
   min-height: 1.4em;
   letter-spacing: 0.3px;
   overflow: hidden;
+  width: 100%;
 }
 .hero .feast-line .trail { color: var(--text-dim); opacity: 0.45; }
 .hero .feast-line .worm  { color: var(--accent); font-weight: 700; }
@@ -683,42 +685,69 @@ footer a:hover { color: var(--accent-cyan); }
 </div>
 
 <script>
-// Hero feast animation: worm crawls right, eats threats. Loops while in view.
-// Same shape as the boot feast in the self-host app, trimmed to one line.
+// Hero feast animation. Worm crawls right, eats 4 threats sampled from a
+// rotating pool, burps, pauses, loops. Starts immediately; IntersectionObserver
+// only pauses while scrolled out of view.
 (function() {
   const lineEl = document.getElementById('heroFeastLine');
   const statusEl = document.getElementById('heroFeastStatus');
   if (!lineEl || !statusEl) return;
 
-  const TARGETS = [
-    { x: 14, text: 'CVE-2026-1337',   sev: 'crit', flavor: 'looks crunchy.' },
-    { x: 34, text: 'mimikatz.exe',    sev: 'med',  flavor: 'salty. less LSASS next time.' },
-    { x: 52, text: 'kernel exploit',  sev: 'high', flavor: 'crunchy outer, gooey inner.' },
-    { x: 72, text: '0-day PoC',       sev: 'crit', flavor: 'still warm.' },
-    { x: 88, text: 'rootkit',         sev: 'high', flavor: 'gamey. swallowing whole.' },
+  // Pool of threats. Each cycle picks 4 at random + assigns x positions, so
+  // repeat visitors see a different lineup. sev: crit (red), high (orange),
+  // med (cyan).
+  const THREAT_POOL = [
+    { text: 'CVE-2026-1337', sev: 'crit', flavor: 'looks crunchy.' },
+    { text: 'CVE-2026-7707', sev: 'crit', flavor: 'still steaming.' },
+    { text: '0-day PoC',     sev: 'crit', flavor: 'handle with care.' },
+    { text: 'log4shell',     sev: 'crit', flavor: 'classic.' },
+    { text: 'mimikatz',      sev: 'med',  flavor: 'salty.' },
+    { text: 'kernel exploit',sev: 'high', flavor: 'gooey inner.' },
+    { text: 'LockBit 4.0',   sev: 'high', flavor: 'sticky.' },
+    { text: 'Volt Typhoon',  sev: 'high', flavor: 'spicy.' },
+    { text: 'rootkit',       sev: 'high', flavor: 'a little gamey.' },
+    { text: 'BlackCat',      sev: 'high', flavor: 'a little burnt.' },
+    { text: 'printnightmare',sev: 'high', flavor: 'crispy edges.' },
+    { text: 'C2 beacon',     sev: 'high', flavor: 'callback returned. om nom.' },
   ];
-  const TOTAL_X    = 102;
-  const FRAME_MS   = 50;
-  const CYCLE_GAP  = 3200;
-  const SPRITES    = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)'];
-  const AMBIENT    = ['nomming.', 'mouth open.', 'sniffing for more.', 'tasting the air.', 'sharpening fangs.'];
+  const FINALES = [
+    '~burp~', '~urp~', '~bleh~', '* satisfied *', '( zZz )',
+    '~mmmm~', '* yawns *', '~hic~', '*pat pat*',
+  ];
+  const SPRITES  = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)'];
+  const AMBIENT  = ['nomming.', 'mouth open.', 'sniffing for more.', 'tasting the air.', 'sharpening fangs.'];
+
+  const TOTAL_X   = 48;
+  const FRAME_MS  = 55;
+  const CYCLE_GAP = 2800;
 
   let timer = null;
-  let visible = false;
+  let visible = true;       // start running; IO will pause if hero scrolls off
 
-  function reset() {
-    for (const t of TARGETS) t.chomped = false;
-  }
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   }
-  function paintFeast(x, worm, status) {
+
+  // Pick 4 random threats, position them across the line with even spacing.
+  function pickTargets() {
+    const pool = THREAT_POOL.slice();
+    const picked = [];
+    while (picked.length < 4 && pool.length) {
+      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+    }
+    // Position targets so the worm crosses them at evenly distributed x.
+    // First target at x=8, last around x=44, then TOTAL_X is the burp post.
+    const positions = [8, 18, 28, 38];
+    return picked.map((t, i) => Object.assign({}, t, { x: positions[i], chomped: false }));
+  }
+
+  function paintFeast(x, worm, status, targets) {
     let html = '<span class="trail">' + '·'.repeat(x) + '</span><span class="worm">' + esc(worm) + '</span>';
     let pos = x + worm.length;
-    for (const t of TARGETS) {
+    for (const t of targets) {
       if (!t.chomped) {
         while (pos < t.x) { html += ' '; pos++; }
-        const near = (t.x - x) <= 4 && (t.x - x) > -2;
+        const near = (t.x - x) <= 3 && (t.x - x) > -2;
         html += '<span class="t-' + t.sev + (near ? ' panic' : '') + '">' + esc(t.text) + '</span>';
         pos += t.text.length;
       }
@@ -728,8 +757,8 @@ footer a:hover { color: var(--accent-cyan); }
   }
 
   function runCycle() {
-    if (!visible) return;
-    reset();
+    if (!visible) { timer = null; return; }
+    const targets = pickTargets();
     let x = 0;
     let statusMsg = 'larva online. fangs out.';
     let statusHoldUntil = 0;
@@ -738,45 +767,59 @@ footer a:hover { color: var(--accent-cyan); }
       if (!visible) { timer = null; return; }
       const worm = SPRITES[Math.floor(x / 3) % SPRITES.length];
 
-      for (const t of TARGETS) {
-        if (!t.chomped && x >= t.x - 2 && x <= t.x + 2) {
+      for (const t of targets) {
+        if (!t.chomped && x >= t.x - 1 && x <= t.x + 2) {
           t.chomped = true;
           statusMsg = '*chomp*  ' + t.text + ' :: ' + t.flavor;
-          statusHoldUntil = Date.now() + 800;
+          statusHoldUntil = Date.now() + 750;
         }
       }
       if (statusHoldUntil && Date.now() > statusHoldUntil) {
-        statusMsg = AMBIENT[Math.floor(x / 12) % AMBIENT.length];
+        statusMsg = AMBIENT[Math.floor(x / 10) % AMBIENT.length];
         statusHoldUntil = 0;
       }
 
-      paintFeast(x, worm, statusMsg);
+      paintFeast(x, worm, statusMsg, targets);
 
       x++;
       if (x <= TOTAL_X) {
         timer = setTimeout(step, FRAME_MS);
       } else {
-        // Burp + pause + loop
-        lineEl.innerHTML = '<span class="trail">' + '·'.repeat(TOTAL_X) + '</span><span class="worm">~~~_o)</span>   <span style="color:var(--text-dim);font-style:italic;">~burp~</span>';
-        statusEl.textContent = 'all chewed. waiting for more...';
+        const finale = FINALES[Math.floor(Math.random() * FINALES.length)];
+        lineEl.innerHTML = '<span class="trail">' + '·'.repeat(TOTAL_X) + '</span><span class="worm">~~~_o)</span>  <span style="color:var(--text-dim);font-style:italic;">' + esc(finale) + '</span>';
+        statusEl.textContent = 'all chewed. queueing next batch...';
         timer = setTimeout(runCycle, CYCLE_GAP);
       }
     }
     step();
   }
 
-  const io = new IntersectionObserver((entries) => {
-    for (const e of entries) {
-      if (e.isIntersecting && !visible) {
-        visible = true;
-        runCycle();
-      } else if (!e.isIntersecting && visible) {
-        visible = false;
-        if (timer) { clearTimeout(timer); timer = null; }
+  // Click the worm sprite to force-trigger the next cycle immediately.
+  lineEl.addEventListener('click', () => {
+    if (timer) { clearTimeout(timer); timer = null; }
+    runCycle();
+  });
+
+  // Pause when scrolled out of view; resume when scrolled back.
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      for (const e of entries) {
+        if (e.isIntersecting) {
+          if (!visible) {
+            visible = true;
+            runCycle();
+          }
+        } else {
+          visible = false;
+          if (timer) { clearTimeout(timer); timer = null; }
+        }
       }
-    }
-  }, { threshold: 0.2 });
-  io.observe(lineEl);
+    }, { threshold: 0.1 });
+    io.observe(lineEl);
+  }
+
+  // Kick off immediately; don't wait for IO callback latency.
+  runCycle();
 })();
 </script>
 

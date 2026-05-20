@@ -1,12 +1,22 @@
-// Package auth handles Google OAuth login and session middleware for the
-// hosted-mode deployment. Self-host installs never import or call into here.
+// Package auth handles login + session middleware for the hosted-mode
+// deployment. Self-host installs never import or call into here.
 //
-// Flow:
-//   1. GET  /auth/google    -> redirect to Google's consent screen
-//   2. GET  /auth/callback  -> exchange code for ID token, upsert user, set cookie
-//   3. POST /auth/logout    -> invalidate session, clear cookie
-//   4. middleware: every /api/me/* and Pro-gated endpoint validates the cookie
-//      and resolves *User into request context.
+// Two login methods, both producing a row in users:
+//
+//   Google OAuth (one-click):
+//     GET  /auth/google           -> redirect to Google's consent screen
+//     GET  /auth/callback         -> exchange code, upsert user, set session cookie
+//
+//   Magic link (email-only, no password):
+//     POST /auth/magic            -> body {email}; we send a one-time link
+//     GET  /auth/magic/verify     -> ?t=<token>; validate, upsert, set cookie
+//
+//   Shared:
+//     POST /auth/logout           -> invalidate session, clear cookie
+//
+//   Middleware:
+//     every /api/me/* and Pro-gated endpoint validates the session cookie
+//     and resolves *User into request context.
 package auth
 
 import (
@@ -51,14 +61,12 @@ type Handler struct {
 }
 
 // NewHandler returns a Handler ready to mount onto an http.ServeMux. It
-// returns an error if hosted mode is enabled but the required credentials
-// (Google client ID + secret + redirect URL + session secret) are missing.
+// returns an error if hosted mode is enabled but the credentials it needs
+// are missing. Magic link works without Google OAuth configured (and vice
+// versa), but at least one login path must be usable.
 func NewHandler(cfg config.HostedConfig, store *storage.Store) (*Handler, error) {
 	if !cfg.Enabled {
 		return nil, errors.New("hosted mode not enabled")
-	}
-	if cfg.GoogleClientID == "" || cfg.GoogleClientSecret == "" {
-		return nil, errors.New("google oauth credentials not set")
 	}
 	if cfg.OAuthRedirectURL == "" {
 		return nil, errors.New("oauth redirect url not set")
@@ -66,18 +74,28 @@ func NewHandler(cfg config.HostedConfig, store *storage.Store) (*Handler, error)
 	if cfg.SessionSecret == "" {
 		return nil, errors.New("session secret not set")
 	}
+	googleOK := cfg.GoogleClientID != "" && cfg.GoogleClientSecret != ""
+	magicOK := cfg.ResendAPIKey != ""
+	if !googleOK && !magicOK {
+		return nil, errors.New("no login method usable: set Google OAuth creds OR Resend API key (preferably both)")
+	}
 	return &Handler{cfg: cfg, store: store}, nil
 }
 
-// Mount attaches the auth routes to a mux. Routes:
-//   GET  /auth/google
-//   GET  /auth/callback
-//   POST /auth/logout
+// Mount attaches the auth routes to a mux.
 func (h *Handler) Mount(mux *http.ServeMux) {
-	mux.HandleFunc("/auth/google", h.handleGoogleStart)
-	mux.HandleFunc("/auth/callback", h.handleGoogleCallback)
+	if h.cfg.GoogleClientID != "" {
+		mux.HandleFunc("/auth/google", h.handleGoogleStart)
+		mux.HandleFunc("/auth/callback", h.handleGoogleCallback)
+	}
+	if h.cfg.ResendAPIKey != "" {
+		mux.HandleFunc("/auth/magic", h.handleMagicRequest)
+		mux.HandleFunc("/auth/magic/verify", h.handleMagicVerify)
+	}
 	mux.HandleFunc("/auth/logout", h.handleLogout)
 }
+
+// --- Google OAuth ---
 
 // handleGoogleStart redirects the browser to Google's consent screen with a
 // random state parameter saved in a short-lived signed cookie for CSRF
@@ -93,6 +111,37 @@ func (h *Handler) handleGoogleStart(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not yet implemented", http.StatusNotImplemented)
 }
+
+// --- Magic link (email) ---
+//
+// Flow:
+//   1. Client POSTs {email} to /auth/magic.
+//   2. We rate-limit to one outbound email per (address, 60s).
+//   3. Generate 32-byte token; store sha256(token) + email + expires_at
+//      (15min) in magic_link_tokens.
+//   4. Send the user an email with a link to
+//      https://omnomfeeds.com/auth/magic/verify?t=<raw_token>
+//   5. User clicks. Server hashes incoming token, looks up the row, checks
+//      expires_at + used_at, marks used, upserts a users row with
+//      id_provider="email" + id_external=email, issues a session cookie.
+//
+// We deliberately do not reveal whether the email exists. /auth/magic
+// returns the same response for unknown vs. known emails.
+
+// handleMagicRequest accepts {email} and emails the user a sign-in link.
+// Returns 202 on accepted, regardless of whether the email was rate-limited
+// or unknown, so callers can't enumerate accounts.
+func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "not yet implemented", http.StatusNotImplemented)
+}
+
+// handleMagicVerify validates the one-time token from the email link and
+// promotes the visitor to a logged-in session.
+func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "not yet implemented", http.StatusNotImplemented)
+}
+
+// --- Shared ---
 
 // handleLogout invalidates the current session and clears the cookie.
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {

@@ -175,6 +175,20 @@ func (s *Store) migrateUserTables() error {
 		CREATE INDEX IF NOT EXISTS idx_user_alert_rules_user ON user_alert_rules(user_id, enabled);
 		CREATE INDEX IF NOT EXISTS idx_user_custom_sources_user ON user_custom_sources(user_id, enabled);
 		CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+
+		-- One-time magic-link tokens for email-based login (Google OAuth alternative).
+		-- TTL ~15 min, single use. token_hash is SHA-256(raw_token).
+		CREATE TABLE IF NOT EXISTS magic_link_tokens (
+			token_hash    BLOB PRIMARY KEY,
+			email         TEXT NOT NULL,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at    DATETIME NOT NULL,
+			used_at       DATETIME,
+			user_agent    TEXT,
+			ip_hash       BLOB
+		);
+		CREATE INDEX IF NOT EXISTS idx_magic_link_email   ON magic_link_tokens(email, created_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_magic_link_expires ON magic_link_tokens(expires_at);
 	`)
 	return err
 }

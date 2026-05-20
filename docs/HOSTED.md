@@ -10,7 +10,7 @@ code via a `HOSTED_MODE=true` env flag.
 | Mode | Trigger | Storage | Users | Auth |
 | --- | --- | --- | --- | --- |
 | Self-host (current) | default | SQLite local | single, implicit | none |
-| Hosted | `HOSTED_MODE=true` | SQLite (WAL) on the same droplet | many, via Google OAuth | session cookie |
+| Hosted | `HOSTED_MODE=true` | SQLite (WAL) on the same droplet | many | Google OAuth + magic link via email, session cookie |
 
 **On the SQLite decision (revised from Postgres).** Workload doesn't justify
 Postgres complexity at the scales we're targeting. SQLite in WAL mode handles
@@ -22,11 +22,17 @@ it now on hypotheticals just burns days for zero benefit.
 The fetch loop, scoring engine, MITRE / NVD / EPSS enrichers, web UI, and
 every keybind work identically in both modes. The differences are confined to:
 
-- `internal/config`: hosted mode reads connection strings + Google OAuth creds
-  from env vars instead of loading a single `config.json`.
-- `internal/storage`: a Postgres-backed implementation behind the same
-  storage interface, gated by `HOSTED_MODE`.
-- `internal/auth`: new package, Google OAuth + session middleware.
+- `internal/config`: hosted mode reads OAuth + Resend + Stripe + session
+  secrets from env vars instead of loading a single `config.json`.
+- `internal/storage`: same SQLite store; hosted-mode tables co-exist with
+  the self-host article cache.
+- `internal/auth`: new package. Two login methods, both producing a row
+  in `users`:
+    - **Google OAuth** for one-click sign-in
+    - **Magic link** via Resend for users who don't want a Google account
+      (ProtonMail, FastMail, self-hosted, work email).
+  Sessions are server-side rows in `user_sessions`; the cookie carries
+  the unhashed token, the DB holds SHA-256.
 - `internal/server`: new endpoints under `/api/me/*` for per-user data
   (settings, bookmarks, read state, alert rules, stack profile).
 - `web/index.html`: minor diffs that surface login/account state when
@@ -36,7 +42,8 @@ every keybind work identically in both modes. The differences are confined to:
 
 ### Free hosted (login required)
 
-Sign in with Google, get an account. Across devices, your account holds:
+Sign in with Google or by entering your email and clicking a magic link.
+Across devices, your account holds:
 
 - Watched accounts (Bluesky), enabled sources, all settings
 - Bookmarks, read state, filters, source pickers, search history
@@ -77,10 +84,13 @@ Everything in Free, plus:
 
 Tables added on top of the existing self-host schema. Self-host continues to
 use the same `articles`, `cve_details`, `epss` tables; hosted adds the
-user-scoped tables below.
+user-scoped tables below. The SQL shown here is Postgres-style for
+readability; the SQLite implementation in `internal/storage/storage.go`
+substitutes TEXT for UUID, BLOB for BYTEA, DATETIME for TIMESTAMPTZ, and
+TEXT for JSONB.
 
 ```sql
--- Users authenticated via Google OAuth. id_provider="google" / id="<sub>".
+-- Users. id_provider="google"|"email", id_external = google sub or email.
 CREATE TABLE users (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   id_provider     TEXT NOT NULL,
@@ -92,6 +102,17 @@ CREATE TABLE users (
   pro_until       TIMESTAMPTZ,
   UNIQUE (id_provider, id_external),
   UNIQUE (email)
+);
+
+-- One-time magic-link tokens for email-based login. TTL 15min, single use.
+CREATE TABLE magic_link_tokens (
+  token_hash      BYTEA PRIMARY KEY,
+  email           TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at      TIMESTAMPTZ NOT NULL,
+  used_at         TIMESTAMPTZ,
+  user_agent      TEXT,
+  ip_hash         BYTEA
 );
 
 CREATE TABLE user_sessions (

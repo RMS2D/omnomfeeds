@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oM noM Security Feeds - Settings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+:root {
+  --bg: #0a0e14;
+  --bg-card: #111820;
+  --bg-hover: #1a2230;
+  --border: #1e2a3a;
+  --text: #c5cdd8;
+  --text-dim: #5a6a7a;
+  --text-bright: #e8ecf0;
+  --accent: #00e5a0;
+  --accent-dim: rgba(0,229,160,0.12);
+  --red: #ff4d6a;
+  --blue: #4da6ff;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+
+.mono { font-family: 'JetBrains Mono', monospace; }
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.logo {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+}
+.logo span { color: var(--text-dim); font-weight: 400; }
+
+.logo a { color: inherit; text-decoration: none; }
+
+.container { max-width: 800px; margin: 0 auto; padding: 24px; }
+
+.section {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.field { margin-bottom: 14px; }
+
+.field label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.field input {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-size: 13px;
+  font-family: 'IBM Plex Sans', sans-serif;
+  outline: none;
+}
+
+.field input:focus { border-color: var(--accent); }
+
+button {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 7px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+button:hover { background: var(--bg-hover); border-color: var(--text-dim); }
+button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+button.primary:hover { filter: brightness(1.1); }
+button.danger { border-color: var(--red); color: var(--red); }
+button.danger:hover { background: rgba(255,77,106,0.1); }
+
+.btn-row { display: flex; gap: 8px; align-items: center; }
+
+.status-dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 6px;
+}
+.status-dot.ok { background: var(--accent); }
+.status-dot.err { background: var(--red); }
+.status-dot.off { background: var(--text-dim); }
+
+.status-text { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+.account-list { margin-top: 12px; }
+
+.account-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-radius: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.account-item .handle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--blue);
+}
+
+.account-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.account-add input {
+  flex: 1;
+  padding: 7px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-bright);
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  outline: none;
+}
+
+.account-add input:focus { border-color: var(--accent); }
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 10px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: 'JetBrains Mono', monospace;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.2s;
+}
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast.error { border-color: var(--red); color: var(--red); }
+
+.note {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  margin-top: 8px;
+  padding: 8px 10px;
+  background: rgba(0,229,160,0.04);
+  border: 1px solid rgba(0,229,160,0.1);
+  border-radius: 4px;
+  line-height: 1.5;
+}
+
+.curated-toggle {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: border-color 0.12s ease, background-color 0.12s ease;
+}
+.curated-toggle:hover { border-color: var(--accent-cyan); background: rgba(86,226,255,0.05); }
+.curated-toggle.open .curated-caret { transform: rotate(90deg); }
+.curated-caret {
+  display: inline-block;
+  transition: transform 0.15s ease;
+  color: var(--accent-cyan);
+}
+.curated-count {
+  color: var(--text-dim);
+  font-size: 11px;
+  margin-left: 4px;
+}
+
+.curated-tools {
+  margin-top: 10px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.curated-search {
+  flex: 1 1 280px;
+  min-width: 220px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  outline: none;
+}
+.curated-search:focus { border-color: var(--accent); }
+.curated-meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.curated-panel {
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: rgba(0,0,0,0.18);
+  max-height: 460px;
+  overflow-y: auto;
+}
+.curated-cat {
+  border-bottom: 1px solid var(--border);
+}
+.curated-cat:last-child { border-bottom: none; }
+.curated-cat-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 12px;
+  background: rgba(86,226,255,0.04);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.curated-cat-title .count { color: var(--text-dim); font-weight: 400; letter-spacing: 0.5px; }
+.curated-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  transition: background-color 0.1s ease;
+}
+.curated-row:last-child { border-bottom: none; }
+.curated-row:hover { background: rgba(255,255,255,0.025); }
+.curated-row .name {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 500;
+  flex-shrink: 0;
+  min-width: 180px;
+}
+.curated-row .handle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+.curated-row .desc {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--text-dim);
+  flex: 1 1 auto;
+  min-width: 0;
+  opacity: 0.85;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.curated-row .act {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.curated-row .act button {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.curated-row .act button:hover {
+  background: rgba(0,229,160,0.08);
+  border-color: rgba(0,229,160,0.45);
+  color: var(--accent);
+}
+.curated-row.added {
+  opacity: 0.55;
+}
+.curated-row.added .act button {
+  cursor: default;
+  border-color: rgba(0,229,160,0.3);
+  color: var(--accent);
+  background: rgba(0,229,160,0.06);
+}
+.curated-row.added .act button:hover {
+  background: rgba(0,229,160,0.06);
+}
+.curated-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo"><a href="/">oM noM Security Feeds</a><span> // settings</span></div>
+  <a href="/" style="color:var(--text-dim);text-decoration:none;font-size:13px;">Back to feed</a>
+</header>
+
+<div class="container">
+
+  <div class="section">
+    <div class="section-title">Bluesky Authentication</div>
+    <div class="section-desc">
+      Bluesky search requires a free account. Create one at bsky.app, then generate
+      an App Password in Settings > App Passwords.
+    </div>
+    <div class="field">
+      <label>Identifier (handle or email)</label>
+      <input type="text" id="bskyIdentifier" placeholder="yourname.bsky.social">
+    </div>
+    <div class="field">
+      <label>App Password</label>
+      <input type="password" id="bskyPassword" placeholder="xxxx-xxxx-xxxx-xxxx">
+    </div>
+    <div class="btn-row">
+      <button class="primary" onclick="saveBluesky()">Save & Test</button>
+      <span id="bskyStatus"></span>
+    </div>
+    <div class="note">
+      Use an App Password, not your account password.
+      Your credentials are stored in config.json on your local machine only.
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Watched Bluesky Accounts</div>
+    <div class="section-desc">
+      Follow specific security researchers on Bluesky. Their posts get pulled into
+      your feed and scored like everything else. Only posts matching security keywords
+      will appear (0-score posts are dropped).
+    </div>
+    <div id="accountList" class="account-list"></div>
+    <div class="account-add">
+      <input type="text" id="newHandle" placeholder="researcher.bsky.social"
+             onkeydown="if(event.key==='Enter')addAccount()">
+      <button onclick="addAccount()">Add</button>
+    </div>
+
+    <div class="curated-wrap" style="margin-top:18px;">
+      <button id="curatedToggle" type="button" class="curated-toggle" onclick="toggleCurated()">
+        <span class="curated-caret">▸</span> Browse curated researchers
+        <span id="curatedCount" class="curated-count"></span>
+      </button>
+      <div class="curated-tools" id="curatedTools" hidden>
+        <input type="text" id="curatedSearch" class="curated-search"
+               placeholder="filter by name, handle, or category..." oninput="renderCurated()">
+        <div class="curated-meta" id="curatedMeta"></div>
+      </div>
+      <div id="curatedPanel" class="curated-panel" hidden>loading...</div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Source Status</div>
+    <div id="sourceStatus">loading...</div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = '';
+
+async function loadConfig() {
+  try {
+    const resp = await fetch(API + '/api/config');
+    const cfg = await resp.json();
+    document.getElementById('bskyIdentifier').value = cfg.bluesky?.identifier || '';
+    document.getElementById('bskyPassword').value = '';
+    if (cfg.bluesky?.identifier && cfg.bluesky?.identifier !== 'YOUR_HANDLE_OR_EMAIL') {
+      document.getElementById('bskyPassword').placeholder = '(saved, enter new to change)';
+      setStatus('bskyStatus', 'ok', 'configured');
+    } else {
+      setStatus('bskyStatus', 'off', 'not configured');
+    }
+  } catch (e) {
+    setStatus('bskyStatus', 'err', 'failed to load');
+  }
+}
+
+let watchedSet = new Set();
+let curatedData = null;
+
+async function loadAccounts() {
+  try {
+    const resp = await fetch(API + '/api/config/accounts');
+    const accounts = await resp.json();
+    watchedSet = new Set((accounts || []).map(h => String(h).toLowerCase()));
+    renderAccounts(accounts || []);
+    if (curatedData) renderCurated();
+  } catch (e) {
+    document.getElementById('accountList').innerHTML =
+      '<div style="color:var(--text-dim);font-size:12px;">failed to load accounts</div>';
+  }
+}
+
+async function loadCurated() {
+  try {
+    const resp = await fetch(API + '/api/curated/bluesky');
+    curatedData = await resp.json();
+    const cnt = document.getElementById('curatedCount');
+    if (cnt) cnt.textContent = `(${curatedData.length})`;
+  } catch (e) {
+    curatedData = [];
+  }
+}
+
+function toggleCurated() {
+  const tools = document.getElementById('curatedTools');
+  const panel = document.getElementById('curatedPanel');
+  const btn = document.getElementById('curatedToggle');
+  const open = panel.hidden;
+  panel.hidden = !open;
+  tools.hidden = !open;
+  btn.classList.toggle('open', open);
+  if (open) renderCurated();
+}
+
+function renderCurated() {
+  if (!curatedData) return;
+  const panel = document.getElementById('curatedPanel');
+  const meta = document.getElementById('curatedMeta');
+  const q = (document.getElementById('curatedSearch')?.value || '').trim().toLowerCase();
+
+  let filtered = curatedData;
+  if (q) {
+    filtered = curatedData.filter(e =>
+      e.handle.toLowerCase().includes(q) ||
+      (e.name || '').toLowerCase().includes(q) ||
+      (e.category || '').toLowerCase().includes(q) ||
+      (e.description || '').toLowerCase().includes(q)
+    );
+  }
+
+  if (filtered.length === 0) {
+    panel.innerHTML = '<div class="curated-empty">nothing tastes like that.</div>';
+    if (meta) meta.textContent = '0 of ' + curatedData.length;
+    return;
+  }
+
+  const groups = {};
+  const order = [];
+  for (const e of filtered) {
+    const cat = e.category || 'Other';
+    if (!groups[cat]) { groups[cat] = []; order.push(cat); }
+    groups[cat].push(e);
+  }
+
+  panel.innerHTML = order.map(cat => {
+    const rows = groups[cat].map(e => {
+      const added = watchedSet.has(e.handle.toLowerCase());
+      return `
+        <div class="curated-row ${added ? 'added' : ''}" data-handle="${esc(e.handle)}">
+          <span class="name">${esc(e.name || e.handle)}</span>
+          <span class="handle">@${esc(e.handle)}</span>
+          <span class="desc">${esc(e.description || '')}</span>
+          <span class="act">
+            <button type="button" ${added ? 'disabled' : ''} onclick="subscribeCurated('${esc(e.handle)}', this)">
+              ${added ? '✓ added' : '+ add'}
+            </button>
+          </span>
+        </div>
+      `;
+    }).join('');
+    return `
+      <div class="curated-cat">
+        <div class="curated-cat-title">
+          <span>${esc(cat)}</span>
+          <span class="count">${groups[cat].length}</span>
+        </div>
+        ${rows}
+      </div>
+    `;
+  }).join('');
+
+  const addedCount = filtered.filter(e => watchedSet.has(e.handle.toLowerCase())).length;
+  if (meta) meta.textContent = `${filtered.length} of ${curatedData.length} · ${addedCount} already watched`;
+}
+
+async function subscribeCurated(handle, btn) {
+  if (!handle) return;
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    const resp = await fetch(API + '/api/config/accounts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'add', handle })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      watchedSet.add(handle.toLowerCase());
+      renderAccounts(result.accounts || []);
+      renderCurated();
+      toast('added @' + handle);
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = '+ add'; }
+      toast(result.error || 'failed to add', true);
+    }
+  } catch (e) {
+    if (btn) { btn.disabled = false; btn.textContent = '+ add'; }
+    toast('failed to add', true);
+  }
+}
+
+function renderAccounts(accounts) {
+  const list = document.getElementById('accountList');
+  if (!accounts || accounts.length === 0) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:8px 0;">menu is empty. add a handle below or browse the curated list.</div>';
+    return;
+  }
+  list.innerHTML = accounts.map(h => `
+    <div class="account-item">
+      <span class="handle">@${esc(h)}</span>
+      <button class="danger" onclick="removeAccount('${esc(h)}')" style="padding:3px 10px;font-size:12px;">remove</button>
+    </div>
+  `).join('');
+}
+
+async function saveBluesky() {
+  const identifier = document.getElementById('bskyIdentifier').value.trim();
+  const password = document.getElementById('bskyPassword').value.trim();
+  if (!identifier) {
+    toast('enter an identifier', true);
+    return;
+  }
+  try {
+    const resp = await fetch(API + '/api/config/bluesky', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ identifier, password: password || undefined })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      setStatus('bskyStatus', 'ok', 'saved - restart app to apply');
+      toast('bluesky config saved');
+      document.getElementById('bskyPassword').value = '';
+      document.getElementById('bskyPassword').placeholder = '(saved, enter new to change)';
+    } else {
+      setStatus('bskyStatus', 'err', result.error || 'save failed');
+      toast(result.error || 'save failed', true);
+    }
+  } catch (e) {
+    toast('failed to save', true);
+  }
+}
+
+async function addAccount() {
+  let handle = document.getElementById('newHandle').value.trim();
+  handle = handle.replace(/^@/, '');
+  if (!handle) return;
+  try {
+    const resp = await fetch(API + '/api/config/accounts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'add', handle })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      document.getElementById('newHandle').value = '';
+      renderAccounts(result.accounts || []);
+      toast('added @' + handle);
+    } else {
+      toast(result.error, true);
+    }
+  } catch (e) {
+    toast('failed to add', true);
+  }
+}
+
+async function removeAccount(handle) {
+  try {
+    const resp = await fetch(API + '/api/config/accounts', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ action: 'remove', handle })
+    });
+    const result = await resp.json();
+    if (result.ok) {
+      renderAccounts(result.accounts || []);
+      toast('removed @' + handle);
+    }
+  } catch (e) {
+    toast('failed to remove', true);
+  }
+}
+
+async function loadSourceStatus() {
+  try {
+    const resp = await fetch(API + '/api/sources');
+    const sources = await resp.json();
+    const el = document.getElementById('sourceStatus');
+    if (!sources || sources.length === 0) {
+      el.innerHTML = '<div style="color:var(--text-dim);font-size:12px;">no source data yet (try refreshing)</div>';
+      return;
+    }
+    el.innerHTML = sources.map(s => {
+      const ok = !s.last_error;
+      const dotClass = ok ? 'ok' : 'err';
+      const info = ok ? s.item_count + ' articles' : s.last_error;
+      const ago = timeAgo(s.last_fetch);
+      return `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);">
+        <span><span class="status-dot ${dotClass}"></span><span class="status-text">${esc(s.name)}</span></span>
+        <span class="status-text" style="color:${ok ? 'var(--text-dim)' : 'var(--red)'}">${esc(info)} (${ago})</span>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    document.getElementById('sourceStatus').textContent = 'failed to load';
+  }
+}
+
+function setStatus(id, type, text) {
+  document.getElementById(id).innerHTML =
+    `<span class="status-dot ${type}"></span><span class="status-text">${esc(text)}</span>`;
+}
+
+function timeAgo(dateStr) {
+  if (!dateStr) return 'never';
+  const d = new Date(dateStr);
+  const diff = Math.floor((Date.now() - d) / 1000);
+  if (diff < 60) return 'just now';
+  if (diff < 3600) return Math.floor(diff/60) + 'm ago';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h ago';
+  return Math.floor(diff/86400) + 'd ago';
+}
+
+function esc(s) {
+  if (!s) return '';
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function toast(msg, err) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err ? ' error' : '');
+  setTimeout(() => t.className = 'toast', 2500);
+}
+
+loadConfig();
+loadAccounts();
+loadCurated();
+loadSourceStatus();
+</script>
+</body>
+</html>

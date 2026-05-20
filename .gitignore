@@ -1,0 +1,44 @@
+# binaries
+secfeed
+secfeed.exe
+*.exe
+
+# database working files
+secfeed.db
+secfeed.db-shm
+secfeed.db-wal
+
+# user runtime config (contains real keys / handles)
+# config.default.json is committed and embedded by the binary as the seed.
+# config.json is per-user runtime state - never commit it.
+config.json
+config.local.json
+.env
+
+# build artifacts
+dist/
+coverage.out
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# local-only tooling / scratch
+.claude/
+docs/superpowers/
+
+# downloaded data caches (refreshed at runtime)
+mitre-attack.json
+mitre-cache.json
+
+# debug screenshots
+1s.png
+2s.png
+3s.png
+4s.png
+5s.png
+6s.png
+7s.png
+8s.png

@@ -118,6 +118,28 @@ header nav a:hover { color: var(--accent-cyan); }
   50%      { filter: brightness(1.6); }
 }
 .hero .feast-line .panic { animation: feast-panic 0.28s ease-in-out infinite; }
+
+/* Cursor crumbs: tiny dots that drift from the mouse toward the worm. */
+.cursor-crumb {
+  position: fixed;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--accent);
+  text-shadow: 0 0 5px rgba(0,229,160,0.55);
+  pointer-events: none;
+  z-index: 100;
+  transition: transform 0.9s cubic-bezier(0.34, 0.6, 0.4, 1), opacity 0.9s ease-out;
+  user-select: none;
+  will-change: transform, opacity;
+}
+.char-ruler {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: inherit;
+  letter-spacing: inherit;
+}
 .hero .feast-status {
   font-family: 'JetBrains Mono', monospace;
   font-size: clamp(10px, 1.2vw, 12px);
@@ -714,6 +736,24 @@ footer a:hover { color: var(--accent-cyan); }
     '~burp~', '~urp~', '~bleh~', '* satisfied *', '( zZz )',
     '~mmmm~', '* yawns *', '~hic~', '*pat pat*',
   ];
+  // Random status-line message after each burp. Pool of quotables that
+  // gets sampled per cycle so repeat visitors hear something new.
+  const QUIPS = [
+    'all chewed. queueing next batch...',
+    'done. who is next.',
+    'feed me more.',
+    '5 more please.',
+    'delicious. spicy.',
+    'hmm needs salt.',
+    'is that all you have?',
+    'next course.',
+    'mmm. crunchy.',
+    'send more CVEs.',
+    'still hungry.',
+    'pass the rootkits.',
+    'fang sharpening break.',
+    'om nom nom waiting...',
+  ];
   const SPRITES  = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)'];
   const AMBIENT  = ['nomming.', 'mouth open.', 'sniffing for more.', 'tasting the air.', 'sharpening fangs.'];
 
@@ -723,6 +763,7 @@ footer a:hover { color: var(--accent-cyan); }
 
   let timer = null;
   let visible = true;       // start running; IO will pause if hero scrolls off
+  let currentWormX = 0;     // chars; consumed by cursor-crumb destination math
 
   function esc(s) {
     return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -780,14 +821,17 @@ footer a:hover { color: var(--accent-cyan); }
       }
 
       paintFeast(x, worm, statusMsg, targets);
+      currentWormX = x;
 
       x++;
       if (x <= TOTAL_X) {
         timer = setTimeout(step, FRAME_MS);
       } else {
         const finale = FINALES[Math.floor(Math.random() * FINALES.length)];
+        const quip   = QUIPS[Math.floor(Math.random() * QUIPS.length)];
         lineEl.innerHTML = '<span class="trail">' + '·'.repeat(TOTAL_X) + '</span><span class="worm">~~~_o)</span>  <span style="color:var(--text-dim);font-style:italic;">' + esc(finale) + '</span>';
-        statusEl.textContent = 'all chewed. queueing next batch...';
+        statusEl.textContent = quip;
+        currentWormX = TOTAL_X;
         timer = setTimeout(runCycle, CYCLE_GAP);
       }
     }
@@ -799,6 +843,64 @@ footer a:hover { color: var(--accent-cyan); }
     if (timer) { clearTimeout(timer); timer = null; }
     runCycle();
   });
+
+  // --- Cursor crumbs ---
+  // Each mousemove (throttled) spawns a tiny dot at the cursor that animates
+  // toward the worm's current screen position and fades out. Looks like the
+  // worm is pulling crumbs in. Skipped entirely on touch / reduced-motion.
+  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let charWidth = 8;
+  function measureCharWidth() {
+    const probe = document.createElement('span');
+    probe.style.cssText = 'position:fixed;visibility:hidden;font-family:\'JetBrains Mono\',monospace;letter-spacing:0.3px;white-space:pre;font-size:' + getComputedStyle(lineEl).fontSize + ';';
+    probe.textContent = 'M'.repeat(20);
+    document.body.appendChild(probe);
+    charWidth = probe.offsetWidth / 20 || 8;
+    probe.remove();
+  }
+  measureCharWidth();
+  window.addEventListener('resize', measureCharWidth, { passive: true });
+
+  const CRUMB_CHARS = ['·', '.', ',', '·'];
+  let lastCrumb = 0;
+  if (!reduceMotion) {
+    document.addEventListener('mousemove', (e) => {
+      if (!visible) return;
+      const now = Date.now();
+      if (now - lastCrumb < 90) return;
+      lastCrumb = now;
+
+      const rect = lineEl.getBoundingClientRect();
+      // Aim slightly ahead of the worm's head so crumbs feel "eaten" mid-stride.
+      const targetX = rect.left + (currentWormX + 4) * charWidth;
+      const targetY = rect.top + rect.height / 2;
+
+      const crumb = document.createElement('span');
+      crumb.className = 'cursor-crumb';
+      crumb.textContent = CRUMB_CHARS[Math.floor(Math.random() * CRUMB_CHARS.length)];
+      crumb.style.left = e.clientX + 'px';
+      crumb.style.top  = e.clientY + 'px';
+      document.body.appendChild(crumb);
+
+      requestAnimationFrame(() => {
+        crumb.style.transform = 'translate(' + (targetX - e.clientX) + 'px,' + (targetY - e.clientY) + 'px) scale(0.25)';
+        crumb.style.opacity = '0';
+      });
+
+      setTimeout(() => crumb.remove(), 950);
+    }, { passive: true });
+  }
+
+  // --- Console easter egg ---
+  // Type nom() in the browser DevTools console -> triggers a chomp cycle.
+  window.nom = function() {
+    if (timer) { clearTimeout(timer); timer = null; }
+    if (!visible) visible = true;
+    runCycle();
+    console.log('%c~~~_o)  *burp*', 'color:#00e5a0;font-family:monospace;font-weight:bold;text-shadow:0 0 6px rgba(0,229,160,0.5);font-size:14px;');
+    return '*burp*';
+  };
+  console.log('%c~~~_o)  oM noM Security Feeds  -  type nom() to feed the worm', 'color:#00e5a0;font-family:monospace;');
 
   // Pause when scrolled out of view; resume when scrolled back.
   if ('IntersectionObserver' in window) {

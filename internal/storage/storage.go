@@ -73,7 +73,110 @@ func (s *Store) migrate() error {
 		s.db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_norm_url ON articles(normalized_url)")
 		s.db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_dup ON articles(duplicate_of)")
 	}
-	return nil
+	return s.migrateUserTables()
+}
+
+// migrateUserTables adds the per-user overlay tables used in HOSTED_MODE.
+// Tables are created unconditionally so self-host installs see the schema
+// but never write to them, and a self-host can opt into hosted later
+// without a data migration.
+func (s *Store) migrateUserTables() error {
+	_, err := s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id            TEXT PRIMARY KEY,
+			id_provider   TEXT NOT NULL,
+			id_external   TEXT NOT NULL,
+			email         TEXT NOT NULL,
+			display_name  TEXT,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_seen_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			pro_until     DATETIME,
+			UNIQUE (id_provider, id_external),
+			UNIQUE (email)
+		);
+		CREATE TABLE IF NOT EXISTS user_sessions (
+			token_hash    BLOB PRIMARY KEY,
+			user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_seen_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			user_agent    TEXT,
+			expires_at    DATETIME NOT NULL
+		);
+		CREATE TABLE IF NOT EXISTS user_settings (
+			user_id    TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+			settings   TEXT NOT NULL DEFAULT '{}',
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE TABLE IF NOT EXISTS user_read_state (
+			user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			article_id  INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+			read_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, article_id)
+		);
+		CREATE TABLE IF NOT EXISTS user_bookmarks (
+			user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			article_id     INTEGER NOT NULL REFERENCES articles(id) ON DELETE CASCADE,
+			bookmarked_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			note           TEXT,
+			PRIMARY KEY (user_id, article_id)
+		);
+		CREATE TABLE IF NOT EXISTS user_stack_tags (
+			user_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			tag      TEXT NOT NULL,
+			PRIMARY KEY (user_id, tag)
+		);
+		CREATE TABLE IF NOT EXISTS user_dep_packages (
+			user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			ecosystem    TEXT NOT NULL,
+			name         TEXT NOT NULL,
+			version_pin  TEXT NOT NULL,
+			uploaded_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, ecosystem, name)
+		);
+		CREATE TABLE IF NOT EXISTS user_alert_rules (
+			id              TEXT PRIMARY KEY,
+			user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			kind            TEXT NOT NULL,
+			pattern         TEXT NOT NULL,
+			channel         TEXT NOT NULL,
+			channel_target  TEXT,
+			enabled         INTEGER NOT NULL DEFAULT 1,
+			created_at      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_fired_at   DATETIME
+		);
+		CREATE TABLE IF NOT EXISTS user_actor_follows (
+			user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			actor_slug   TEXT NOT NULL,
+			followed_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY (user_id, actor_slug)
+		);
+		CREATE TABLE IF NOT EXISTS user_custom_sources (
+			id             TEXT PRIMARY KEY,
+			user_id        TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name           TEXT NOT NULL,
+			url            TEXT NOT NULL,
+			enabled        INTEGER NOT NULL DEFAULT 1,
+			last_fetch_at  DATETIME,
+			last_error     TEXT,
+			created_at     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+		CREATE TABLE IF NOT EXISTS user_api_tokens (
+			id            TEXT PRIMARY KEY,
+			user_id       TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+			name          TEXT NOT NULL,
+			token_hash    BLOB NOT NULL UNIQUE,
+			scopes        TEXT,
+			created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_used_at  DATETIME,
+			revoked_at    DATETIME
+		);
+		CREATE INDEX IF NOT EXISTS idx_user_read_state_user ON user_read_state(user_id, read_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_user_bookmarks_user ON user_bookmarks(user_id, bookmarked_at DESC);
+		CREATE INDEX IF NOT EXISTS idx_user_alert_rules_user ON user_alert_rules(user_id, enabled);
+		CREATE INDEX IF NOT EXISTS idx_user_custom_sources_user ON user_custom_sources(user_id, enabled);
+		CREATE INDEX IF NOT EXISTS idx_user_sessions_user ON user_sessions(user_id);
+	`)
+	return err
 }
 
 func (s *Store) Upsert(a models.Article) error {

@@ -10,7 +10,14 @@ code via a `HOSTED_MODE=true` env flag.
 | Mode | Trigger | Storage | Users | Auth |
 | --- | --- | --- | --- | --- |
 | Self-host (current) | default | SQLite local | single, implicit | none |
-| Hosted | `HOSTED_MODE=true` | Postgres | many, via Google OAuth | session cookie |
+| Hosted | `HOSTED_MODE=true` | SQLite (WAL) on the same droplet | many, via Google OAuth | session cookie |
+
+**On the SQLite decision (revised from Postgres).** Workload doesn't justify
+Postgres complexity at the scales we're targeting. SQLite in WAL mode handles
+~60 writes/sec sustained, which corresponds to ~10k+ active users at our
+write profile. Litestream replicates the file to R2 for off-box backup. If
+we ever cross that ceiling, migration to Postgres is a known recipe; doing
+it now on hypotheticals just burns days for zero benefit.
 
 The fetch loop, scoring engine, MITRE / NVD / EPSS enrichers, web UI, and
 every keybind work identically in both modes. The differences are confined to:

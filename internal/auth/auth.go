@@ -95,24 +95,7 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 	mux.HandleFunc("/auth/logout", h.handleLogout)
 }
 
-// --- Google OAuth ---
-
-// handleGoogleStart redirects the browser to Google's consent screen with a
-// random state parameter saved in a short-lived signed cookie for CSRF
-// protection. Real implementation lands in the next batch.
-func (h *Handler) handleGoogleStart(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not yet implemented", http.StatusNotImplemented)
-}
-
-// handleGoogleCallback exchanges the code Google sends us for an ID token,
-// extracts the user's stable provider ID + email, upserts a users row,
-// issues a session, and sets the session cookie before redirecting back
-// to the app root.
-func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not yet implemented", http.StatusNotImplemented)
-}
-
-// Magic-link handlers live in magic.go.
+// Google OAuth handlers live in google.go. Magic-link handlers in magic.go.
 
 // handleLogout revokes the current session in the DB and clears the cookie.
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {

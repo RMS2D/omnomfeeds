@@ -94,6 +94,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	// Per-user identity endpoint. Returns nil for anonymous; populated when
 	// auth middleware resolves a session cookie.
 	mux.HandleFunc("/api/me", s.handleMe)
+	// Which login methods this deployment exposes. Used by /login.html to
+	// render the right buttons.
+	mux.HandleFunc("/api/auth/methods", s.handleAuthMethods)
 
 	// In hosted mode, register OAuth + magic-link + logout under /auth/,
 	// and wrap the whole mux in the session-resolving middleware so any
@@ -295,6 +298,16 @@ func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCuratedBluesky(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, curated.Bluesky)
+}
+
+// handleAuthMethods reports which login flows are wired up. Self-host: both
+// false. Hosted: depends on which env-var creds are populated.
+func (s *Server) handleAuthMethods(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, 200, map[string]bool{
+		"google":      s.cfg.Hosted.Enabled && s.cfg.Hosted.GoogleClientID != "" && s.cfg.Hosted.GoogleClientSecret != "",
+		"magic_link":  s.cfg.Hosted.Enabled && s.cfg.Hosted.ResendAPIKey != "",
+		"hosted_mode": s.cfg.Hosted.Enabled,
+	})
 }
 
 // handleMe returns the resolved user (if any) for the current session cookie.

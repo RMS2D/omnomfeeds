@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sign in - oM noM Security Feeds</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #14191f;
+  --border: #2a3340;
+  --border-hi: #3a4555;
+  --text: #e6ecf5;
+  --text-dim: #b8c4d4;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+
+.wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px;
+}
+.card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--accent);
+  border-radius: 5px;
+  padding: 30px 28px 26px;
+}
+.brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.brand .worm {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0,229,160,0.4);
+  display: inline-block;
+  animation: worm-bob 2.4s ease-in-out infinite;
+}
+@keyframes worm-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin: 8px 0 6px;
+  letter-spacing: -0.2px;
+}
+.subhead {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 22px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 16px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 1px solid;
+  cursor: pointer;
+  transition: all 0.14s ease;
+  text-decoration: none;
+}
+.btn-google {
+  background: rgba(86,226,255,0.06);
+  border-color: var(--border-hi);
+  color: var(--text-bright);
+}
+.btn-google:hover {
+  border-color: var(--accent-cyan);
+  background: rgba(86,226,255,0.12);
+}
+.btn-primary {
+  background: rgba(0,229,160,0.10);
+  border-color: var(--accent);
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(0,229,160,0.3);
+}
+.btn-primary:hover {
+  background: rgba(0,229,160,0.2);
+  color: var(--text-bright);
+  box-shadow: 0 0 14px rgba(0,229,160,0.25);
+}
+.btn:disabled, .btn-disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 18px 0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 1.4px;
+}
+.divider::before, .divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+.field { margin-bottom: 12px; }
+.field label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.field input {
+  width: 100%;
+  padding: 10px 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-bright);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.12s ease;
+}
+.field input:focus { border-color: var(--accent-cyan); }
+
+.notice {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 10px 12px;
+  margin-top: 14px;
+  border-radius: 3px;
+  letter-spacing: 0.2px;
+  line-height: 1.55;
+}
+.notice.ok {
+  background: rgba(0,229,160,0.06);
+  border: 1px solid rgba(0,229,160,0.25);
+  color: var(--accent);
+}
+.notice.err {
+  background: rgba(255,77,106,0.06);
+  border: 1px solid rgba(255,77,106,0.35);
+  color: #ff8ea0;
+}
+
+.footnote {
+  margin-top: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+.footnote a { color: var(--text-dim); }
+.footnote a:hover { color: var(--accent-cyan); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="brand"><span class="worm">~~~_o)</span> oM noM Security Feeds</div>
+    <h1>Sign in</h1>
+    <p class="subhead">Pick how you'd like to get in. Both options drop you at the same account.</p>
+
+    <a id="googleBtn" class="btn btn-google" href="/auth/google" hidden>Continue with Google</a>
+
+    <div id="divider" class="divider" hidden><span>or</span></div>
+
+    <form id="magicForm" hidden>
+      <div class="field">
+        <label for="email">Email a sign-in link</label>
+        <input type="email" id="email" name="email" placeholder="you@example.com" autocomplete="email" required>
+      </div>
+      <button type="submit" class="btn btn-primary" id="magicBtn">Send me a link</button>
+    </form>
+
+    <div id="notice" hidden></div>
+
+    <div class="footnote">
+      <a href="/">&larr; back to home</a>
+    </div>
+  </div>
+</div>
+
+<script>
+(async function() {
+  const googleBtn = document.getElementById('googleBtn');
+  const divider  = document.getElementById('divider');
+  const form     = document.getElementById('magicForm');
+  const magicBtn = document.getElementById('magicBtn');
+  const notice   = document.getElementById('notice');
+
+  function showNotice(kind, msg) {
+    notice.className = 'notice ' + kind;
+    notice.textContent = msg;
+    notice.hidden = false;
+  }
+
+  // Surface any redirect errors from the OAuth flow (e.g. user cancelled).
+  const params = new URLSearchParams(location.search);
+  if (params.get('err') === 'cancelled') {
+    showNotice('err', 'Google sign-in cancelled. Try again or use email.');
+  }
+
+  // Ask the server which login methods are wired up so we can hide the ones
+  // that aren't.
+  let methods = { google: false, magic_link: false, hosted_mode: false };
+  try {
+    const r = await fetch('/api/auth/methods');
+    methods = await r.json();
+  } catch (e) {
+    // If the endpoint fails entirely we're likely self-host; show neither.
+  }
+  if (!methods.hosted_mode) {
+    showNotice('err', 'This deployment is running in self-host mode. No accounts; just open the app.');
+    document.querySelector('.subhead').textContent = '';
+    return;
+  }
+  if (methods.google) googleBtn.hidden = false;
+  if (methods.magic_link) form.hidden = false;
+  if (methods.google && methods.magic_link) divider.hidden = false;
+
+  form.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const email = document.getElementById('email').value.trim();
+    if (!email) return;
+    magicBtn.disabled = true;
+    magicBtn.textContent = 'sending...';
+    try {
+      const r = await fetch('/auth/magic', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      if (r.ok || r.status === 202) {
+        showNotice('ok', 'Check your inbox at ' + email + '. The link expires in 15 minutes.');
+        form.hidden = true;
+      } else {
+        showNotice('err', 'Something went wrong. Try again in a minute.');
+        magicBtn.disabled = false;
+        magicBtn.textContent = 'Send me a link';
+      }
+    } catch (e) {
+      showNotice('err', 'Network error. Try again.');
+      magicBtn.disabled = false;
+      magicBtn.textContent = 'Send me a link';
+    }
+  });
+})();
+</script>
+</body>
+</html>

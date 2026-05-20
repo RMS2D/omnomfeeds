@@ -4,29 +4,33 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>oM noM Security Feeds</title>
-<meta name="description" content="A worm that eats your security feeds. Self-hosted single binary, MITRE ATT&CK + CISA KEV scoring, BYOK AI digest. Free and open source.">
+<meta name="description" content="A worm that eats your security feeds. Self-host free or use the hosted version with stack-aware CVE prioritization, threat actor follow, KEV webhook alerts, and managed AI briefs.">
 <meta property="og:title" content="oM noM Security Feeds">
-<meta property="og:description" content="A keyboard-driven security news terminal that eats feeds for you.">
+<meta property="og:description" content="A keyboard-driven security news terminal. Self-host free, or $5/mo for managed Pro with stack-aware CVE alerts.">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
   --bg: #0a0e14;
   --bg-card: #14191f;
+  --bg-card-hi: #1a212a;
   --border: #2a3340;
+  --border-hi: #3a4555;
   --text: #e6ecf5;
   --text-dim: #b8c4d4;
   --text-bright: #ffffff;
   --accent: #00e5a0;
   --accent-cyan: #56e2ff;
+  --accent-amber: #ffb547;
   --score-crit: #ff4d6a;
 }
 html, body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 15px;
   line-height: 1.6;
   min-height: 100vh;
@@ -41,7 +45,7 @@ code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
 *::-webkit-scrollbar-thumb:hover { background: rgba(86,226,255,0.45); }
 
 .wrap {
-  max-width: 880px;
+  max-width: 980px;
   margin: 0 auto;
   padding: 32px 24px 80px;
 }
@@ -50,9 +54,11 @@ header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 28px;
+  padding-bottom: 24px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 64px;
+  margin-bottom: 56px;
+  flex-wrap: wrap;
+  gap: 12px;
 }
 header .brand {
   font-family: 'JetBrains Mono', monospace;
@@ -74,17 +80,17 @@ header .brand .worm {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-1.5px); }
 }
-header nav { display: flex; gap: 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+header nav { display: flex; gap: 20px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
 header nav a { color: var(--text-dim); }
 header nav a:hover { color: var(--accent-cyan); }
 
 .hero {
   text-align: center;
-  margin-bottom: 64px;
+  margin-bottom: 72px;
 }
 .hero .glyph {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 28px;
+  font-size: 26px;
   color: var(--accent);
   text-shadow: 0 0 12px rgba(0,229,160,0.4);
   margin-bottom: 18px;
@@ -101,10 +107,10 @@ header nav a:hover { color: var(--accent-cyan); }
   70%, 80%      { transform: scaleX(1.06); }
 }
 .hero h1 {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-weight: 600;
-  font-size: 40px;
-  line-height: 1.15;
+  font-size: 42px;
+  line-height: 1.12;
   letter-spacing: -0.5px;
   color: var(--text-bright);
   margin-bottom: 14px;
@@ -112,8 +118,8 @@ header nav a:hover { color: var(--accent-cyan); }
 .hero .tagline {
   color: var(--text-dim);
   font-size: 18px;
-  margin-bottom: 30px;
-  max-width: 600px;
+  margin-bottom: 26px;
+  max-width: 660px;
   margin-left: auto;
   margin-right: auto;
 }
@@ -158,12 +164,20 @@ header nav a:hover { color: var(--accent-cyan); }
   border-color: var(--accent-cyan);
   color: var(--accent-cyan);
 }
+.btn-disabled {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text-dim);
+  cursor: default;
+  opacity: 0.65;
+}
+.btn-disabled:hover { color: var(--text-dim); }
 
 .hero .install-line {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   color: var(--text-dim);
-  margin-top: 18px;
+  margin-top: 16px;
 }
 .hero .install-line code {
   background: rgba(86,226,255,0.06);
@@ -174,15 +188,13 @@ header nav a:hover { color: var(--accent-cyan); }
   user-select: all;
 }
 
-.section {
-  margin-bottom: 64px;
-}
+.section { margin-bottom: 72px; }
 .section h2 {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   color: var(--accent-cyan);
   text-transform: uppercase;
-  letter-spacing: 1.4px;
+  letter-spacing: 1.5px;
   margin-bottom: 18px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -190,10 +202,10 @@ header nav a:hover { color: var(--accent-cyan); }
 .section .lead {
   font-size: 17px;
   color: var(--text);
-  margin-bottom: 18px;
-  max-width: 700px;
+  margin-bottom: 14px;
+  max-width: 760px;
 }
-.section p { color: var(--text-dim); max-width: 700px; margin-bottom: 12px; }
+.section p { color: var(--text-dim); max-width: 760px; margin-bottom: 12px; }
 
 .features {
   display: grid;
@@ -219,10 +231,143 @@ header nav a:hover { color: var(--accent-cyan); }
   font-size: 14px;
   line-height: 1.5;
 }
-@media (max-width: 600px) {
-  .features { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 30px; }
-  .hero .glyph { font-size: 22px; }
+
+/* Pricing tiers */
+.tiers {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px;
+}
+.tier {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 24px 22px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: border-color 0.18s ease, transform 0.18s ease;
+}
+.tier:hover { border-color: var(--border-hi); transform: translateY(-2px); }
+.tier.pro {
+  border-color: rgba(0,229,160,0.4);
+  background: linear-gradient(180deg, rgba(0,229,160,0.04), var(--bg-card));
+}
+.tier.pro:hover {
+  border-color: var(--accent);
+  box-shadow: 0 0 24px rgba(0,229,160,0.15);
+}
+.tier-flag {
+  position: absolute;
+  top: -10px;
+  right: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  background: var(--accent);
+  color: var(--bg);
+  padding: 3px 9px;
+  border-radius: 2px;
+  font-weight: 700;
+}
+.tier-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 10px;
+}
+.tier.pro .tier-name { color: var(--accent); }
+.tier-price {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 36px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 4px;
+  letter-spacing: -0.5px;
+}
+.tier-price .per {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-weight: 400;
+}
+.tier-pitch {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 18px;
+  line-height: 1.5;
+  min-height: 60px;
+}
+.tier-cta {
+  margin-bottom: 16px;
+}
+.tier-cta .btn {
+  width: 100%;
+  justify-content: center;
+}
+.tier-features {
+  list-style: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  flex: 1;
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
+}
+.tier-features li {
+  padding: 5px 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.tier-features li::before {
+  content: '+';
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.tier-features li.minor::before { content: '+'; color: var(--text-dim); opacity: 0.5; }
+.tier-features li.headline {
+  font-weight: 700;
+  color: var(--accent-cyan);
+  letter-spacing: 0.4px;
+}
+.tier-features li.headline::before { content: '*'; color: var(--accent-cyan); }
+
+/* Pro feature deep-dive cards */
+.pro-deep {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+.pro-card {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 20px 22px;
+  background: rgba(0,229,160,0.04);
+}
+.pro-card .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  margin-bottom: 6px;
+}
+.pro-card .name {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 10px;
+}
+.pro-card .desc {
+  color: var(--text-dim);
+  font-size: 13.5px;
+  line-height: 1.6;
 }
 
 .box-pitch {
@@ -251,9 +396,16 @@ footer {
   flex-wrap: wrap;
   gap: 12px;
 }
-footer .left { letter-spacing: 0.4px; }
 footer a { color: var(--text-dim); }
 footer a:hover { color: var(--accent-cyan); }
+
+@media (max-width: 760px) {
+  .features, .pro-deep { grid-template-columns: 1fr; }
+  .tiers { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 32px; }
+  .hero .glyph { font-size: 20px; }
+  .tier-pitch { min-height: 0; }
+}
 </style>
 </head>
 <body>
@@ -262,9 +414,10 @@ footer a:hover { color: var(--accent-cyan); }
 <header>
   <div class="brand"><span class="worm">~~~_o)</span> oM noM Security Feeds</div>
   <nav>
-    <a href="https://github.com/RMS2D/omnomfeeds">github</a>
-    <a href="#install">install</a>
     <a href="#features">features</a>
+    <a href="#pricing">pricing</a>
+    <a href="#install">install</a>
+    <a href="https://github.com/RMS2D/omnomfeeds">github</a>
   </nav>
 </header>
 
@@ -277,8 +430,8 @@ footer a:hover { color: var(--accent-cyan); }
     Renders a keyboard-driven two-pane reader in your browser.
   </p>
   <div class="cta-row">
-    <a class="btn btn-primary" href="https://github.com/RMS2D/omnomfeeds#install">Install (one-liner)</a>
-    <a class="btn btn-secondary" href="https://github.com/RMS2D/omnomfeeds">View on GitHub</a>
+    <a class="btn btn-primary" href="#install">Install (one-liner)</a>
+    <a class="btn btn-secondary" href="#pricing">See hosted + Pro</a>
   </div>
   <div class="install-line">
     <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code>
@@ -289,7 +442,7 @@ footer a:hover { color: var(--accent-cyan); }
   <h2>:: why a worm ::</h2>
   <p class="lead">
     Reading every security RSS feed by hand is a tax on your day. A bookmark folder of 50 sites is a guilt machine.
-    oM noM does the firehose part for you: it pulls everything, scores each item against weighted keyword categories,
+    oM noM does the firehose part for you: pulls everything, scores each item against weighted keyword categories,
     auto-flags anything in the CISA KEV catalog, deduplicates noise, and shows you the 5% worth your attention.
   </p>
   <p>
@@ -299,7 +452,7 @@ footer a:hover { color: var(--accent-cyan); }
 </div>
 
 <div class="section" id="features">
-  <h2>:: features ::</h2>
+  <h2>:: features (all tiers) ::</h2>
   <div class="features">
     <div class="feature">
       <div class="name">50+ curated sources</div>
@@ -307,7 +460,7 @@ footer a:hover { color: var(--accent-cyan); }
     </div>
     <div class="feature">
       <div class="name">MITRE ATT&amp;CK coverage</div>
-      <div class="desc">Every article gets technique tags. A modal shows which ATT&amp;CK techniques are dominating today's feed, click to filter.</div>
+      <div class="desc">Every article gets technique tags. A modal shows which ATT&amp;CK techniques are dominating today's feed; click to filter.</div>
     </div>
     <div class="feature">
       <div class="name">CISA KEV auto-flagging</div>
@@ -315,16 +468,157 @@ footer a:hover { color: var(--accent-cyan); }
     </div>
     <div class="feature">
       <div class="name">BYOK AI daily brief</div>
-      <div class="desc">Drop in an Anthropic or OpenAI API key. Get a 300-word brief of the day's most important items, tuned to your focus area.</div>
+      <div class="desc">Drop in an Anthropic or OpenAI API key, get a 300-word brief of the day's most important items, tuned to your focus area.</div>
     </div>
     <div class="feature">
       <div class="name">Two-pane reader, vim keybinds</div>
-      <div class="desc">List on the left, reader on the right, draggable divider. j/k to nav, o to open, b to bookmark, T for MITRE coverage, S for feast stats.</div>
+      <div class="desc">List on the left, reader on the right, draggable divider. j/k to nav, o to open, b to bookmark, T for MITRE coverage, S for stats.</div>
     </div>
     <div class="feature">
       <div class="name">No telemetry. No proxy.</div>
       <div class="desc">Single binary, SQLite local state. Nothing leaves your machine unless you explicitly click out. Open source under MIT.</div>
     </div>
+  </div>
+</div>
+
+<div class="section" id="pricing">
+  <h2>:: three ways to use it ::</h2>
+  <div class="tiers">
+
+    <!-- Self-host -->
+    <div class="tier">
+      <div class="tier-name">Self-host</div>
+      <div class="tier-price">$0<span class="per"> &middot; free forever</span></div>
+      <div class="tier-pitch">
+        Run the binary on your own machine. MIT licensed, full source on GitHub. Your data never leaves your box.
+      </div>
+      <div class="tier-cta"><a class="btn btn-primary" href="#install">Install (one-liner)</a></div>
+      <ul class="tier-features">
+        <li class="headline">Everything in the app</li>
+        <li>All 50+ sources</li>
+        <li>MITRE ATT&amp;CK + KEV scoring</li>
+        <li>BYOK AI brief (your key)</li>
+        <li>Local SQLite state</li>
+        <li>Updates via GitHub releases</li>
+      </ul>
+    </div>
+
+    <!-- Hosted free -->
+    <div class="tier">
+      <div class="tier-name">Hosted free</div>
+      <div class="tier-price">$0<span class="per"> &middot; coming soon</span></div>
+      <div class="tier-pitch">
+        Same app, hosted by us. Sign in with Google, your settings sync across devices. No install, no API key setup unless you want one.
+      </div>
+      <div class="tier-cta"><a class="btn btn-disabled" href="#hosted">Notify me when live</a></div>
+      <ul class="tier-features">
+        <li class="headline">Everything in self-host</li>
+        <li>Google sign-in</li>
+        <li>Settings + bookmarks synced</li>
+        <li>Read state synced</li>
+        <li>30 days article history</li>
+        <li>BYOK AI brief (your key)</li>
+      </ul>
+    </div>
+
+    <!-- Pro -->
+    <div class="tier pro">
+      <span class="tier-flag">Pro</span>
+      <div class="tier-name">Hosted Pro</div>
+      <div class="tier-price">$5<span class="per">/mo &middot; cancel anytime</span></div>
+      <div class="tier-pitch">
+        For people who actually use it daily. Convenience, alerts that turn the worm into a monitor, and the personalization that makes the feed feel like yours.
+      </div>
+      <div class="tier-cta"><a class="btn btn-disabled" href="#hosted">Notify me when live</a></div>
+      <ul class="tier-features">
+        <li class="headline">Everything in hosted free, plus:</li>
+        <li>Managed AI daily brief (no API key)</li>
+        <li>KEV webhook alerts (Slack / Discord / generic)</li>
+        <li>Saved keyword + CVE pattern alerts</li>
+        <li>Stack-aware CVE prioritization</li>
+        <li>Dependency advisory matcher</li>
+        <li>Threat actor follow + per-actor feeds</li>
+        <li>Daily blast-radius brief</li>
+        <li>Email digest (daily or weekly)</li>
+        <li>6 months article history</li>
+        <li>Custom private feeds</li>
+        <li>REST API access</li>
+        <li>Full-corpus search</li>
+      </ul>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" id="pro">
+  <h2>:: what makes Pro worth $5 ::</h2>
+  <p class="lead">
+    Pro doesn't gate features. The reader, the scoring, the MITRE coverage, the curated sources, the KEV indicator,
+    they're all free on every tier. Pro adds the *operational* layer on top: things that turn a feed reader into a
+    monitoring tool, plus the convenience layer of "we run it for you."
+  </p>
+  <div class="pro-deep">
+
+    <div class="pro-card">
+      <div class="label">:: personalization ::</div>
+      <div class="name">Stack-aware prioritization</div>
+      <div class="desc">
+        Tell the worm what you run: pick tags (AWS, K8s, Postgres, nginx, Windows 11, Rust) or paste a <code>go.mod</code>,
+        <code>package.json</code>, or <code>requirements.txt</code>. Every article is scored *for your stack*. A Java
+        shop sees Log4j-shaped things; a Rust shop sees crate advisories. Your feed reads completely differently from
+        the next user's.
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="label">:: precision alert ::</div>
+      <div class="name">Dependency advisory matcher</div>
+      <div class="desc">
+        Upload a manifest once a week. When a new CVE drops affecting a pinned version you actually run, you get a
+        direct alert. Dependabot but cross-source and security-research-grade, catching things that don't show up in
+        GitHub's advisory database.
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="label">:: operational ::</div>
+      <div class="name">KEV + keyword webhook alerts</div>
+      <div class="desc">
+        Pick threats to monitor: CISA KEV additions, specific CVE patterns, threat actor names, keywords. When something
+        matches, push to your Slack, Discord, or any webhook within minutes of the article landing. The worm becomes a
+        monitor instead of a feed you have to remember to check.
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="label">:: threat intel ::</div>
+      <div class="name">Threat actor follow</div>
+      <div class="desc">
+        Subscribe to APT groups (Lazarus, Volt Typhoon, Sandworm, Mustang Panda) and ransomware crews (LockBit, BlackCat,
+        Scattered Spider, Akira). Get a per-actor feed page with chronological mentions, TTPs surfaced, and a ping when
+        an actor is trending (5+ mentions in 24h).
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="label">:: synthesis ::</div>
+      <div class="name">Daily blast-radius brief</div>
+      <div class="desc">
+        Every morning, a personalized 200-word AI brief that says what specifically affects *your* environment.
+        Combines your stack profile, your followed actors, your saved alerts, and the day's KEV additions into one
+        paragraph you can read in 30 seconds before your first coffee.
+      </div>
+    </div>
+
+    <div class="pro-card">
+      <div class="label">:: convenience ::</div>
+      <div class="name">Managed AI brief + email</div>
+      <div class="desc">
+        Free tier needs you to bring your own Anthropic or OpenAI key. Pro runs the brief on our key, no setup. Delivery
+        as an email digest if you'd rather read it in your inbox than open the app.
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -340,23 +634,27 @@ footer a:hover { color: var(--accent-cyan); }
     <span class="label">go install</span><br>
     <code>go install github.com/RMS2D/omnomfeeds@latest</code><br>
     <br>
-    <span class="dim">Open <code>http://localhost:8080</code>, press <code>c</code> to configure sources. <a href="https://github.com/RMS2D/omnomfeeds#readme">Full README</a>.</span>
+    <span class="dim">Open <code>http://localhost:8080</code>, press <code>c</code> to configure sources.
+    <a href="https://github.com/RMS2D/omnomfeeds#readme">Full README</a> &middot;
+    <a href="https://github.com/RMS2D/omnomfeeds/releases">Releases</a></span>
   </div>
 </div>
 
 <div class="section" id="hosted">
-  <h2>:: hosted version ::</h2>
+  <h2>:: hosted launching soon ::</h2>
   <p class="lead">
-    A managed multi-user hosted version is coming. Synced settings, bookmarks across devices, managed AI brief (no BYOK), longer history retention.
-    Free tier first. Optional Pro for a few dollars a month, just enough to cover the server.
+    Hosted free + Pro are in active development. The self-host binary is the same product you'll see hosted; the only
+    difference is who runs it. Install today, switch to hosted later if you'd rather not manage your own box.
   </p>
   <p>
-    Watch the <a href="https://github.com/RMS2D/omnomfeeds">GitHub repo</a> for updates.
+    Want a notification when hosted goes live? Watch the
+    <a href="https://github.com/RMS2D/omnomfeeds">GitHub repo</a> for the
+    <code>v0.2.0</code> release, or open an issue saying "notify me on hosted" and we'll tag you.
   </p>
 </div>
 
 <footer>
-  <span class="left">oM noM Security Feeds &middot; MIT licensed</span>
+  <span>oM noM Security Feeds &middot; MIT licensed &middot; running locally since 2026</span>
   <span><a href="https://github.com/RMS2D/omnomfeeds">github.com/RMS2D/omnomfeeds</a></span>
 </footer>
 

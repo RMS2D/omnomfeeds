@@ -1,0 +1,28 @@
+[Unit]
+Description=oM noM Security Feeds
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=omnom
+Group=omnom
+WorkingDirectory=/opt/omnomfeeds
+ExecStart=/opt/omnomfeeds/omnomfeeds
+EnvironmentFile=-/opt/omnomfeeds/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/omnomfeeds/app.log
+StandardError=append:/var/log/omnomfeeds/app.log
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+
+[Install]
+WantedBy=multi-user.target

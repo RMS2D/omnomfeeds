@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oM noM Security Feeds</title>
+<meta name="description" content="A worm that eats your security feeds. Self-hosted single binary, MITRE ATT&CK + CISA KEV scoring, BYOK AI digest. Free and open source.">
+<meta property="og:title" content="oM noM Security Feeds">
+<meta property="og:description" content="A keyboard-driven security news terminal that eats feeds for you.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #14191f;
+  --border: #2a3340;
+  --text: #e6ecf5;
+  --text-dim: #b8c4d4;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+
+* { scrollbar-width: thin; scrollbar-color: rgba(86,226,255,0.25) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: rgba(86,226,255,0.18); border-radius: 4px; }
+*::-webkit-scrollbar-thumb:hover { background: rgba(86,226,255,0.45); }
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 28px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 64px;
+}
+header .brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--text-bright);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+header .brand .worm {
+  color: var(--accent);
+  text-shadow: 0 0 8px rgba(0,229,160,0.4);
+  display: inline-block;
+  animation: worm-bob 2.4s ease-in-out infinite;
+}
+@keyframes worm-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+header nav { display: flex; gap: 18px; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+header nav a { color: var(--text-dim); }
+header nav a:hover { color: var(--accent-cyan); }
+
+.hero {
+  text-align: center;
+  margin-bottom: 64px;
+}
+.hero .glyph {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(0,229,160,0.4);
+  margin-bottom: 18px;
+  white-space: pre;
+  letter-spacing: 1px;
+}
+.hero .glyph .chomp {
+  display: inline-block;
+  animation: chomp 3.6s ease-in-out infinite;
+  transform-origin: left center;
+}
+@keyframes chomp {
+  0%, 60%, 100% { transform: scaleX(1); }
+  70%, 80%      { transform: scaleX(1.06); }
+}
+.hero h1 {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 40px;
+  line-height: 1.15;
+  letter-spacing: -0.5px;
+  color: var(--text-bright);
+  margin-bottom: 14px;
+}
+.hero .tagline {
+  color: var(--text-dim);
+  font-size: 18px;
+  margin-bottom: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.cta-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 22px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  border: 1px solid;
+  transition: all 0.14s ease;
+  cursor: pointer;
+}
+.btn-primary {
+  background: rgba(0,229,160,0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(0,229,160,0.3);
+}
+.btn-primary:hover {
+  background: rgba(0,229,160,0.18);
+  color: var(--text-bright);
+  box-shadow: 0 0 14px rgba(0,229,160,0.25);
+}
+.btn-secondary {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}
+
+.hero .install-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 18px;
+}
+.hero .install-line code {
+  background: rgba(86,226,255,0.06);
+  border: 1px solid rgba(86,226,255,0.18);
+  border-radius: 3px;
+  padding: 4px 10px;
+  color: var(--text-bright);
+  user-select: all;
+}
+
+.section {
+  margin-bottom: 64px;
+}
+.section h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  margin-bottom: 18px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+.section .lead {
+  font-size: 17px;
+  color: var(--text);
+  margin-bottom: 18px;
+  max-width: 700px;
+}
+.section p { color: var(--text-dim); max-width: 700px; margin-bottom: 12px; }
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 18px;
+}
+.feature {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 18px;
+  background: rgba(0,0,0,0.2);
+}
+.feature .name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 6px;
+  letter-spacing: 0.3px;
+}
+.feature .desc {
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+@media (max-width: 600px) {
+  .features { grid-template-columns: 1fr; }
+  .hero h1 { font-size: 30px; }
+  .hero .glyph { font-size: 22px; }
+}
+
+.box-pitch {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 20px 24px;
+  background: rgba(0,229,160,0.04);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text);
+}
+.box-pitch .label { color: var(--accent); letter-spacing: 0.6px; }
+.box-pitch .dim { color: var(--text-dim); }
+
+footer {
+  margin-top: 80px;
+  padding-top: 28px;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+footer .left { letter-spacing: 0.4px; }
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent-cyan); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand"><span class="worm">~~~_o)</span> oM noM Security Feeds</div>
+  <nav>
+    <a href="https://github.com/RMS2D/omnomfeeds">github</a>
+    <a href="#install">install</a>
+    <a href="#features">features</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="glyph"><span class="chomp">~~~_o)</span>   om   nom   nom</div>
+  <h1>A worm that eats your security feeds.</h1>
+  <p class="tagline">
+    Pulls RSS, Reddit, Bluesky, Mastodon, GitHub Advisories and MalwareBazaar.
+    Scores against keyword categories tied to MITRE ATT&amp;CK and CISA KEV.
+    Renders a keyboard-driven two-pane reader in your browser.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="https://github.com/RMS2D/omnomfeeds#install">Install (one-liner)</a>
+    <a class="btn btn-secondary" href="https://github.com/RMS2D/omnomfeeds">View on GitHub</a>
+  </div>
+  <div class="install-line">
+    <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code>
+  </div>
+</div>
+
+<div class="section" id="why">
+  <h2>:: why a worm ::</h2>
+  <p class="lead">
+    Reading every security RSS feed by hand is a tax on your day. A bookmark folder of 50 sites is a guilt machine.
+    oM noM does the firehose part for you: it pulls everything, scores each item against weighted keyword categories,
+    auto-flags anything in the CISA KEV catalog, deduplicates noise, and shows you the 5% worth your attention.
+  </p>
+  <p>
+    Single Go binary. Runs entirely on your machine. SQLite for state. No telemetry. No proxy. All API calls go direct
+    from your machine to the source.
+  </p>
+</div>
+
+<div class="section" id="features">
+  <h2>:: features ::</h2>
+  <div class="features">
+    <div class="feature">
+      <div class="name">50+ curated sources</div>
+      <div class="desc">RSS, Reddit, Mastodon, GitHub Security Advisories, MalwareBazaar, Bluesky search + watched accounts. 107-handle curated picker for security researchers.</div>
+    </div>
+    <div class="feature">
+      <div class="name">MITRE ATT&amp;CK coverage</div>
+      <div class="desc">Every article gets technique tags. A modal shows which ATT&amp;CK techniques are dominating today's feed, click to filter.</div>
+    </div>
+    <div class="feature">
+      <div class="name">CISA KEV auto-flagging</div>
+      <div class="desc">CVE references get cross-matched against the KEV catalog. Active exploitation items pulse red and edge-flash on arrival.</div>
+    </div>
+    <div class="feature">
+      <div class="name">BYOK AI daily brief</div>
+      <div class="desc">Drop in an Anthropic or OpenAI API key. Get a 300-word brief of the day's most important items, tuned to your focus area.</div>
+    </div>
+    <div class="feature">
+      <div class="name">Two-pane reader, vim keybinds</div>
+      <div class="desc">List on the left, reader on the right, draggable divider. j/k to nav, o to open, b to bookmark, T for MITRE coverage, S for feast stats.</div>
+    </div>
+    <div class="feature">
+      <div class="name">No telemetry. No proxy.</div>
+      <div class="desc">Single binary, SQLite local state. Nothing leaves your machine unless you explicitly click out. Open source under MIT.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section" id="install">
+  <h2>:: install ::</h2>
+  <div class="box-pitch">
+    <span class="label">linux / macos</span><br>
+    <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code><br>
+    <br>
+    <span class="label">windows (powershell)</span><br>
+    <code>irm https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.ps1 | iex</code><br>
+    <br>
+    <span class="label">go install</span><br>
+    <code>go install github.com/RMS2D/omnomfeeds@latest</code><br>
+    <br>
+    <span class="dim">Open <code>http://localhost:8080</code>, press <code>c</code> to configure sources. <a href="https://github.com/RMS2D/omnomfeeds#readme">Full README</a>.</span>
+  </div>
+</div>
+
+<div class="section" id="hosted">
+  <h2>:: hosted version ::</h2>
+  <p class="lead">
+    A managed multi-user hosted version is coming. Synced settings, bookmarks across devices, managed AI brief (no BYOK), longer history retention.
+    Free tier first. Optional Pro for a few dollars a month, just enough to cover the server.
+  </p>
+  <p>
+    Watch the <a href="https://github.com/RMS2D/omnomfeeds">GitHub repo</a> for updates.
+  </p>
+</div>
+
+<footer>
+  <span class="left">oM noM Security Feeds &middot; MIT licensed</span>
+  <span><a href="https://github.com/RMS2D/omnomfeeds">github.com/RMS2D/omnomfeeds</a></span>
+</footer>
+
+</div>
+</body>
+</html>

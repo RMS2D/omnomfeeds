@@ -1,0 +1,26 @@
+# Caddy config for omnomfeeds.com.
+#
+# Phase 1 (current): static landing page served from /var/www/omnomfeeds.
+# Phase 2 (after hosted mode lands): swap the file_server stanza for a
+# reverse_proxy to localhost:8080 where the Go binary listens.
+
+omnomfeeds.com {
+    encode gzip
+
+    root * /var/www/omnomfeeds
+    file_server
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "interest-cohort=()"
+        -Server
+    }
+}
+
+# www redirects to apex.
+www.omnomfeeds.com {
+    redir https://omnomfeeds.com{uri} permanent
+}

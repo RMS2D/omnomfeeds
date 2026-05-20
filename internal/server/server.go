@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/RMS2D/omnomfeeds/internal/ai"
+	"github.com/RMS2D/omnomfeeds/internal/auth"
 	"github.com/RMS2D/omnomfeeds/internal/config"
 	"github.com/RMS2D/omnomfeeds/internal/curated"
 	"github.com/RMS2D/omnomfeeds/internal/cve"
@@ -43,6 +44,7 @@ type Server struct {
 	status      map[string]*models.SourceStatus
 	enrich      *Enrichment
 	stream      *streamHub
+	auth        *auth.Handler // hosted-mode only; nil for self-host
 
 	// Cached AI digest: regenerating costs API budget, so we hold the latest
 	// brief for 1 hour. Force-refresh via POST /api/digest.
@@ -89,13 +91,34 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	mux.HandleFunc("/api/stream", s.handleStream)
 	// AI digest (BYOK)
 	mux.HandleFunc("/api/digest", s.handleDigest)
+	// Per-user identity endpoint. Returns nil for anonymous; populated when
+	// auth middleware resolves a session cookie.
+	mux.HandleFunc("/api/me", s.handleMe)
+
+	// In hosted mode, register OAuth + magic-link + logout under /auth/,
+	// and wrap the whole mux in the session-resolving middleware so any
+	// endpoint can read auth.UserFromContext(r.Context()).
+	if cfg.Hosted.Enabled {
+		ah, err := auth.NewHandler(cfg.Hosted, store)
+		if err != nil {
+			log.Printf("[auth] disabled: %v", err)
+		} else {
+			s.auth = ah
+			ah.Mount(mux)
+		}
+	}
+
 	// Serve static frontend from the provided filesystem. main passes an
 	// embed.FS in release builds; tests can pass os.DirFS for live editing.
 	mux.Handle("/", http.FileServer(http.FS(webFS)))
 
+	var handler http.Handler = mux
+	if s.auth != nil {
+		handler = s.auth.Middleware(handler)
+	}
 	s.http = &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: cors(mux),
+		Handler: cors(handler),
 	}
 	return s
 }
@@ -272,6 +295,24 @@ func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleCuratedBluesky(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, curated.Bluesky)
+}
+
+// handleMe returns the resolved user (if any) for the current session cookie.
+// Returns null in JSON when the visitor is anonymous, so the client can
+// distinguish "logged out" from "request failed" without checking status.
+func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
+	u := auth.UserFromContext(r.Context())
+	if u == nil {
+		writeJSON(w, 200, nil)
+		return
+	}
+	writeJSON(w, 200, map[string]any{
+		"id":           u.ID,
+		"email":        u.Email,
+		"display_name": u.DisplayName,
+		"is_pro":       u.IsPro(),
+		"pro_until":    u.ProUntil,
+	})
 }
 
 func (s *Server) handleScoring(w http.ResponseWriter, r *http.Request) {

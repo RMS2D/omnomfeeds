@@ -112,40 +112,19 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "not yet implemented", http.StatusNotImplemented)
 }
 
-// --- Magic link (email) ---
-//
-// Flow:
-//   1. Client POSTs {email} to /auth/magic.
-//   2. We rate-limit to one outbound email per (address, 60s).
-//   3. Generate 32-byte token; store sha256(token) + email + expires_at
-//      (15min) in magic_link_tokens.
-//   4. Send the user an email with a link to
-//      https://omnomfeeds.com/auth/magic/verify?t=<raw_token>
-//   5. User clicks. Server hashes incoming token, looks up the row, checks
-//      expires_at + used_at, marks used, upserts a users row with
-//      id_provider="email" + id_external=email, issues a session cookie.
-//
-// We deliberately do not reveal whether the email exists. /auth/magic
-// returns the same response for unknown vs. known emails.
+// Magic-link handlers live in magic.go.
 
-// handleMagicRequest accepts {email} and emails the user a sign-in link.
-// Returns 202 on accepted, regardless of whether the email was rate-limited
-// or unknown, so callers can't enumerate accounts.
-func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not yet implemented", http.StatusNotImplemented)
-}
-
-// handleMagicVerify validates the one-time token from the email link and
-// promotes the visitor to a logged-in session.
-func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not yet implemented", http.StatusNotImplemented)
-}
-
-// --- Shared ---
-
-// handleLogout invalidates the current session and clears the cookie.
+// handleLogout revokes the current session in the DB and clears the cookie.
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
-	http.Error(w, "not yet implemented", http.StatusNotImplemented)
+	if _, sum, ok := tokenFromRequest(r); ok {
+		_ = h.store.RevokeSession(sum)
+	}
+	clearSessionCookie(w)
+	if r.Method == http.MethodPost {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
 // Middleware wraps an http.Handler with a session resolver. If a valid
@@ -154,9 +133,29 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 // Endpoints that REQUIRE a user should call RequireUser instead.
 func (h *Handler) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Real session lookup lands in the next batch. For now the wrapped
-		// handler runs untouched.
-		next.ServeHTTP(w, r)
+		_, sum, ok := tokenFromRequest(r)
+		if !ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		sess, err := h.store.GetSessionByHash(sum)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		row, err := h.store.GetUserByID(sess.UserID)
+		if err != nil {
+			next.ServeHTTP(w, r)
+			return
+		}
+		u := &User{
+			ID:          row.ID,
+			Email:       row.Email,
+			DisplayName: row.DisplayName,
+			ProUntil:    row.ProUntil,
+		}
+		ctx := WithUser(r.Context(), u)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 

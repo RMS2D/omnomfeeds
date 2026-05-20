@@ -88,23 +88,42 @@ header nav a:hover { color: var(--accent-cyan); }
   text-align: center;
   margin-bottom: 72px;
 }
-.hero .glyph {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
-  color: var(--accent);
-  text-shadow: 0 0 12px rgba(0,229,160,0.4);
-  margin-bottom: 18px;
-  white-space: pre;
-  letter-spacing: 1px;
-}
-.hero .glyph .chomp {
+.hero .feast {
   display: inline-block;
-  animation: chomp 3.6s ease-in-out infinite;
-  transform-origin: left center;
+  text-align: left;
+  margin-bottom: 22px;
+  max-width: 100%;
 }
-@keyframes chomp {
-  0%, 60%, 100% { transform: scaleX(1); }
-  70%, 80%      { transform: scaleX(1.06); }
+.hero .feast-line {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(11px, 1.7vw, 16px);
+  line-height: 1.4;
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,229,160,0.35);
+  white-space: pre;
+  margin: 0;
+  min-height: 1.4em;
+  letter-spacing: 0.3px;
+  overflow: hidden;
+}
+.hero .feast-line .trail { color: var(--text-dim); opacity: 0.45; }
+.hero .feast-line .worm  { color: var(--accent); font-weight: 700; }
+.hero .feast-line .t-crit { color: var(--score-crit); text-shadow: 0 0 5px rgba(255,77,106,0.45); font-weight: 700; }
+.hero .feast-line .t-high { color: #ff9940; text-shadow: 0 0 4px rgba(255,153,64,0.35); font-weight: 600; }
+.hero .feast-line .t-med  { color: var(--accent-cyan); }
+@keyframes feast-panic {
+  0%, 100% { filter: brightness(1.0); }
+  50%      { filter: brightness(1.6); }
+}
+.hero .feast-line .panic { animation: feast-panic 0.28s ease-in-out infinite; }
+.hero .feast-status {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: clamp(10px, 1.2vw, 12px);
+  color: var(--accent-cyan);
+  margin-top: 6px;
+  min-height: 1.4em;
+  opacity: 0.85;
+  letter-spacing: 0.3px;
 }
 .hero h1 {
   font-family: 'Space Grotesk', system-ui, sans-serif;
@@ -403,7 +422,7 @@ footer a:hover { color: var(--accent-cyan); }
   .features, .pro-deep { grid-template-columns: 1fr; }
   .tiers { grid-template-columns: 1fr; }
   .hero h1 { font-size: 32px; }
-  .hero .glyph { font-size: 20px; }
+  .hero .feast-line { font-size: 11px; }
   .tier-pitch { min-height: 0; }
 }
 </style>
@@ -422,7 +441,10 @@ footer a:hover { color: var(--accent-cyan); }
 </header>
 
 <div class="hero">
-  <div class="glyph"><span class="chomp">~~~_o)</span>   om   nom   nom</div>
+  <div class="feast">
+    <pre class="feast-line" id="heroFeastLine">~~~_o)        CVE-2026-1337    mimikatz       0-day      rootkit</pre>
+    <div class="feast-status" id="heroFeastStatus">larva online. fangs out.</div>
+  </div>
   <h1>A worm that eats your security feeds.</h1>
   <p class="tagline">
     Pulls RSS, Reddit, Bluesky, Mastodon, GitHub Advisories and MalwareBazaar.
@@ -659,5 +681,104 @@ footer a:hover { color: var(--accent-cyan); }
 </footer>
 
 </div>
+
+<script>
+// Hero feast animation: worm crawls right, eats threats. Loops while in view.
+// Same shape as the boot feast in the self-host app, trimmed to one line.
+(function() {
+  const lineEl = document.getElementById('heroFeastLine');
+  const statusEl = document.getElementById('heroFeastStatus');
+  if (!lineEl || !statusEl) return;
+
+  const TARGETS = [
+    { x: 14, text: 'CVE-2026-1337',   sev: 'crit', flavor: 'looks crunchy.' },
+    { x: 34, text: 'mimikatz.exe',    sev: 'med',  flavor: 'salty. less LSASS next time.' },
+    { x: 52, text: 'kernel exploit',  sev: 'high', flavor: 'crunchy outer, gooey inner.' },
+    { x: 72, text: '0-day PoC',       sev: 'crit', flavor: 'still warm.' },
+    { x: 88, text: 'rootkit',         sev: 'high', flavor: 'gamey. swallowing whole.' },
+  ];
+  const TOTAL_X    = 102;
+  const FRAME_MS   = 50;
+  const CYCLE_GAP  = 3200;
+  const SPRITES    = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)'];
+  const AMBIENT    = ['nomming.', 'mouth open.', 'sniffing for more.', 'tasting the air.', 'sharpening fangs.'];
+
+  let timer = null;
+  let visible = false;
+
+  function reset() {
+    for (const t of TARGETS) t.chomped = false;
+  }
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function paintFeast(x, worm, status) {
+    let html = '<span class="trail">' + '·'.repeat(x) + '</span><span class="worm">' + esc(worm) + '</span>';
+    let pos = x + worm.length;
+    for (const t of TARGETS) {
+      if (!t.chomped) {
+        while (pos < t.x) { html += ' '; pos++; }
+        const near = (t.x - x) <= 4 && (t.x - x) > -2;
+        html += '<span class="t-' + t.sev + (near ? ' panic' : '') + '">' + esc(t.text) + '</span>';
+        pos += t.text.length;
+      }
+    }
+    lineEl.innerHTML = html;
+    statusEl.textContent = status;
+  }
+
+  function runCycle() {
+    if (!visible) return;
+    reset();
+    let x = 0;
+    let statusMsg = 'larva online. fangs out.';
+    let statusHoldUntil = 0;
+
+    function step() {
+      if (!visible) { timer = null; return; }
+      const worm = SPRITES[Math.floor(x / 3) % SPRITES.length];
+
+      for (const t of TARGETS) {
+        if (!t.chomped && x >= t.x - 2 && x <= t.x + 2) {
+          t.chomped = true;
+          statusMsg = '*chomp*  ' + t.text + ' :: ' + t.flavor;
+          statusHoldUntil = Date.now() + 800;
+        }
+      }
+      if (statusHoldUntil && Date.now() > statusHoldUntil) {
+        statusMsg = AMBIENT[Math.floor(x / 12) % AMBIENT.length];
+        statusHoldUntil = 0;
+      }
+
+      paintFeast(x, worm, statusMsg);
+
+      x++;
+      if (x <= TOTAL_X) {
+        timer = setTimeout(step, FRAME_MS);
+      } else {
+        // Burp + pause + loop
+        lineEl.innerHTML = '<span class="trail">' + '·'.repeat(TOTAL_X) + '</span><span class="worm">~~~_o)</span>   <span style="color:var(--text-dim);font-style:italic;">~burp~</span>';
+        statusEl.textContent = 'all chewed. waiting for more...';
+        timer = setTimeout(runCycle, CYCLE_GAP);
+      }
+    }
+    step();
+  }
+
+  const io = new IntersectionObserver((entries) => {
+    for (const e of entries) {
+      if (e.isIntersecting && !visible) {
+        visible = true;
+        runCycle();
+      } else if (!e.isIntersecting && visible) {
+        visible = false;
+        if (timer) { clearTimeout(timer); timer = null; }
+      }
+    }
+  }, { threshold: 0.2 });
+  io.observe(lineEl);
+})();
+</script>
+
 </body>
 </html>

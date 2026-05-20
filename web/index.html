@@ -2473,6 +2473,62 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--accent-cyan);
 }
 
+/* Hosted-mode auth strip in the c-modal footer. Anonymous: shows a
+ * sign-in CTA. Signed in: shows email + logout. Self-host: hidden. */
+.cfg-auth-strip {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-cyan);
+  border-radius: 3px;
+  background: rgba(86,226,255,0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+.cfg-auth-strip[hidden] { display: none; }
+.cfg-auth-strip.signed-in { border-left-color: var(--accent); background: rgba(0,229,160,0.04); }
+.cfg-auth-strip.signed-in.pro { border-left-color: var(--accent-amber); background: rgba(255,181,71,0.04); }
+.cfg-auth-strip .email { color: var(--text-bright); font-weight: 600; }
+.cfg-auth-strip .pro-badge {
+  background: var(--accent-amber);
+  color: var(--bg);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+.cfg-auth-strip a {
+  color: var(--accent-cyan);
+  text-decoration: none;
+  font-weight: 600;
+}
+.cfg-auth-strip a:hover { color: var(--accent); }
+.cfg-auth-strip button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+.cfg-auth-strip button:hover {
+  color: var(--score-crit);
+  border-color: var(--score-crit);
+}
+
 .cfg-source-list {
   display: grid;
   grid-template-columns: 1fr auto auto;
@@ -2918,6 +2974,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
         <div class="cfg-hint" style="margin-top:8px;">For feed-level edits (add/remove RSS sources), edit your <code>config.json</code> directly - its path is shown in the startup log.</div>
       </div>
     </div>
+
+    <!-- Auth strip: shows sign-in CTA / signed-in user / nothing in self-host. -->
+    <div id="cfgAuthStrip" class="cfg-auth-strip" hidden></div>
 
     <div style="margin-top: 22px; text-align: right; padding-top: 14px; border-top: 1px solid var(--border);">
       <button onclick="closeSettingsModal()">Close</button>
@@ -4665,6 +4724,52 @@ async function openSettingsModal() {
   loadCfgAccounts();
   loadCfgCurated();
   loadScoringTab();
+  loadAuthStrip();
+}
+
+// --- Auth strip in the c-modal footer ---
+// Pulls /api/auth/methods + /api/me and renders one of:
+//   self-host:        hidden (no auth concept)
+//   hosted, anon:     "Sign in to sync your settings  ->  [Sign in]"
+//   hosted, signed:   "you@example.com [PRO?]              [Log out]"
+async function loadAuthStrip() {
+  const strip = document.getElementById('cfgAuthStrip');
+  if (!strip) return;
+  strip.hidden = true;
+  strip.className = 'cfg-auth-strip';
+  try {
+    const m = await fetch(API + '/api/auth/methods').then(r => r.json()).catch(() => ({}));
+    if (!m || !m.hosted_mode) return; // self-host: leave hidden
+    const me = await fetch(API + '/api/me', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
+    if (!me) {
+      strip.hidden = false;
+      strip.innerHTML =
+        '<span>Sign in to sync settings, bookmarks, and read state across devices.</span>' +
+        '<a href="/login.html">Sign in &rarr;</a>';
+      return;
+    }
+    const isPro = !!me.is_pro;
+    strip.hidden = false;
+    strip.classList.add('signed-in');
+    if (isPro) strip.classList.add('pro');
+    const proBadge = isPro ? '<span class="pro-badge">Pro</span>' : '';
+    const proExpiry = (isPro && me.pro_until)
+      ? '<span style="color:var(--text-dim);margin-left:8px;">renews ' + esc(new Date(me.pro_until).toLocaleDateString()) + '</span>'
+      : '';
+    strip.innerHTML =
+      '<span>Signed in as <span class="email">' + esc(me.email || '') + '</span>' + proBadge + proExpiry + '</span>' +
+      '<button type="button" onclick="logoutAuth()">Log out</button>';
+  } catch (e) {
+    // Network error: leave strip hidden, no need to alarm.
+  }
+}
+
+async function logoutAuth() {
+  try {
+    await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
+  } catch (e) {}
+  // Reload to clear any in-memory user state and re-resolve session middleware.
+  location.reload();
 }
 
 // --- Filtering tab (scoring transparency) ---

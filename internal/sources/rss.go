@@ -5,13 +5,14 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html"
+	"io"
 	"net"
 	"net/http"
 	"regexp"
-	"github.com/RMS2D/omnomfeeds/internal/models"
 	"strings"
 	"time"
 
+	"github.com/RMS2D/omnomfeeds/internal/models"
 	"github.com/mmcdole/gofeed"
 	utls "github.com/refraction-networking/utls"
 )
@@ -109,27 +110,75 @@ func isTransientFetchErr(err error) bool {
 	return false
 }
 
+// transientHTTPStatuses are HTTP status codes we treat as worth retrying
+// on a fresh connection. 404 is in the list because Akamai-backed feeds
+// (Microsoft, Dark Reading, etc) sometimes serve transient 404s for
+// valid URLs during edge-cache route flaps; the canonical URL is fine
+// on the next dial. Permanent 404s still fail loud - they 404 on the
+// retry too and we report the original error.
+//
+// 403 is intentionally NOT here. Akamai bot blocks return 403 and
+// retrying just burns the budget without changing the outcome (see
+// Check Point Research / SentinelOne /blog/feed/ history).
+var transientHTTPStatuses = map[int]bool{
+	http.StatusRequestTimeout:     true, // 408
+	http.StatusTooManyRequests:    true, // 429
+	http.StatusInternalServerError: true, // 500
+	http.StatusBadGateway:         true, // 502
+	http.StatusServiceUnavailable: true, // 503
+	http.StatusGatewayTimeout:     true, // 504
+	http.StatusNotFound:           true, // 404 (CDN flake)
+}
+
 // doRSSRequest fires the HTTP request through rssClient with one retry
-// on transient errors. Between attempts we force-evict any idle pooled
-// connections - the most common cause of these errors is a bad cached
-// connection from a flaky load-balancer (Microsoft Akamai is the
-// repeat offender). The retry uses a fresh dial via DialTLSContext.
+// on transient errors. Two retry classes:
+//
+//   - Network-layer transients (stream errors, EOFs, resets) - covered
+//     by isTransientFetchErr. Usually pool poisoning.
+//   - HTTP-status transients (5xx, 429, 408, 404) - covered by
+//     transientHTTPStatuses. Usually CDN flapping.
+//
+// Between attempts we force-evict idle pooled connections so the retry
+// uses a fresh dial. RSS requests are GETs so cloning the request is
+// safe (no body to re-stream).
 func doRSSRequest(req *http.Request) (*http.Response, error) {
 	resp, err := rssClient.Do(req)
-	if err == nil {
-		return resp, nil
+	// Network-layer transient: retry on fresh dial.
+	if err != nil {
+		if !isTransientFetchErr(err) {
+			return resp, err
+		}
+		rssTransport.CloseIdleConnections()
+		time.Sleep(200 * time.Millisecond)
+		retry := req.Clone(req.Context())
+		return rssClient.Do(retry)
 	}
-	if !isTransientFetchErr(err) {
-		return resp, err
+	// HTTP-status transient: drain + close the first body, evict the
+	// connection (since the server may have associated it with a stale
+	// CDN edge), retry once. Backoff is longer for 429 to respect any
+	// implicit rate hint.
+	if transientHTTPStatuses[resp.StatusCode] {
+		drainAndClose(resp)
+		rssTransport.CloseIdleConnections()
+		sleep := 250 * time.Millisecond
+		if resp.StatusCode == http.StatusTooManyRequests {
+			sleep = 1500 * time.Millisecond
+		}
+		time.Sleep(sleep)
+		retry := req.Clone(req.Context())
+		return rssClient.Do(retry)
 	}
-	// Clear the pool, sleep briefly, retry once on a fresh connection.
-	rssTransport.CloseIdleConnections()
-	time.Sleep(200 * time.Millisecond)
-	// Build a fresh request with the same context + headers since the
-	// original may have a partially-consumed body. RSS requests are
-	// GETs with no body so a shallow clone is safe.
-	retry := req.Clone(req.Context())
-	return rssClient.Do(retry)
+	return resp, nil
+}
+
+func drainAndClose(resp *http.Response) {
+	if resp == nil || resp.Body == nil {
+		return
+	}
+	// Drain so the connection can return to the pool cleanly even
+	// though we're about to evict it. Cheap belt-and-braces.
+	_, _ = io.Copy(io.Discard, resp.Body)
+	_ = resp.Body.Close()
 }
 
 type RSSSource struct {
@@ -154,12 +203,12 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 	// Match the header set a real Chrome navigation sends. Akamai bot
 	// mitigation checks for sec-ch-ua / sec-fetch-* presence; a UA that
 	// claims to be Chrome but doesn't ship these is flagged immediately.
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36")
 	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
 	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
-	req.Header.Set("Sec-Ch-Ua", `"Chromium";v="123", "Not:A-Brand";v="8"`)
+	req.Header.Set("Sec-Ch-Ua", `"Chromium";v="140", "Not=A?Brand";v="24", "Google Chrome";v="140"`)
 	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
 	req.Header.Set("Sec-Ch-Ua-Platform", `"Windows"`)
 	req.Header.Set("Sec-Fetch-Dest", "document")

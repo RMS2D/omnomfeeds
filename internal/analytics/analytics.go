@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"regexp"
+	"strings"
 	"time"
 )
 
@@ -211,6 +213,117 @@ type SinceLaunchTotals struct {
 	FirstEvent int64 `json:"first_event_unix"` // 0 if no events yet
 }
 
+// internalEmails are operator accounts whose activity should not pollute
+// the dashboard. Includes their pre-login anon sessions (any session
+// ever linked to one of these user_ids gets filtered too). Edit this
+// list to add or remove operators. Empty list disables filtering.
+var internalEmails = []string{
+	"rms2ds@gmail.com",
+	"darks@outlook.com",
+	"rob@wiredepth.com",
+}
+
+// excludeFilter holds pre-quoted SQL list literals for the operator
+// accounts to filter from dashboard queries. Built once per BuildSummary
+// call. User IDs and session tokens come from our own DB (UUIDs and
+// 32-char hex respectively) so inline interpolation is safe; we still
+// strip anything that isn't [A-Za-z0-9-] as a belt-and-braces guard.
+type excludeFilter struct {
+	UserIDList  string // SQL list literal: 'uuid1','uuid2'
+	SessionList string // SQL list literal: 'hex1','hex2'
+	HasUsers    bool
+	HasSessions bool
+}
+
+// safeID strips anything other than alphanumerics + dash from an id so
+// it can't break out of a quoted SQL literal. User IDs are UUIDs and
+// session tokens are hex - the strip is a no-op in the happy case.
+var idScrubber = regexp.MustCompile(`[^a-zA-Z0-9-]`)
+
+func quoteList(values []string) string {
+	out := make([]string, 0, len(values))
+	for _, v := range values {
+		clean := idScrubber.ReplaceAllString(v, "")
+		if clean == "" {
+			continue
+		}
+		out = append(out, "'"+clean+"'")
+	}
+	return strings.Join(out, ",")
+}
+
+func (a *Analytics) buildExcludeFilter() *excludeFilter {
+	ef := &excludeFilter{}
+	if len(internalEmails) == 0 {
+		return ef
+	}
+	// Resolve emails -> user_ids using parameterised query (user-supplied
+	// values stay out of the SQL string here).
+	args := make([]any, len(internalEmails))
+	ph := make([]string, len(internalEmails))
+	for i, e := range internalEmails {
+		args[i] = e
+		ph[i] = "?"
+	}
+	rows, err := a.db.Query(`SELECT id FROM users WHERE email IN (`+strings.Join(ph, ",")+`)`, args...)
+	if err != nil {
+		return ef
+	}
+	var userIDs []string
+	for rows.Next() {
+		var id string
+		if rows.Scan(&id) == nil {
+			userIDs = append(userIDs, id)
+		}
+	}
+	rows.Close()
+	if len(userIDs) == 0 {
+		return ef
+	}
+	ef.UserIDList = quoteList(userIDs)
+	ef.HasUsers = ef.UserIDList != ""
+
+	// Collect every session token that's ever appeared alongside one of
+	// those user_ids. Catches the pre-login anon browsing from the same
+	// browser the operator later signed in from.
+	srows, err := a.db.Query(`SELECT DISTINCT session FROM events
+		WHERE user_id IN (` + ef.UserIDList + `) AND session IS NOT NULL AND session != ''`)
+	if err != nil {
+		return ef
+	}
+	var sessions []string
+	for srows.Next() {
+		var s string
+		if srows.Scan(&s) == nil {
+			sessions = append(sessions, s)
+		}
+	}
+	srows.Close()
+	if len(sessions) > 0 {
+		ef.SessionList = quoteList(sessions)
+		ef.HasSessions = ef.SessionList != ""
+	}
+	return ef
+}
+
+// Clause returns an SQL fragment that appends to a WHERE on the events
+// table (or a query alias of it). Empty when nothing to exclude. alias
+// is "" for un-aliased queries, "a" / "e" / etc. for aliased ones.
+func (ef *excludeFilter) Clause(alias string) string {
+	if ef == nil || !ef.HasUsers {
+		return ""
+	}
+	prefix := ""
+	if alias != "" {
+		prefix = alias + "."
+	}
+	out := " AND (" + prefix + "user_id IS NULL OR " + prefix + "user_id NOT IN (" + ef.UserIDList + "))"
+	if ef.HasSessions {
+		out += " AND (" + prefix + "session IS NULL OR " + prefix + "session NOT IN (" + ef.SessionList + "))"
+	}
+	return out
+}
+
 // BuildSummary computes everything the dashboard needs in one place. Caller
 // passes days for the rollup window (7, 30, 90). 0 defaults to 30.
 func (a *Analytics) BuildSummary(days int) (*Summary, error) {
@@ -225,31 +338,32 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 		WindowDays:  days,
 		EventCounts: map[string]int{},
 	}
-	if err := a.fillActive(s); err != nil {
+	ef := a.buildExcludeFilter()
+	if err := a.fillActive(s, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillFunnel(s, days); err != nil {
+	if err := a.fillFunnel(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillEventCounts(s, days); err != nil {
+	if err := a.fillEventCounts(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillTopRef(s, days); err != nil {
+	if err := a.fillTopRef(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillDailyVolume(s, days); err != nil {
+	if err := a.fillDailyVolume(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillAttackExports(s, days); err != nil {
+	if err := a.fillAttackExports(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillTopPaths(s, days); err != nil {
+	if err := a.fillTopPaths(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillHourly(s); err != nil {
+	if err := a.fillHourly(s, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillSinceLaunch(s); err != nil {
+	if err := a.fillSinceLaunch(s, ef); err != nil {
 		return nil, err
 	}
 	return s, nil
@@ -258,15 +372,16 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 // fillTopPaths breaks down page_view events by the path stashed in ref.
 // Useful operator signal for "where do visitors actually go" - which is
 // often more interesting than which articles get clicked.
-func (a *Analytics) fillTopPaths(s *Summary, days int) error {
+func (a *Analytics) fillTopPaths(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
-	rows, err := a.db.Query(`
+	q := `
 		SELECT ref, COUNT(*) FROM events
 		WHERE event = ?
 		  AND ts >= datetime('now', ?)
-		  AND ref IS NOT NULL AND ref != ''
+		  AND ref IS NOT NULL AND ref != ''` + ef.Clause("") + `
 		GROUP BY ref ORDER BY COUNT(*) DESC LIMIT 15
-	`, EvPageView, since)
+	`
+	rows, err := a.db.Query(q, EvPageView, since)
 	if err != nil {
 		return err
 	}
@@ -286,14 +401,15 @@ func (a *Analytics) fillTopPaths(s *Summary, days int) error {
 // UTC hour of day, over the last 7 days. With only a day or two of data
 // it still tells you when your users hit; with more data the shape
 // stabilises into a daily rhythm.
-func (a *Analytics) fillHourly(s *Summary) error {
+func (a *Analytics) fillHourly(s *Summary, ef *excludeFilter) error {
 	buckets := make(map[int]int, 24)
-	rows, err := a.db.Query(`
+	q := `
 		SELECT CAST(strftime('%H', ts) AS INTEGER) AS hr, COUNT(*)
 		FROM events
-		WHERE ts >= datetime('now', '-7 days')
+		WHERE ts >= datetime('now', '-7 days')` + ef.Clause("") + `
 		GROUP BY hr
-	`)
+	`
+	rows, err := a.db.Query(q)
 	if err != nil {
 		return err
 	}
@@ -318,15 +434,17 @@ func (a *Analytics) fillHourly(s *Summary) error {
 // fillSinceLaunch pulls raw totals across the entire events table so the
 // dashboard can show "all time" stats alongside windowed ones. Means a
 // 30-day-window screenshot still conveys total scale.
-func (a *Analytics) fillSinceLaunch(s *Summary) error {
+func (a *Analytics) fillSinceLaunch(s *Summary, ef *excludeFilter) error {
 	var firstTS sql.NullString
-	if err := a.db.QueryRow(`
+	excl := ef.Clause("")
+	q := `
 		SELECT
-		  (SELECT COUNT(*) FROM events),
-		  (SELECT COUNT(DISTINCT session) FROM events WHERE session IS NOT NULL),
-		  (SELECT COUNT(DISTINCT user_id) FROM events WHERE user_id IS NOT NULL),
-		  (SELECT MIN(ts) FROM events)
-	`).Scan(&s.SinceLaunch.Events, &s.SinceLaunch.Sessions, &s.SinceLaunch.SignedIn, &firstTS); err != nil {
+		  (SELECT COUNT(*) FROM events WHERE 1=1` + excl + `),
+		  (SELECT COUNT(DISTINCT session) FROM events WHERE session IS NOT NULL` + excl + `),
+		  (SELECT COUNT(DISTINCT user_id) FROM events WHERE user_id IS NOT NULL` + excl + `),
+		  (SELECT MIN(ts) FROM events WHERE 1=1` + excl + `)
+	`
+	if err := a.db.QueryRow(q).Scan(&s.SinceLaunch.Events, &s.SinceLaunch.Sessions, &s.SinceLaunch.SignedIn, &firstTS); err != nil {
 		return err
 	}
 	if firstTS.Valid && firstTS.String != "" {
@@ -346,34 +464,36 @@ func (a *Analytics) fillSinceLaunch(s *Summary) error {
 	return nil
 }
 
-func (a *Analytics) fillActive(s *Summary) error {
-	row := a.db.QueryRow(`
+func (a *Analytics) fillActive(s *Summary, ef *excludeFilter) error {
+	excl := ef.Clause("")
+	q := `
 		SELECT
 		  (SELECT COUNT(DISTINCT COALESCE(user_id, session))
 		     FROM events WHERE ts >= datetime('now','-1 day')
-		       AND COALESCE(user_id, session) IS NOT NULL),
+		       AND COALESCE(user_id, session) IS NOT NULL` + excl + `),
 		  (SELECT COUNT(DISTINCT COALESCE(user_id, session))
 		     FROM events WHERE ts >= datetime('now','-7 days')
-		       AND COALESCE(user_id, session) IS NOT NULL),
+		       AND COALESCE(user_id, session) IS NOT NULL` + excl + `),
 		  (SELECT COUNT(DISTINCT COALESCE(user_id, session))
 		     FROM events WHERE ts >= datetime('now','-30 days')
-		       AND COALESCE(user_id, session) IS NOT NULL),
+		       AND COALESCE(user_id, session) IS NOT NULL` + excl + `),
 		  (SELECT COUNT(*) FROM users
 		     WHERE pro_until IS NOT NULL AND pro_until > datetime('now'))
-	`)
+	`
+	row := a.db.QueryRow(q)
 	return row.Scan(&s.Active.DAU, &s.Active.WAU, &s.Active.MAU, &s.Active.ProActive)
 }
 
-func (a *Analytics) fillFunnel(s *Summary, days int) error {
+func (a *Analytics) fillFunnel(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
-	row := a.db.QueryRow(`
+	q := `
 		SELECT
 		  SUM(CASE WHEN event = ? THEN 1 ELSE 0 END),
 		  SUM(CASE WHEN event = ? THEN 1 ELSE 0 END),
 		  SUM(CASE WHEN event = ? THEN 1 ELSE 0 END)
 		FROM events
-		WHERE ts >= datetime('now', ?)
-	`, EvProView, EvProCheckoutStart, EvProSubscribeSuccess, since)
+		WHERE ts >= datetime('now', ?)` + ef.Clause("")
+	row := a.db.QueryRow(q, EvProView, EvProCheckoutStart, EvProSubscribeSuccess, since)
 	var v, c, sub sql.NullInt64
 	if err := row.Scan(&v, &c, &sub); err != nil {
 		return err
@@ -384,13 +504,14 @@ func (a *Analytics) fillFunnel(s *Summary, days int) error {
 	return nil
 }
 
-func (a *Analytics) fillEventCounts(s *Summary, days int) error {
+func (a *Analytics) fillEventCounts(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
-	rows, err := a.db.Query(`
+	q := `
 		SELECT event, COUNT(*) FROM events
-		WHERE ts >= datetime('now', ?)
+		WHERE ts >= datetime('now', ?)` + ef.Clause("") + `
 		GROUP BY event ORDER BY COUNT(*) DESC
-	`, since)
+	`
+	rows, err := a.db.Query(q, since)
 	if err != nil {
 		return err
 	}
@@ -406,22 +527,23 @@ func (a *Analytics) fillEventCounts(s *Summary, days int) error {
 	return rows.Err()
 }
 
-func (a *Analytics) fillTopRef(s *Summary, days int) error {
+func (a *Analytics) fillTopRef(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
 
 	// Top articles: join to articles table for title + source so the
 	// dashboard can render something legible rather than a bare ID.
-	articleRows, err := a.db.Query(`
+	artQ := `
 		SELECT e.ref, COALESCE(a.title, ''), COALESCE(a.source, ''), COUNT(*) AS n
 		FROM events e
 		LEFT JOIN articles a ON a.id = CAST(e.ref AS INTEGER)
 		WHERE e.event = ?
 		  AND e.ts >= datetime('now', ?)
-		  AND e.ref IS NOT NULL AND e.ref != ''
+		  AND e.ref IS NOT NULL AND e.ref != ''` + ef.Clause("e") + `
 		GROUP BY e.ref
 		ORDER BY n DESC
 		LIMIT 20
-	`, EvArticleOpen, since)
+	`
+	articleRows, err := a.db.Query(artQ, EvArticleOpen, since)
 	if err != nil {
 		return err
 	}
@@ -446,19 +568,19 @@ func (a *Analytics) fillTopRef(s *Summary, days int) error {
 	}
 
 	// Top CVEs, actors, malware: simple group-by-ref. Labels match the ref.
-	cves, err := a.topByEvent(EvCVEModalOpen, since, 20)
+	cves, err := a.topByEvent(EvCVEModalOpen, since, 20, ef)
 	if err != nil {
 		return err
 	}
 	s.TopCVEs = cves
 
-	actors, err := a.topByEvent(EvActorChipOpen, since, 15)
+	actors, err := a.topByEvent(EvActorChipOpen, since, 15, ef)
 	if err != nil {
 		return err
 	}
 	s.TopActors = actors
 
-	malware, err := a.topByEvent(EvMalwareChipOpen, since, 15)
+	malware, err := a.topByEvent(EvMalwareChipOpen, since, 15, ef)
 	if err != nil {
 		return err
 	}
@@ -466,14 +588,15 @@ func (a *Analytics) fillTopRef(s *Summary, days int) error {
 	return nil
 }
 
-func (a *Analytics) topByEvent(event, since string, limit int) ([]TopRef, error) {
-	rows, err := a.db.Query(`
+func (a *Analytics) topByEvent(event, since string, limit int, ef *excludeFilter) ([]TopRef, error) {
+	q := `
 		SELECT ref, COUNT(*) AS n FROM events
 		WHERE event = ?
 		  AND ts >= datetime('now', ?)
-		  AND ref IS NOT NULL AND ref != ''
+		  AND ref IS NOT NULL AND ref != ''` + ef.Clause("") + `
 		GROUP BY ref ORDER BY n DESC LIMIT ?
-	`, event, since, limit)
+	`
+	rows, err := a.db.Query(q, event, since, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -490,13 +613,14 @@ func (a *Analytics) topByEvent(event, since string, limit int) ([]TopRef, error)
 	return out, rows.Err()
 }
 
-func (a *Analytics) fillDailyVolume(s *Summary, days int) error {
+func (a *Analytics) fillDailyVolume(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
-	rows, err := a.db.Query(`
+	q := `
 		SELECT date(ts) AS d, COUNT(*) FROM events
-		WHERE ts >= datetime('now', ?)
+		WHERE ts >= datetime('now', ?)` + ef.Clause("") + `
 		GROUP BY d ORDER BY d ASC
-	`, since)
+	`
+	rows, err := a.db.Query(q, since)
 	if err != nil {
 		return err
 	}
@@ -512,14 +636,15 @@ func (a *Analytics) fillDailyVolume(s *Summary, days int) error {
 	return rows.Err()
 }
 
-func (a *Analytics) fillAttackExports(s *Summary, days int) error {
+func (a *Analytics) fillAttackExports(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
-	rows, err := a.db.Query(`
+	q := `
 		SELECT date(ts) AS d, COUNT(*) FROM events
 		WHERE event = ?
-		  AND ts >= datetime('now', ?)
+		  AND ts >= datetime('now', ?)` + ef.Clause("") + `
 		GROUP BY d ORDER BY d ASC
-	`, EvAttackExport, since)
+	`
+	rows, err := a.db.Query(q, EvAttackExport, since)
 	if err != nil {
 		return err
 	}

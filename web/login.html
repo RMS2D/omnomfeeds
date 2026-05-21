@@ -204,6 +204,46 @@ h1 {
 }
 .footnote a { color: var(--text-dim); }
 .footnote a:hover { color: var(--accent-cyan); }
+
+/* "Just peek without signing in" exit door. Sits visually below the
+   sign-in card so tire-kickers have a clear escape, but styled small
+   so it doesn't compete with the actual sign-in CTAs. */
+.peek-card {
+  width: 100%;
+  max-width: 380px;
+  margin-top: 16px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 5px;
+  padding: 14px 18px;
+  text-align: center;
+}
+.peek-card .peek-q {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.peek-card .peek-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent-cyan);
+  text-decoration: none;
+  transition: color 0.12s;
+}
+.peek-card .peek-link:hover { color: var(--accent); }
+.peek-card .peek-link .arrow { transition: transform 0.15s; }
+.peek-card .peek-link:hover .arrow { transform: translateX(3px); }
+.peek-card .peek-sub {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
 </style>
 </head>
 <body>
@@ -234,6 +274,14 @@ h1 {
       &middot;
       <a href="/terms">Terms</a>
     </div>
+  </div>
+
+  <div class="peek-card">
+    <div class="peek-q">no account? no problem.</div>
+    <a class="peek-link" href="/live">
+      Browse the live feed <span class="arrow">&rarr;</span>
+    </a>
+    <div class="peek-sub">Public ticker, no login. Sign in any time for filters &amp; alerts.</div>
   </div>
 </div>
 

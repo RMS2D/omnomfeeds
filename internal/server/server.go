@@ -130,6 +130,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/articles", s.handleArticles)
+	mux.HandleFunc("/api/landing/stats", s.handlePublicStats)
 	mux.HandleFunc("/api/articles/read", s.handleMarkRead)
 	mux.HandleFunc("/api/articles/readall", s.handleMarkAllRead)
 	mux.HandleFunc("/api/articles/dupes", s.handleDuplicates)

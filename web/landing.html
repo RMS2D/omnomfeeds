@@ -726,6 +726,54 @@ header .pro-link:hover {
   color: var(--text-dim);
   margin-top: 16px;
 }
+.hero .live-stats-strip {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px 28px;
+  justify-content: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-dim);
+  opacity: 0;
+  transition: opacity 0.4s ease-out;
+  letter-spacing: 0.2px;
+}
+.hero .live-stats-strip.ready { opacity: 1; }
+.hero .live-stats-strip .stat {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.hero .live-stats-strip .stat .n {
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 0.4px;
+}
+.hero .live-stats-strip .stat .l {
+  color: var(--text-dim);
+  text-transform: lowercase;
+}
+.hero .live-stats-strip .pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: live-stats-pulse 1.8s ease-in-out infinite;
+  margin-right: 4px;
+  vertical-align: middle;
+}
+@keyframes live-stats-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.55); }
+  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(0,229,160,0); }
+}
+@media (max-width: 640px) {
+  .hero .live-stats-strip { font-size: 11px; gap: 12px 18px; }
+  .hero .live-stats-strip .stat .n { font-size: 12px; }
+}
+
 .hero .install-line code {
   background: rgba(86,226,255,0.06);
   border: 1px solid rgba(86,226,255,0.18);
@@ -1204,6 +1252,17 @@ footer a:hover { color: var(--accent-cyan); }
   <div class="install-line">
     <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code>
   </div>
+
+  <!-- Live stats strip: real numbers pulled from /api/landing/stats.
+       Hidden until the fetch resolves so a slow/failed request stays
+       invisible rather than rendering "-" placeholders. -->
+  <div class="live-stats-strip" id="liveStats" aria-live="polite" aria-label="Live feed stats">
+    <span class="stat"><span class="pulse" aria-hidden="true"></span><span class="n" id="lsSrcA">-</span><span class="l">feeds active, 24h</span></span>
+    <span class="stat"><span class="n" id="lsArt30">-</span><span class="l">articles, 30d</span></span>
+    <span class="stat"><span class="n" id="lsCves">-</span><span class="l">CVEs surfaced, 7d</span></span>
+    <span class="stat"><span class="n" id="lsKev">-</span><span class="l">KEV pops, 7d</span></span>
+    <span class="stat"><span class="n" id="lsAgo">-</span><span class="l">since last sip</span></span>
+  </div>
 </div>
 
 <div class="section" id="why">
@@ -1660,6 +1719,44 @@ footer a:hover { color: var(--accent-cyan); }
   }
   tick();
   setInterval(tick, 300000);
+})();
+
+// Live stats strip. Pulls real numbers from /api/landing/stats (cached
+// server-side for 5 min) and pops the strip in once data lands. If the
+// fetch fails or the numbers are zero, the strip stays hidden rather
+// than rendering "0 articles" which would look broken on a fresh box.
+(function() {
+  function fmt(n) {
+    if (n === null || n === undefined) return '-';
+    if (n >= 1000000) return (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (n >= 1000)    return (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return String(n);
+  }
+  function fmtAgo(sec) {
+    if (sec === null || sec === undefined || sec < 0) return '-';
+    if (sec < 60)    return Math.floor(sec) + 's';
+    if (sec < 3600)  return Math.floor(sec / 60) + 'm';
+    if (sec < 86400) return Math.floor(sec / 3600) + 'h';
+    return Math.floor(sec / 86400) + 'd';
+  }
+  async function tick() {
+    try {
+      const r = await fetch('/api/landing/stats');
+      if (!r.ok) return;
+      const s = await r.json();
+      // Sanity: at least one number must be > 0, otherwise the box has
+      // no data yet and the strip would lie.
+      if (!s.articles_total && !s.articles_30d && !s.sources_active) return;
+      document.getElementById('lsSrcA').textContent = fmt(s.sources_active);
+      document.getElementById('lsArt30').textContent = fmt(s.articles_30d);
+      document.getElementById('lsCves').textContent = fmt(s.cves_hot_7d);
+      document.getElementById('lsKev').textContent = fmt(s.kev_pops_7d);
+      document.getElementById('lsAgo').textContent = fmtAgo(s.last_fetch_ago_seconds);
+      document.getElementById('liveStats').classList.add('ready');
+    } catch (e) { /* swallow - strip stays hidden */ }
+  }
+  tick();
+  setInterval(tick, 60000);
 })();
 </script>
 

@@ -5604,6 +5604,16 @@ function closeSourcesView() {
   inputMode = false;
 }
 
+// ESC closes the sources viz too. The hint text promises "ESC close"
+// but inputMode=true blocks the global handler, so we need our own.
+document.addEventListener('keydown', (e) => {
+  const v = document.getElementById('sourcesViz');
+  if (v && !v.hidden && e.key === 'Escape') {
+    closeSourcesView();
+    e.preventDefault();
+  }
+});
+
 // --- AI digest (BYOK) ---
 async function openDigest(force) {
   const m = document.getElementById('digestModal');

@@ -614,7 +614,7 @@ async function loadTrending(showLoading) {
       '<tr>' +
       '<td class="rank ' + rankClass + '"><span class="num">' + rank + '</span></td>' +
       '<td class="cve">' +
-        '<a href="/app?cve=' + encodeURIComponent(row.cve) + '" title="Open in reader (CVE modal)">' + esc(row.cve) + '</a>' +
+        '<a href="/cve/' + encodeURIComponent(row.cve) + '" title="Full CVE detail page">' + esc(row.cve) + '</a>' +
         '<span class="chips">' + chips.join('') + '</span>' +
       '</td>' +
       '<td class="mentions">' + row.mentions + '<span class="label">across sources</span></td>' +

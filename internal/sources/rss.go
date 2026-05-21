@@ -62,18 +62,74 @@ func rssDialTLS(ctx context.Context, network, addr string) (net.Conn, error) {
 	return uconn, nil
 }
 
-// rssClient pairs the uTLS Chrome-spec dialer with an HTTP/1.1-only
-// transport. Connections pool across feeds so the TLS cost amortises.
+// rssTransport is the underlying http.Transport pairing the uTLS Chrome
+// spec dialer with HTTP/1.1-only behaviour. Exposed at package scope so
+// the retry wrapper can call CloseIdleConnections() to evict a poisoned
+// pool entry between attempts. IdleConnTimeout shortened from 90s to 30s
+// so a flaky cached connection clears within a single 3-minute fetch
+// cycle instead of getting reused for 30+ minutes.
+var rssTransport = &http.Transport{
+	DialTLSContext:      rssDialTLS,
+	TLSNextProto:        map[string]func(authority string, c *tls.Conn) http.RoundTripper{},
+	ForceAttemptHTTP2:   false,
+	MaxIdleConns:        32,
+	MaxIdleConnsPerHost: 4,
+	IdleConnTimeout:     30 * time.Second,
+}
+
 var rssClient = &http.Client{
-	Timeout: 15 * time.Second,
-	Transport: &http.Transport{
-		DialTLSContext:      rssDialTLS,
-		TLSNextProto:        map[string]func(authority string, c *tls.Conn) http.RoundTripper{},
-		ForceAttemptHTTP2:   false,
-		MaxIdleConns:        32,
-		MaxIdleConnsPerHost: 4,
-		IdleConnTimeout:     90 * time.Second,
-	},
+	Timeout:   15 * time.Second,
+	Transport: rssTransport,
+}
+
+// transientNetErrPatterns are error-string substrings we treat as
+// "retry-on-fresh-connection". Most come from net/http and
+// golang.org/x/net/http2 - flat-string match keeps us decoupled from
+// those packages' internal error types.
+var transientNetErrPatterns = []string{
+	"stream error",       // golang.org/x/net/http2 stream-level error frame
+	"INTERNAL_ERROR",     // H2 INTERNAL_ERROR specifically (Microsoft case)
+	"connection reset",   // peer RST mid-stream
+	"unexpected EOF",     // pool entry closed under us
+	"broken pipe",        // write to closed connection
+	"use of closed network connection", // races with idle eviction
+	"i/o timeout",        // sometimes a stuck connection looks like this
+}
+
+func isTransientFetchErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	for _, p := range transientNetErrPatterns {
+		if strings.Contains(msg, p) {
+			return true
+		}
+	}
+	return false
+}
+
+// doRSSRequest fires the HTTP request through rssClient with one retry
+// on transient errors. Between attempts we force-evict any idle pooled
+// connections - the most common cause of these errors is a bad cached
+// connection from a flaky load-balancer (Microsoft Akamai is the
+// repeat offender). The retry uses a fresh dial via DialTLSContext.
+func doRSSRequest(req *http.Request) (*http.Response, error) {
+	resp, err := rssClient.Do(req)
+	if err == nil {
+		return resp, nil
+	}
+	if !isTransientFetchErr(err) {
+		return resp, err
+	}
+	// Clear the pool, sleep briefly, retry once on a fresh connection.
+	rssTransport.CloseIdleConnections()
+	time.Sleep(200 * time.Millisecond)
+	// Build a fresh request with the same context + headers since the
+	// original may have a partially-consumed body. RSS requests are
+	// GETs with no body so a shallow clone is safe.
+	retry := req.Clone(req.Context())
+	return rssClient.Do(retry)
 }
 
 type RSSSource struct {
@@ -111,8 +167,10 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 	req.Header.Set("Sec-Fetch-Site", "none")
 	req.Header.Set("Sec-Fetch-User", "?1")
 
-	// 2. Execute the request (shared h1.1-only client, see rssClient docs)
-	resp, err := rssClient.Do(req)
+	// 2. Execute the request via the retry wrapper. doRSSRequest handles
+	// the transient-error class (h2 stream errors, pool poisoning, peer
+	// resets) by clearing idle connections and dialling a fresh one.
+	resp, err := doRSSRequest(req)
 	if err != nil {
 		return nil, err
 	}

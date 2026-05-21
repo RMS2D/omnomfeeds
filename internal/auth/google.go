@@ -138,7 +138,7 @@ func (h *Handler) handleGoogleCallback(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	claims, err := parseGoogleIDToken(tokenResp.IDToken)
+	claims, err := parseGoogleIDToken(tokenResp.IDToken, h.cfg.GoogleClientID)
 	if err != nil {
 		log.Printf("[auth] google: parse id token: %v", err)
 		http.Error(w, "id token invalid", http.StatusBadRequest)
@@ -226,12 +226,31 @@ type googleIDClaims struct {
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
 	Name          string `json:"name"`
+	Aud           string `json:"aud"`
+	Iss           string `json:"iss"`
+	Exp           int64  `json:"exp"`
 }
 
-// parseGoogleIDToken decodes the JWT payload (header.payload.signature) and
-// returns the claims. We trust the token by transport (TLS to Google), not
-// by signature verification.
-func parseGoogleIDToken(s string) (*googleIDClaims, error) {
+// validGoogleIssuers are the two strings Google's identity service uses
+// in the iss claim. Both are valid per OIDC discovery; accept either.
+var validGoogleIssuers = map[string]bool{
+	"accounts.google.com":         true,
+	"https://accounts.google.com": true,
+}
+
+// parseGoogleIDToken decodes the JWT payload (header.payload.signature)
+// and returns the claims. The signature itself isn't verified against
+// Google's JWKS - we trust the token by transport (it arrives directly
+// from oauth2.googleapis.com over TLS to this process). However the
+// audience, issuer, and expiry claims ARE validated here: cheap to
+// check, close an entire class of confused-deputy attack where a token
+// issued for a different OAuth client / different identity provider /
+// long-expired could be replayed in.
+//
+// expectedAud is the Google client ID this server is configured for.
+// Binding to OUR client makes it impossible for a token minted for any
+// other app to be accepted here even if an attacker could deliver one.
+func parseGoogleIDToken(s, expectedAud string) (*googleIDClaims, error) {
 	parts := strings.SplitN(s, ".", 3)
 	if len(parts) != 3 {
 		return nil, errors.New("malformed jwt")
@@ -243,6 +262,22 @@ func parseGoogleIDToken(s string) (*googleIDClaims, error) {
 	var c googleIDClaims
 	if err := json.Unmarshal(payload, &c); err != nil {
 		return nil, fmt.Errorf("payload json: %w", err)
+	}
+	if expectedAud == "" {
+		return nil, errors.New("expected aud not configured")
+	}
+	if c.Aud != expectedAud {
+		return nil, fmt.Errorf("id token aud %q does not match configured client", c.Aud)
+	}
+	if !validGoogleIssuers[c.Iss] {
+		return nil, fmt.Errorf("id token iss %q is not Google", c.Iss)
+	}
+	if c.Exp <= 0 {
+		return nil, errors.New("id token missing exp")
+	}
+	// 30s clock-skew tolerance is the conventional OIDC slack.
+	if time.Now().Unix() > c.Exp+30 {
+		return nil, errors.New("id token expired")
 	}
 	return &c, nil
 }

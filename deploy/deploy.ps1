@@ -5,9 +5,14 @@
 #   - OpenSSH client on PATH
 #   - ssh key at $env:USERPROFILE\.ssh\id_ed25519
 #   - $env:OMNOMFEEDS_HOST  set to root@<ip>  (or override below)
+#
+# The systemd unit (`/etc/systemd/system/omnomfeeds.service`) runs
+# `/opt/omnomfeeds/bin/omnomfeeds`, so that's the path we swap. Earlier
+# revisions of this script wrote to `/opt/omnomfeeds/omnomfeeds` which
+# is NOT what systemd executes, so restarts were silent no-ops.
 
 param(
-    [string]$Host    = $(if ($env:OMNOMFEEDS_HOST) { $env:OMNOMFEEDS_HOST } else { 'root@168.144.12.49' }),
+    [string]$Server  = $(if ($env:OMNOMFEEDS_HOST) { $env:OMNOMFEEDS_HOST } else { 'root@168.144.12.49' }),
     [string]$KeyPath = "$env:USERPROFILE\.ssh\id_ed25519",
     [switch]$SkipBuild
 )
@@ -28,18 +33,18 @@ $binary = "$repo\deploy\omnomfeeds"
 if (-not (Test-Path $binary)) { throw "missing binary: $binary" }
 
 Write-Host '> upload binary...'
-& scp -i $KeyPath -o StrictHostKeyChecking=accept-new $binary "${Host}:/opt/omnomfeeds/omnomfeeds.new"
+& scp -i $KeyPath -o StrictHostKeyChecking=accept-new $binary "${Server}:/opt/omnomfeeds/bin/omnomfeeds.new"
 
 Write-Host '> atomic swap + restart...'
 $remote = @'
 set -e
-mv /opt/omnomfeeds/omnomfeeds.new /opt/omnomfeeds/omnomfeeds
-chown omnom:omnom /opt/omnomfeeds/omnomfeeds
-chmod 0755 /opt/omnomfeeds/omnomfeeds
+mv /opt/omnomfeeds/bin/omnomfeeds.new /opt/omnomfeeds/bin/omnomfeeds
+chown omnom:omnom /opt/omnomfeeds/bin/omnomfeeds
+chmod 0755 /opt/omnomfeeds/bin/omnomfeeds
 systemctl restart omnomfeeds
 sleep 1
 systemctl is-active omnomfeeds
 '@
-$remote | & ssh -i $KeyPath -o StrictHostKeyChecking=accept-new $Host 'bash -s'
+$remote | & ssh -i $KeyPath -o StrictHostKeyChecking=accept-new $Server 'bash -s'
 
 Write-Host '> deploy complete'

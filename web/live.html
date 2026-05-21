@@ -156,6 +156,24 @@ code, .mono { font-family: 'JetBrains Mono', monospace; }
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 6px;
 }
+.hot-more {
+  margin-top: 10px;
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+.hot-more a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(0,229,160,0.4);
+  padding-bottom: 1px;
+  transition: color 0.12s, border-color 0.12s;
+}
+.hot-more a:hover {
+  color: var(--accent-cyan);
+  border-bottom-color: var(--accent-cyan);
+}
 .hot-pill {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px;
@@ -242,11 +260,14 @@ footer {
   <div class="hot-section">
     <div class="hot-head">
       <span class="flame">🔥</span>
-      <span>HOTTEST CVES — LAST 72H</span>
+      <span>TOP 5 CVES — LAST 72H</span>
       <span class="sub">by mention count across all sources</span>
     </div>
     <div class="hot-grid" id="hotGrid">
       <div class="hot-empty">loading...</div>
+    </div>
+    <div class="hot-more">
+      <a href="/trending">see the top 50, with EPSS + latest mention &rarr;</a>
     </div>
   </div>
 
@@ -306,7 +327,9 @@ function render(list) {
 }
 async function loadHottest() {
   try {
-    const r = await fetch('/api/cves/hottest?hours=72&limit=12');
+    // Top 5 here as a teaser; /trending has the canonical 50-row view
+    // with EPSS, latest-mention, and a time-window selector.
+    const r = await fetch('/api/cves/hottest?hours=72&limit=5');
     if (!r.ok) return;
     const body = await r.json();
     renderHottest(body.rows || []);

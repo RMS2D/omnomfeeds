@@ -284,6 +284,15 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 				s.emit(w, r, analytics.EvPageView, "/", nil)
 				serveEmbeddedFile(w, r, webFS, "landing.html")
 			case r.URL.Path == "/app", strings.HasPrefix(r.URL.Path, "/app/"):
+				// Hosted mode hard-gates the reader behind sign-in.
+				// Unauthenticated visitors get bounced to /login.html
+				// with ?next so they land in /app after auth. Self-host
+				// never reaches this case (the branch lives inside the
+				// cfg.Hosted.Enabled if-block above).
+				if auth.UserFromContext(r.Context()) == nil {
+					http.Redirect(w, r, "/login.html?next=/app", http.StatusSeeOther)
+					return
+				}
 				s.emit(w, r, analytics.EvPageView, "/app", nil)
 				serveEmbeddedFile(w, r, webFS, "index.html")
 			case r.URL.Path == "/privacy":

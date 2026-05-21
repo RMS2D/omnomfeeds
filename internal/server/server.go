@@ -1894,6 +1894,15 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := strings.ToUpper(tail)
+	// Reject anything that doesn't look like a CVE-ID up front. Without
+	// this, pathological inputs (long strings, LIKE meta-chars) burn a
+	// LIKE scan on the articles table inside CVEConsensus/CVETimeline
+	// and an NVD round-trip. Matches the same regex the /cve/<id> HTML
+	// route applies.
+	if !cveIDPattern.MatchString(id) {
+		writeJSON(w, 400, map[string]string{"error": "invalid CVE ID format", "id": id})
+		return
+	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 	d, err := s.enrich.NVD.Get(ctx, id)
@@ -2050,6 +2059,18 @@ func (s *Server) handleCVEExplain(w http.ResponseWriter, r *http.Request, id str
 			"explanation": cached,
 			"cached":      true,
 			"provider":    s.enrich.AI.Name(),
+		})
+		return
+	}
+
+	// Per-IP rate limit on the AI cost-bearing path. Cache hits above
+	// don't count - those are free. This kicks in only when we're about
+	// to spend an LLM call. Same 20/min cap as /api/articles/explain/.
+	if s.aiLimiter != nil && !s.aiLimiter.allow("cve-explain|"+clientIP(r)) {
+		w.Header().Set("Retry-After", "60")
+		writeJSON(w, http.StatusTooManyRequests, map[string]any{
+			"error":         "rate limit: too many AI calls per minute from this IP",
+			"retry_after_s": 60,
 		})
 		return
 	}

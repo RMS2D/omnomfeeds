@@ -181,6 +181,7 @@ func magicConfirmHTML(token string) string {
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
+<meta name="referrer" content="no-referrer">
 <title>Sign in - oM noM Security Feeds</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

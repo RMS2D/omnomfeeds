@@ -851,6 +851,78 @@ type CVEConsensusRow struct {
 // CVEConsensus returns the distinct sources that have posted about a CVE
 // in the last `days` days, ordered by most-recent-post first. Powers the
 // "researcher consensus" heatmap on the CVE deep-dive modal.
+// ArticlesForCVE returns articles whose tag array contains the exact
+// given CVE ID, newest first. Used by the per-CVE landing page to show
+// every source that's mentioned a CVE. Limit caps the result; pass 50
+// for the page (more would dilute the view), 200 for the sitemap query.
+func (s *Store) ArticlesForCVE(cveID string, limit int) ([]models.Article, error) {
+	cveID = strings.ToUpper(strings.TrimSpace(cveID))
+	if cveID == "" {
+		return nil, fmt.Errorf("empty CVE ID")
+	}
+	if limit <= 0 || limit > 500 {
+		limit = 50
+	}
+	rows, err := s.db.Query(`
+		SELECT a.id, a.title, a.url, a.source, a.source_type,
+		       COALESCE(a.summary, ''), a.score, COALESCE(a.tags, '[]'),
+		       a.published_at, a.fetched_at
+		FROM articles a, json_each(a.tags) je
+		WHERE je.value = ?
+		  AND a.duplicate_of IS NULL
+		ORDER BY a.published_at DESC
+		LIMIT ?
+	`, cveID, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []models.Article
+	for rows.Next() {
+		var a models.Article
+		var tagsJSON string
+		if err := rows.Scan(&a.ID, &a.Title, &a.URL, &a.Source, &a.SourceType,
+			&a.Summary, &a.Score, &tagsJSON, &a.PublishedAt, &a.FetchedAt); err != nil {
+			continue
+		}
+		_ = json.Unmarshal([]byte(tagsJSON), &a.Tags)
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// TopMentionedCVEs returns the most-mentioned CVE IDs across the whole
+// corpus, newest-by-mention-count first. Used by the dynamic /cve
+// sitemap and any caller wanting the canonical "most talked about" set
+// for backfills, exports, or batch enrichment.
+func (s *Store) TopMentionedCVEs(limit int) ([]string, error) {
+	if limit <= 0 || limit > 5000 {
+		limit = 200
+	}
+	rows, err := s.db.Query(`
+		SELECT je.value AS cve, COUNT(*) AS n
+		FROM articles a, json_each(a.tags) je
+		WHERE a.duplicate_of IS NULL
+		  AND je.value LIKE 'CVE-%'
+		GROUP BY je.value
+		ORDER BY n DESC, cve ASC
+		LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var c string
+		var n int
+		if err := rows.Scan(&c, &n); err == nil {
+			out = append(out, c)
+		}
+	}
+	return out, rows.Err()
+}
+
 func (s *Store) CVEConsensus(cveID string, days int) ([]CVEConsensusRow, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
 	if cveID == "" {

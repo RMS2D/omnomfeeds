@@ -312,6 +312,10 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 			case r.URL.Path == "/pre-kev":
 				s.emit(w, r, analytics.EvPageView, "/pre-kev", nil)
 				serveEmbeddedFile(w, r, webFS, "pre-kev.html")
+			case strings.HasPrefix(r.URL.Path, "/cve/"):
+				s.handleCVEPage(w, r, webFS)
+			case r.URL.Path == "/sitemap-cves.xml":
+				s.handleSitemapCVEs(w, r)
 			case r.URL.Path == "/robots.txt":
 				serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
 			case r.URL.Path == "/sitemap.xml":
@@ -350,6 +354,10 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		mux.HandleFunc("/pre-kev", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFile(w, r, webFS, "pre-kev.html")
 		})
+		mux.HandleFunc("/cve/", func(w http.ResponseWriter, r *http.Request) {
+			s.handleCVEPage(w, r, webFS)
+		})
+		mux.HandleFunc("/sitemap-cves.xml", s.handleSitemapCVEs)
 		mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
 		})

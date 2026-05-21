@@ -98,7 +98,9 @@ func (s *Server) buildPublicStats() *publicStats {
 		rows.Close()
 	}
 	out.SourcesActive = len(sourceCounts)
+	s.statusMu.RLock()
 	out.SourcesTotal = len(s.status)
+	s.statusMu.RUnlock()
 
 	// Distinct CVE IDs surfaced in the last 7 days. Tags are stored
 	// as bare CVE-XXXX-XXXX strings (uppercase, no prefix); json_each

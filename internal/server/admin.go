@@ -116,6 +116,7 @@ func (s *Server) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	erroring, stale := 0, 0
+	s.statusMu.RLock()
 	per := make([]*models.SourceStatus, 0, len(s.status))
 	for _, st := range s.status {
 		per = append(per, st)
@@ -126,6 +127,7 @@ func (s *Server) handleAdminStats(w http.ResponseWriter, r *http.Request) {
 			stale++
 		}
 	}
+	s.statusMu.RUnlock()
 	resp.Sources.Total = len(per)
 	resp.Sources.Erroring = erroring
 	resp.Sources.Stale = stale

@@ -84,6 +84,7 @@ func (w *Worker) tick(ctx context.Context) {
 		log.Printf("[aitriage] candidate query: %v", err)
 		return
 	}
+	defer rows.Close()
 
 	type pending struct {
 		id      int64
@@ -107,7 +108,7 @@ func (w *Worker) tick(ctx context.Context) {
 			},
 		})
 	}
-	rows.Close()
+	// Manual close removed - defer above handles it on every exit path.
 	if len(batch) == 0 {
 		return
 	}

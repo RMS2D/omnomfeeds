@@ -60,6 +60,7 @@ type Server struct {
 	scorer      *scoring.Scorer
 	cfg         *config.Config
 	http        *http.Server
+	statusMu    sync.RWMutex
 	status      map[string]*models.SourceStatus
 	enrich      *Enrichment
 	stream      *streamHub
@@ -650,7 +651,9 @@ func (s *Server) fetchGroup(srcs []sources.Source) {
 				log.Printf("[%s] fetch error: %v", src.Name(), err)
 				status.LastError = err.Error()
 				status.LastFetch = time.Now()
+				s.statusMu.Lock()
 				s.status[src.Name()] = status
+				s.statusMu.Unlock()
 				return
 			}
 
@@ -685,7 +688,9 @@ func (s *Server) fetchGroup(srcs []sources.Source) {
 
 			status.LastFetch = time.Now()
 			status.ItemCount = count
+			s.statusMu.Lock()
 			s.status[src.Name()] = status
+			s.statusMu.Unlock()
 			log.Printf("[%s] fetched %d articles", src.Name(), count)
 			// Push a refresh hint to any SSE clients so the UI can pull immediately
 			// instead of waiting for its polling interval. count==0 still broadcasts
@@ -952,13 +957,21 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ID int64 `json:"id"`
 	}
-	json.NewDecoder(r.Body).Decode(&body)
+	// Cap the body and surface decode errors. Pre-fix the decoder
+	// silently dropped malformed input and wrote a read-mark for
+	// article id 0 (functional no-op but cryptic DB rows).
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 4*1024)).Decode(&body); err != nil {
+		http.Error(w, "invalid json", http.StatusBadRequest)
+		return
+	}
+	if body.ID <= 0 {
+		http.Error(w, "id required", http.StatusBadRequest)
+		return
+	}
 	// Emit article_open before the read-mark write so the event lands
 	// even if a downstream write fails. Anonymous visitors get tracked
 	// via session cookie; signed-in users tie to user_id.
-	if body.ID > 0 {
-		s.emit(w, r, analytics.EvArticleOpen, strconv.FormatInt(body.ID, 10), nil)
-	}
+	s.emit(w, r, analytics.EvArticleOpen, strconv.FormatInt(body.ID, 10), nil)
 	// Hosted + signed in: write a per-user read mark. The global
 	// articles.read column is only used in self-host mode where one
 	// process == one operator.
@@ -1020,10 +1033,12 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleSources(w http.ResponseWriter, r *http.Request) {
-	var statuses []*models.SourceStatus
+	s.statusMu.RLock()
+	statuses := make([]*models.SourceStatus, 0, len(s.status))
 	for _, st := range s.status {
 		statuses = append(statuses, st)
 	}
+	s.statusMu.RUnlock()
 	writeJSON(w, 200, statuses)
 }
 
@@ -1581,6 +1596,11 @@ func (s *Server) handleMomentum(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleScoring(w http.ResponseWriter, r *http.Request) {
+	// Public endpoint - cannot panic on a misconfigured server.
+	if s.scorer == nil {
+		writeJSON(w, 503, map[string]string{"error": "scorer not loaded"})
+		return
+	}
 	writeJSON(w, 200, map[string]any{
 		"categories": s.scorer.Categories(),
 		"how_it_works": "Every fetched article is scored 0-100 against these keyword categories. " +

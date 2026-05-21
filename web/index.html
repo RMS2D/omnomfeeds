@@ -3967,6 +3967,70 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
 /* Hosted-mode auth strip in the c-modal footer. Anonymous: shows a
  * sign-in CTA. Signed in: shows email + logout. Self-host: hidden. */
+/* Top-of-app guest banner: shown to anon visitors in hosted mode so
+   they know they're in read-only/guest mode and have a one-click path
+   to sign in. Slim, accent-coloured left border, sits between the
+   status bar and the article list. Hidden by default; revealed by
+   loadAuthStrip() when meState resolves to null. */
+.guest-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 8px 12px 0;
+  padding: 8px 12px;
+  border: 1px solid rgba(0,229,160,0.32);
+  border-left: 2px solid var(--accent);
+  border-radius: 3px;
+  background: rgba(0,229,160,0.04);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.2px;
+}
+.guest-banner .gb-msg { color: var(--text); }
+.guest-banner .gb-msg .gb-tag {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-right: 8px;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  background: rgba(0,229,160,0.12);
+  border: 1px solid rgba(0,229,160,0.45);
+  color: var(--accent);
+  border-radius: 2px;
+  vertical-align: middle;
+}
+.guest-banner .gb-actions { display: flex; gap: 10px; align-items: center; }
+.guest-banner a.gb-cta {
+  color: var(--accent);
+  text-decoration: none;
+  border: 1px solid var(--accent);
+  padding: 4px 12px;
+  border-radius: 2px;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  font-weight: 600;
+  transition: background 0.12s, color 0.12s;
+}
+.guest-banner a.gb-cta:hover { background: var(--accent); color: var(--bg); }
+.guest-banner a.gb-dismiss {
+  color: var(--text-dim);
+  font-size: 16px;
+  text-decoration: none;
+  padding: 0 4px;
+  cursor: pointer;
+  user-select: none;
+}
+.guest-banner a.gb-dismiss:hover { color: var(--text); }
+@media (max-width: 640px) {
+  .guest-banner { font-size: 10px; }
+  .guest-banner .gb-msg .gb-tag { font-size: 8px; }
+}
+
 .cfg-auth-strip {
   margin-top: 18px;
   padding: 12px 14px;
@@ -4341,6 +4405,20 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     </span>
     <span class="live" id="liveIndicator" title="Auto-refresh on. Press c to configure."><span class="dot"></span>LIVE</span>
   </div>
+
+  <!-- Guest-mode banner: shown to anon hosted-mode visitors so the
+       read-only state is explicit. loadAuthStrip() toggles this. -->
+  <div class="guest-banner" id="guestBanner" hidden>
+    <div class="gb-msg">
+      <span class="gb-tag">guest</span>
+      Reading without an account. Bookmarks and read state stay local; sign in to sync across devices, set custom alerts, and enable AI features.
+    </div>
+    <div class="gb-actions">
+      <a class="gb-cta" href="/login.html?next=/app">Sign in</a>
+      <a class="gb-dismiss" href="#" onclick="dismissGuestBanner(event)" title="hide for this session">×</a>
+    </div>
+  </div>
+
   <div class="filter-chips" id="filterChips" hidden></div>
   <!-- Pro channels strip: quick-filter chips for the user's saved
        searches. Hidden until they have at least one channel. -->
@@ -4503,7 +4581,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
       <!-- Configured view: actual functional UI. -->
       <div id="cfgBlueskyContent" hidden>
-        <div class="cfg-section">
+        <div class="cfg-section" id="cfgBskyYourSection">
           <div class="cfg-section-title"><span class="cfg-accent">::</span> Your watched accounts</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Bluesky researchers you've added on top of the curated list. Only their security-relevant posts make it into your feed (zero-score posts are dropped).
@@ -7190,7 +7268,18 @@ async function loadAuthStrip() {
       strip.hidden = false;
       strip.innerHTML =
         '<span>Sign in to sync settings, bookmarks, and read state across devices.</span>' +
-        '<a href="/login.html">Sign in &rarr;</a>';
+        '<a href="/login.html?next=/app">Sign in &rarr;</a>';
+      // Top-of-app guest banner unless this tab already dismissed it.
+      const gb = document.getElementById('guestBanner');
+      if (gb && sessionStorage.getItem('guestBannerDismissed') !== '1') {
+        gb.hidden = false;
+      }
+      // Hide the per-user "Your watched accounts" section in the Bluesky
+      // tab: the API behind it requires auth, so for anon visitors it
+      // renders an empty "failed to load" box. The curated researcher
+      // list right below stays since it's a static catalog.
+      const yourBskySection = document.getElementById('cfgBskyYourSection');
+      if (yourBskySection) yourBskySection.hidden = true;
       return;
     }
     // Signed in. Global-config surfaces are only useful to the operator.
@@ -9330,6 +9419,16 @@ function dismissPatchBrief() {
   const date   = banner.dataset.date;
   try { localStorage.setItem(patchBriefDismissKey({vendor, brief_date: date}), '1'); } catch (e) {}
   banner.hidden = true;
+}
+
+// Hides the guest banner for this browser session. We use sessionStorage
+// not localStorage so closing the tab brings the banner back - the
+// expectation is they remember they're in guest mode, not forever.
+function dismissGuestBanner(ev) {
+  if (ev) ev.preventDefault();
+  const gb = document.getElementById('guestBanner');
+  if (gb) gb.hidden = true;
+  try { sessionStorage.setItem('guestBannerDismissed', '1'); } catch (e) {}
 }
 function loadCfgPatchToggles() {
   const t = patchTogglesGet();

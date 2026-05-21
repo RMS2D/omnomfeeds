@@ -303,6 +303,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 				s.emit(w, r, analytics.EvPageView, "/pro", nil)
 				s.emit(w, r, analytics.EvProView, "", nil)
 				serveEmbeddedFile(w, r, webFS, "pro-preview.html")
+			case r.URL.Path == "/trending":
+				s.emit(w, r, analytics.EvPageView, "/trending", nil)
+				serveEmbeddedFile(w, r, webFS, "trending.html")
 			case r.URL.Path == "/robots.txt":
 				serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
 			case r.URL.Path == "/sitemap.xml":
@@ -331,6 +334,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		})
 		mux.HandleFunc("/pro", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFile(w, r, webFS, "pro-preview.html")
+		})
+		mux.HandleFunc("/trending", func(w http.ResponseWriter, r *http.Request) {
+			serveEmbeddedFile(w, r, webFS, "trending.html")
 		})
 		mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
@@ -927,6 +933,12 @@ func (s *Server) handleMarkRead(w http.ResponseWriter, r *http.Request) {
 		ID int64 `json:"id"`
 	}
 	json.NewDecoder(r.Body).Decode(&body)
+	// Emit article_open before the read-mark write so the event lands
+	// even if a downstream write fails. Anonymous visitors get tracked
+	// via session cookie; signed-in users tie to user_id.
+	if body.ID > 0 {
+		s.emit(w, r, analytics.EvArticleOpen, strconv.FormatInt(body.ID, 10), nil)
+	}
 	// Hosted + signed in: write a per-user read mark. The global
 	// articles.read column is only used in self-host mode where one
 	// process == one operator.

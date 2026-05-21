@@ -3971,7 +3971,14 @@ body:not(.cfg-admin) [data-admin-only="true"] {
    they know they're in read-only/guest mode and have a one-click path
    to sign in. Slim, accent-coloured left border, sits between the
    status bar and the article list. Hidden by default; revealed by
-   loadAuthStrip() when meState resolves to null. */
+   loadAuthStrip() when meState resolves to null.
+
+   IMPORTANT: the [hidden] override has to win over the .guest-banner
+   display: flex rule below, otherwise the HTML `hidden` attribute is
+   ignored due to specificity (UA stylesheet [hidden] { display: none }
+   loses to any author rule that sets display). Hit signed-in admins on
+   /app before this was here. */
+.guest-banner[hidden] { display: none !important; }
 .guest-banner {
   display: flex;
   align-items: center;
@@ -9341,6 +9348,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   logEvent('ok', 'larva online');
   loadMitreMap();
   applyDeepLinkSearch();
+  // Resolve auth + hostedMode early so meState is populated for sync
+  // helpers, admin surfaces show/hide immediately, and the guest banner
+  // toggles to its correct state without waiting for the c-modal to open.
+  loadAuthStrip();
   loadArticles().then(() => {
     logEvent('info', `loaded ${currentArticles.length} items`);
     const kev = currentArticles.filter(a => (a.tags||[]).some(t=>String(t).toLowerCase().startsWith('kev:'))).length;

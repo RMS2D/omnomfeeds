@@ -110,6 +110,8 @@ func (e *EPSSClient) Refresh(ctx context.Context) error {
 }
 
 // Get returns the EPSS score for a CVE, or nil if not in the local cache.
+// Cheap for one-off lookups (CVE modal, etc.); use GetMany for batches
+// to avoid the per-row round-trip cost.
 func (e *EPSSClient) Get(cveID string) *EPSSScore {
 	row := e.db.QueryRow(`SELECT score, percentile FROM epss WHERE cve_id = ?`, strings.ToUpper(strings.TrimSpace(cveID)))
 	var s EPSSScore
@@ -117,4 +119,47 @@ func (e *EPSSClient) Get(cveID string) *EPSSScore {
 		return nil
 	}
 	return &s
+}
+
+// GetMany resolves a list of CVE IDs in a single query, returning a
+// map of upper-cased ID -> score. Missing IDs are simply absent from
+// the map. Used by the hottest/trending leaderboards where N can be
+// 50 and the per-CVE round-trip dominates the response time.
+func (e *EPSSClient) GetMany(cveIDs []string) map[string]EPSSScore {
+	out := map[string]EPSSScore{}
+	if len(cveIDs) == 0 {
+		return out
+	}
+	// De-dup + normalise. Build the IN-clause placeholder list as we
+	// go; SQLite has a default limit of 999 host parameters which is
+	// well above any realistic call here.
+	seen := make(map[string]bool, len(cveIDs))
+	args := make([]interface{}, 0, len(cveIDs))
+	placeholders := make([]string, 0, len(cveIDs))
+	for _, raw := range cveIDs {
+		id := strings.ToUpper(strings.TrimSpace(raw))
+		if id == "" || seen[id] {
+			continue
+		}
+		seen[id] = true
+		args = append(args, id)
+		placeholders = append(placeholders, "?")
+	}
+	if len(args) == 0 {
+		return out
+	}
+	q := `SELECT cve_id, score, percentile FROM epss WHERE cve_id IN (` + strings.Join(placeholders, ",") + `)`
+	rows, err := e.db.Query(q, args...)
+	if err != nil {
+		return out
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var s EPSSScore
+		if err := rows.Scan(&id, &s.Score, &s.Percentile); err == nil {
+			out[id] = s
+		}
+	}
+	return out
 }

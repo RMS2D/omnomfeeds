@@ -1041,9 +1041,27 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// hottestCVECache holds pre-serialised JSON responses keyed by (hours,
+// limit). The underlying query is ~4s on a warm box because EPSSClient
+// fans out to one SQLite query per CVE; serving from this cache turns
+// repeat requests into a memcpy. Public endpoint, cached 5 min - the
+// data doesn't shift faster than that and the trending page polls every
+// 60s anyway.
+type hottestCVECacheEntry struct {
+	payload []byte
+	expiry  time.Time
+}
+
+var (
+	hottestCVEMu    sync.Mutex
+	hottestCVECache = map[string]hottestCVECacheEntry{}
+)
+
+const hottestCVECacheTTL = 5 * time.Minute
+
 // handleHottestCVEs returns the top CVE IDs by article-mention count over
-// a 72h window. Public endpoint; powers the /live "what's hot right now"
-// leaderboard. Optional ?hours= and ?limit= query params.
+// a 72h window. Public endpoint; powers the /live and /trending pages.
+// Optional ?hours= and ?limit= query params. 5-minute server cache.
 func (s *Server) handleHottestCVEs(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	hours, _ := strconv.Atoi(q.Get("hours"))
@@ -1054,38 +1072,69 @@ func (s *Server) handleHottestCVEs(w http.ResponseWriter, r *http.Request) {
 	if limit <= 0 || limit > 50 {
 		limit = 10
 	}
+
+	cacheKey := fmt.Sprintf("%d|%d", hours, limit)
+	hottestCVEMu.Lock()
+	if e, ok := hottestCVECache[cacheKey]; ok && time.Now().Before(e.expiry) {
+		body := e.payload
+		hottestCVEMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Write(body)
+		return
+	}
+	hottestCVEMu.Unlock()
+
 	rows, err := s.store.HottestCVEs(hours, limit)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
-	// Light EPSS overlay if we have it cached - lets the UI show "92% EPSS"
-	// without an extra round trip per row.
-	if s.enrich != nil && s.enrich.EPSS != nil {
+	// EPSS overlay via batched lookup. Was 1 SQLite query per CVE which
+	// dominated cold-cache response time (~4s for 50 rows); GetMany
+	// folds the lot into a single IN-clause query (~5ms).
+	var payload []byte
+	if s.enrich != nil && s.enrich.EPSS != nil && len(rows) > 0 {
 		type withEPSS struct {
 			storage.CVEActivity
 			EPSSScore      float64 `json:"epss_score,omitempty"`
 			EPSSPercentile float64 `json:"epss_percentile,omitempty"`
 		}
+		ids := make([]string, 0, len(rows))
+		for _, c := range rows {
+			ids = append(ids, c.CVE)
+		}
+		scores := s.enrich.EPSS.GetMany(ids)
 		enriched := make([]withEPSS, 0, len(rows))
 		for _, c := range rows {
-			r := withEPSS{CVEActivity: c}
-			if e := s.enrich.EPSS.Get(c.CVE); e != nil {
-				r.EPSSScore = e.Score
-				r.EPSSPercentile = e.Percentile
+			er := withEPSS{CVEActivity: c}
+			if e, ok := scores[strings.ToUpper(strings.TrimSpace(c.CVE))]; ok {
+				er.EPSSScore = e.Score
+				er.EPSSPercentile = e.Percentile
 			}
-			enriched = append(enriched, r)
+			enriched = append(enriched, er)
 		}
-		writeJSON(w, 200, map[string]any{
+		payload, _ = json.Marshal(map[string]any{
 			"window_hours": hours,
 			"rows":         enriched,
 		})
-		return
+	} else {
+		payload, _ = json.Marshal(map[string]any{
+			"window_hours": hours,
+			"rows":         rows,
+		})
 	}
-	writeJSON(w, 200, map[string]any{
-		"window_hours": hours,
-		"rows":         rows,
-	})
+
+	hottestCVEMu.Lock()
+	hottestCVECache[cacheKey] = hottestCVECacheEntry{
+		payload: payload,
+		expiry:  time.Now().Add(hottestCVECacheTTL),
+	}
+	hottestCVEMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	w.Write(payload)
 }
 
 // handleActorLookup returns the curated metadata for a threat actor

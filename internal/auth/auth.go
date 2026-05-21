@@ -26,6 +26,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/RMS2D/omnomfeeds/internal/config"
@@ -38,11 +39,22 @@ type User struct {
 	Email       string
 	DisplayName string
 	ProUntil    *time.Time
+	IsAdmin     bool
 }
 
-// IsPro returns whether the user's Pro subscription is currently active.
+// IsPro returns whether the user gets the Pro experience right now. Admin
+// users (operators) are treated as Pro at runtime so the deployment owner
+// can use every feature without going through Stripe. They are NOT counted
+// in the dashboard's paid-subscriber metric, which queries pro_until
+// directly from the users table and stays NULL for admin rows.
 func (u *User) IsPro() bool {
-	return u != nil && u.ProUntil != nil && u.ProUntil.After(time.Now())
+	if u == nil {
+		return false
+	}
+	if u.IsAdmin {
+		return true
+	}
+	return u.ProUntil != nil && u.ProUntil.After(time.Now())
 }
 
 // Session is a server-side record of an authenticated browser. The cookie
@@ -110,35 +122,93 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Middleware wraps an http.Handler with a session resolver. If a valid
-// session cookie is present, the User is attached to the request context
-// via WithUser; otherwise the next handler runs with no user attached.
-// Endpoints that REQUIRE a user should call RequireUser instead.
+// Middleware wraps an http.Handler with a session resolver. Tries cookie
+// auth first (browser path), then bearer-token auth (REST API path). If
+// either resolves a user we stamp it on the context; otherwise the next
+// handler runs anonymous. Endpoints that REQUIRE a user should call
+// RequireUser to enforce 401 on the anonymous path.
 func (h *Handler) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, sum, ok := tokenFromRequest(r)
-		if !ok {
-			next.ServeHTTP(w, r)
+		if u := h.resolveUser(r); u != nil {
+			ctx := WithUser(r.Context(), u)
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
-		sess, err := h.store.GetSessionByHash(sum)
-		if err != nil {
-			next.ServeHTTP(w, r)
+		next.ServeHTTP(w, r)
+	})
+}
+
+// resolveUser tries cookie session first, then Authorization: Bearer.
+// Returns nil on every failure (no user attached, anonymous flow).
+func (h *Handler) resolveUser(r *http.Request) *User {
+	if u := h.userFromCookie(r); u != nil {
+		return u
+	}
+	return h.userFromBearer(r)
+}
+
+func (h *Handler) userFromCookie(r *http.Request) *User {
+	_, sum, ok := tokenFromRequest(r)
+	if !ok {
+		return nil
+	}
+	sess, err := h.store.GetSessionByHash(sum)
+	if err != nil {
+		return nil
+	}
+	row, err := h.store.GetUserByID(sess.UserID)
+	if err != nil {
+		return nil
+	}
+	return h.userFromRow(row)
+}
+
+func (h *Handler) userFromBearer(r *http.Request) *User {
+	authz := r.Header.Get("Authorization")
+	if !strings.HasPrefix(authz, "Bearer ") {
+		return nil
+	}
+	raw := strings.TrimSpace(authz[len("Bearer "):])
+	if raw == "" {
+		return nil
+	}
+	decoded, err := base64.URLEncoding.WithPadding(base64.NoPadding).DecodeString(raw)
+	if err != nil || len(decoded) != 32 {
+		return nil
+	}
+	sum := sha256.Sum256(decoded)
+	row, err := h.store.LookupAPITokenUser(sum[:])
+	if err != nil {
+		return nil
+	}
+	return h.userFromRow(row)
+}
+
+func (h *Handler) userFromRow(row *storage.UserRow) *User {
+	return &User{
+		ID:          row.ID,
+		Email:       row.Email,
+		DisplayName: row.DisplayName,
+		ProUntil:    row.ProUntil,
+		IsAdmin:     h.cfg.IsAdmin(row.Email),
+	}
+}
+
+// RequireAdmin is a middleware that 403s any non-admin user. Used by the
+// global-config mutation endpoints in hosted mode so a normal logged-in
+// reader can't reach in and modify watched accounts / API keys / sources.
+func RequireAdmin(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		u := UserFromContext(r.Context())
+		if u == nil {
+			http.Error(w, "auth required", http.StatusUnauthorized)
 			return
 		}
-		row, err := h.store.GetUserByID(sess.UserID)
-		if err != nil {
-			next.ServeHTTP(w, r)
+		if !u.IsAdmin {
+			http.Error(w, "admin only", http.StatusForbidden)
 			return
 		}
-		u := &User{
-			ID:          row.ID,
-			Email:       row.Email,
-			DisplayName: row.DisplayName,
-			ProUntil:    row.ProUntil,
-		}
-		ctx := WithUser(r.Context(), u)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r)
 	})
 }
 

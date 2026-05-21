@@ -421,6 +421,14 @@ func (s *Scorer) UpdateKEV() {
 	log.Printf("[KEV] Loaded %d known exploited vulnerabilities from CISA", len(s.kevMap))
 }
 
+// IsKEV reports whether the given CVE ID is in the CISA Known Exploited
+// Vulnerabilities catalog. Case-insensitive; the map is upper-cased on load.
+func (s *Scorer) IsKEV(cveID string) bool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.kevMap[strings.ToUpper(strings.TrimSpace(cveID))]
+}
+
 // CategoryInfo is the JSON shape exposed to the UI so users can see what we
 // score against. Keep parallel to the slice inside New().
 type CategoryInfo struct {

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Sign in - oM noM Security Feeds</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -61,12 +62,18 @@ a:hover { color: var(--accent); }
   gap: 10px;
   margin-bottom: 6px;
 }
-.brand .worm {
-  color: var(--accent);
-  text-shadow: 0 0 8px rgba(0,229,160,0.4);
-  display: inline-block;
+.brand .worm-sprite {
+  width: 30px; height: 24px; flex-shrink: 0; vertical-align: middle;
   animation: worm-bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
 }
+.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
+.brand .worm-sprite .seg.s3 { opacity: 0.35; }
+.brand .worm-sprite .seg.s2 { opacity: 0.6; }
+.brand .worm-sprite .seg.s1 { opacity: 0.85; }
+.brand .worm-sprite .eye   { fill: var(--bg); }
+.brand .worm-sprite .glint { fill: var(--accent-cyan); }
+.brand .worm-sprite .mouth { fill: var(--bg); }
 @keyframes worm-bob {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-1.5px); }
@@ -202,7 +209,7 @@ h1 {
 <body>
 <div class="wrap">
   <div class="card">
-    <div class="brand"><span class="worm">~~~_o)</span> oM noM Security Feeds</div>
+    <div class="brand"><svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg> oM noM Security Feeds</div>
     <h1>Sign in</h1>
     <p class="subhead">Pick how you'd like to get in. Both options drop you at the same account.</p>
 
@@ -222,6 +229,10 @@ h1 {
 
     <div class="footnote">
       <a href="/">&larr; back to home</a>
+      &middot;
+      <a href="/privacy">Privacy</a>
+      &middot;
+      <a href="/terms">Terms</a>
     </div>
   </div>
 </div>

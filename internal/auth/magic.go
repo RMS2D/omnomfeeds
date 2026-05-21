@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	magicLinkTTL          = 15 * time.Minute
-	magicLinkRateWindow   = 60 * time.Second // min interval between requests per email
-	magicLinkMaxEmailLen  = 254              // RFC 5321
+	magicLinkTTL         = 15 * time.Minute
+	magicLinkRateWindow  = 60 * time.Second // min interval between requests per email
+	magicLinkMaxEmailLen = 254              // RFC 5321
 )
 
 // handleMagicRequest accepts {email} and emails the user a sign-in link.
@@ -86,14 +86,38 @@ func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"ok":true}`))
 }
 
-// handleMagicVerify is the link target the user clicks. Validates the one-
-// time token, upserts a users row, issues a session cookie, redirects to /.
+// handleMagicVerify is the magic-link landing handler. Two phases:
+//
+//	GET  /auth/magic/verify?t=<token> -> render an interstitial page with a
+//	     "Sign me in" button. The token is NOT consumed here; corporate /
+//	     consumer mail scanners (Microsoft Safe Links, Outlook, Gmail) GET
+//	     every link they see, and consuming on GET would burn the token
+//	     before the user ever opened the email.
+//
+//	POST /auth/magic/verify with the token in the form body -> consume the
+//	     token, upsert the user, issue a session cookie, redirect to /app.
+//	     Only a real human click reaches POST.
 func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
 	if h.cfg.ResendAPIKey == "" {
 		http.Error(w, "magic-link login not configured", http.StatusServiceUnavailable)
 		return
 	}
-	rawToken := r.URL.Query().Get("t")
+
+	var rawToken string
+	switch r.Method {
+	case http.MethodGet:
+		rawToken = r.URL.Query().Get("t")
+	case http.MethodPost:
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, "bad form", http.StatusBadRequest)
+			return
+		}
+		rawToken = r.PostFormValue("t")
+	default:
+		http.Error(w, "GET or POST only", http.StatusMethodNotAllowed)
+		return
+	}
+
 	if rawToken == "" {
 		http.Error(w, "missing token", http.StatusBadRequest)
 		return
@@ -103,8 +127,17 @@ func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid token", http.StatusBadRequest)
 		return
 	}
-	sum := sha256.Sum256(raw)
 
+	// GET phase: render the confirm page. Don't touch the token yet.
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-store")
+		_, _ = w.Write([]byte(magicConfirmHTML(rawToken)))
+		return
+	}
+
+	// POST phase: real click. Consume + sign in.
+	sum := sha256.Sum256(raw)
 	row, err := h.store.ConsumeMagicLink(sum[:])
 	if err != nil {
 		http.Error(w, "link is expired or already used", http.StatusUnauthorized)
@@ -134,7 +167,86 @@ func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
 	}
 
 	setSessionCookie(w, sessToken)
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	http.Redirect(w, r, "/app", http.StatusSeeOther)
+}
+
+// magicConfirmHTML renders the interstitial that mail scanners hit on GET
+// but a human completes with a click. Same dark theme as the rest of the
+// app so the transition doesn't feel jarring.
+func magicConfirmHTML(token string) string {
+	// Token is already base64-no-pad random; safe in an HTML attribute.
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Sign in - oM noM Security Feeds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14; --bg-card: #14191f; --border: #2a3340;
+  --text: #e6ecf5; --text-dim: #b8c4d4; --text-bright: #ffffff;
+  --accent: #00e5a0;
+}
+html, body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 15px; line-height: 1.55; min-height: 100vh;
+}
+.wrap {
+  min-height: 100vh; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; padding: 32px 24px;
+}
+.card {
+  width: 100%; max-width: 380px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-top: 2px solid var(--accent); border-radius: 5px;
+  padding: 30px 28px 26px;
+}
+.brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--text-bright); font-weight: 600;
+  letter-spacing: 0.4px; margin-bottom: 14px;
+}
+.brand .worm { color: var(--accent); text-shadow: 0 0 8px rgba(0,229,160,0.4); }
+h1 { font-size: 22px; font-weight: 600; color: var(--text-bright); margin-bottom: 8px; letter-spacing: -0.2px; }
+.subhead { color: var(--text-dim); font-size: 13px; margin-bottom: 22px; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 10px; width: 100%; padding: 12px 16px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
+  letter-spacing: 0.3px; border: 1px solid var(--accent);
+  cursor: pointer; transition: all 0.14s ease; text-decoration: none;
+  background: rgba(0,229,160,0.10); color: var(--accent);
+  text-shadow: 0 0 6px rgba(0,229,160,0.3);
+}
+.btn:hover { background: rgba(0,229,160,0.2); color: var(--text-bright); box-shadow: 0 0 14px rgba(0,229,160,0.25); }
+.fineprint {
+  margin-top: 18px; font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; color: var(--text-dim); text-align: center;
+  letter-spacing: 0.4px; line-height: 1.6;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="brand"><span class="worm">~~~_o)</span> oM noM Security Feeds</div>
+    <h1>Finish signing in</h1>
+    <p class="subhead">Click the button below to complete sign-in. The one-time link is consumed when you click; opening the email itself never consumes it.</p>
+    <form method="POST" action="/auth/magic/verify">
+      <input type="hidden" name="t" value="` + token + `">
+      <button type="submit" class="btn">Sign me in &rarr;</button>
+    </form>
+    <p class="fineprint">If nothing happens after clicking, the link probably expired (15 minute window). Just request a new one.</p>
+  </div>
+</div>
+</body>
+</html>`
 }
 
 // magicVerifyURL builds the absolute URL the email link points to. It reuses

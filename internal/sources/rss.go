@@ -2,8 +2,10 @@ package sources
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"html"
+	"net"
 	"net/http"
 	"regexp"
 	"github.com/RMS2D/omnomfeeds/internal/models"
@@ -11,9 +13,68 @@ import (
 	"time"
 
 	"github.com/mmcdole/gofeed"
+	utls "github.com/refraction-networking/utls"
 )
 
 var htmlTagRe = regexp.MustCompile(`<[^>]*>`)
+
+var rssDialer = &net.Dialer{Timeout: 10 * time.Second}
+
+// rssDialTLS performs the TLS handshake using a Chrome ClientHelloSpec
+// from uTLS instead of Go's default crypto/tls fingerprint. Akamai
+// (Microsoft Security blog, others) fingerprints Go's TLS handshake
+// (JA3/JA4) and either RST_STREAM-s the h2 stream or silently drops
+// the h1.1 connection even with a browser User-Agent. Matching Chrome's
+// fingerprint makes the request indistinguishable from a real browser
+// at the TLS layer. ALPN is trimmed to h1.1 only so the http.Transport
+// (which has h2 disabled) speaks the protocol the conn negotiated.
+// ALPN values aren't part of the JA3 hash, so the fingerprint match
+// holds.
+func rssDialTLS(ctx context.Context, network, addr string) (net.Conn, error) {
+	rawConn, err := rssDialer.DialContext(ctx, network, addr)
+	if err != nil {
+		return nil, err
+	}
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		rawConn.Close()
+		return nil, err
+	}
+	uconn := utls.UClient(rawConn, &utls.Config{ServerName: host}, utls.HelloCustom)
+	spec, err := utls.UTLSIdToSpec(utls.HelloChrome_Auto)
+	if err != nil {
+		rawConn.Close()
+		return nil, err
+	}
+	for _, ext := range spec.Extensions {
+		if alpn, ok := ext.(*utls.ALPNExtension); ok {
+			alpn.AlpnProtocols = []string{"http/1.1"}
+		}
+	}
+	if err := uconn.ApplyPreset(&spec); err != nil {
+		rawConn.Close()
+		return nil, err
+	}
+	if err := uconn.HandshakeContext(ctx); err != nil {
+		rawConn.Close()
+		return nil, err
+	}
+	return uconn, nil
+}
+
+// rssClient pairs the uTLS Chrome-spec dialer with an HTTP/1.1-only
+// transport. Connections pool across feeds so the TLS cost amortises.
+var rssClient = &http.Client{
+	Timeout: 15 * time.Second,
+	Transport: &http.Transport{
+		DialTLSContext:      rssDialTLS,
+		TLSNextProto:        map[string]func(authority string, c *tls.Conn) http.RoundTripper{},
+		ForceAttemptHTTP2:   false,
+		MaxIdleConns:        32,
+		MaxIdleConnsPerHost: 4,
+		IdleConnTimeout:     90 * time.Second,
+	},
+}
 
 type RSSSource struct {
 	name string
@@ -34,15 +95,24 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 		return nil, err
 	}
 
+	// Match the header set a real Chrome navigation sends. Akamai bot
+	// mitigation checks for sec-ch-ua / sec-fetch-* presence; a UA that
+	// claims to be Chrome but doesn't ship these is flagged immediately.
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-	req.Header.Set("Accept-Language", "en-US,en;q=0.5")
+	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+	req.Header.Set("Accept-Language", "en-US,en;q=0.9")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("Upgrade-Insecure-Requests", "1")
+	req.Header.Set("Sec-Ch-Ua", `"Chromium";v="123", "Not:A-Brand";v="8"`)
+	req.Header.Set("Sec-Ch-Ua-Mobile", "?0")
+	req.Header.Set("Sec-Ch-Ua-Platform", `"Windows"`)
+	req.Header.Set("Sec-Fetch-Dest", "document")
+	req.Header.Set("Sec-Fetch-Mode", "navigate")
+	req.Header.Set("Sec-Fetch-Site", "none")
+	req.Header.Set("Sec-Fetch-User", "?1")
 
-	// 2. Execute the request
-	client := &http.Client{Timeout: 15 * time.Second}
-	resp, err := client.Do(req)
+	// 2. Execute the request (shared h1.1-only client, see rssClient docs)
+	resp, err := rssClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -61,11 +131,28 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 
 	var articles []models.Article
 	for _, item := range feed.Items {
+		// Skip sponsored content the feed pretends is news. Dark Reading,
+		// SC Magazine, and a few others stuff these into the main feed.
+		// They typically have no stable pubDate and rotating tracking
+		// URLs, so without this filter they republish themselves every
+		// fetch cycle and pin to the top via ORDER BY published_at DESC.
+		if isSponsoredTitle(item.Title) {
+			continue
+		}
+
 		pub := time.Now()
 		if item.PublishedParsed != nil {
 			pub = *item.PublishedParsed
 		} else if item.UpdatedParsed != nil {
 			pub = *item.UpdatedParsed
+		}
+		// Clamp future pubDates to now. Some feeds (event calendars,
+		// pre-published advisories) put a future date in pubDate, which
+		// pins the item to the top of an ORDER BY published_at DESC list
+		// and renders as "just now" forever. A small grace window
+		// tolerates clock skew between this host and the feed origin.
+		if pub.After(time.Now().Add(2 * time.Hour)) {
+			pub = time.Now()
 		}
 
 		summary := stripHTML(item.Description)
@@ -91,4 +178,30 @@ func stripHTML(s string) string {
 	s = html.UnescapeString(s)
 	s = strings.Join(strings.Fields(s), " ")
 	return strings.TrimSpace(s)
+}
+
+// sponsoredPrefixes are the bracketed labels Dark Reading and similar
+// industry sites use to mark non-editorial content. Match is case
+// insensitive and only on a leading bracketed token, so a legit article
+// like "Inside the [Virtual Event] panel: lessons learned" won't trip.
+var sponsoredPrefixes = []string{
+	"[virtual event]",
+	"[webinar]",
+	"[sponsored]",
+	"[whitepaper]",
+	"[white paper]",
+	"[ebook]",
+	"[research report]",
+	"[partner perspectives]",
+	"[on-demand webinar]",
+}
+
+func isSponsoredTitle(title string) bool {
+	t := strings.ToLower(strings.TrimSpace(title))
+	for _, p := range sponsoredPrefixes {
+		if strings.HasPrefix(t, p) {
+			return true
+		}
+	}
+	return false
 }

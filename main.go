@@ -12,9 +12,15 @@ import (
 	"time"
 
 	"github.com/RMS2D/omnomfeeds/internal/ai"
+	"github.com/RMS2D/omnomfeeds/internal/aidedup"
+	"github.com/RMS2D/omnomfeeds/internal/aitriage"
+	"github.com/RMS2D/omnomfeeds/internal/alerts"
 	"github.com/RMS2D/omnomfeeds/internal/config"
+	"github.com/RMS2D/omnomfeeds/internal/curated"
+	"github.com/RMS2D/omnomfeeds/internal/digestmail"
 	"github.com/RMS2D/omnomfeeds/internal/cve"
 	"github.com/RMS2D/omnomfeeds/internal/mitre"
+	"github.com/RMS2D/omnomfeeds/internal/patchtuesday"
 	"github.com/RMS2D/omnomfeeds/internal/scoring"
 	"github.com/RMS2D/omnomfeeds/internal/server"
 	"github.com/RMS2D/omnomfeeds/internal/sources"
@@ -86,8 +92,42 @@ func main() {
 			cfg.Bluesky.SearchTerms, cfg.Bluesky.Identifier, cfg.Bluesky.Password)
 		normalSrcs = append(normalSrcs, bskySrc)
 	}
-	if cfg.Bluesky.Enabled && len(cfg.Bluesky.WatchedAccounts) > 0 && bskySrc != nil {
-		normalSrcs = append(normalSrcs, sources.NewBlueskyAccounts(cfg.Bluesky.WatchedAccounts, bskySrc))
+	if cfg.Bluesky.Enabled && bskySrc != nil {
+		// Compute the watched-handles list fresh each fetch cycle:
+		// operator's config.json baseline ∪ the editorial curated list
+		// ∪ every user's personal subs. New per-user adds get picked up
+		// without a binary restart. The curated list is auto-included so
+		// hosted users get a populated feed the moment they sign up.
+		handlesFn := func() []string {
+			seen := make(map[string]struct{})
+			add := func(h string) {
+				h = strings.TrimSpace(strings.TrimPrefix(strings.ToLower(h), "@"))
+				if h != "" {
+					seen[h] = struct{}{}
+				}
+			}
+			for _, h := range cfg.Bluesky.WatchedAccounts {
+				add(h)
+			}
+			for _, h := range curated.BlueskyHandles() {
+				add(h)
+			}
+			if extras, err := db.AllUserBskyHandles(); err == nil {
+				for _, h := range extras {
+					add(h)
+				}
+			}
+			out := make([]string, 0, len(seen))
+			for h := range seen {
+				out = append(out, h)
+			}
+			return out
+		}
+		// Only register the source if there's at least one handle to fetch
+		// at startup time. If the operator's list is empty but users add
+		// handles later, the source still ticks (handlesFn re-checks every
+		// poll). So always register when bsky auth is configured.
+		normalSrcs = append(normalSrcs, sources.NewBlueskyAccounts(handlesFn, bskySrc))
 	}
 	for _, inst := range cfg.Mastodon.Instances {
 		normalSrcs = append(normalSrcs, sources.NewMastodon(inst, cfg.Mastodon.Hashtags))
@@ -115,6 +155,11 @@ func main() {
 	epssClient := cve.NewEPSSClient(db.DB())
 	if err := epssClient.EnsureTable(); err != nil {
 		log.Printf("[EPSS] table init: %v", err)
+	}
+
+	otxClient := cve.NewOTXClient(db.DB())
+	if err := otxClient.EnsureTable(); err != nil {
+		log.Printf("[OTX] table init: %v", err)
 	}
 	// Refresh EPSS scores in background: once at boot, then daily.
 	go func() {
@@ -169,10 +214,12 @@ func main() {
 		MITRE: mitreMap,
 		NVD:   nvdClient,
 		EPSS:  epssClient,
+		OTX:   otxClient,
 		AI:    aiClient,
 	}
 
 	total := len(normalSrcs) + len(fastSrcs)
+	server.SetVersion(version)
 	srv := server.New(db, normalSrcs, fastSrcs, scorer, cfg, webSubFS, enr)
 
 	log.Printf("oM noM Security Feeds %s :: initial fetch from %d sources (%d fast, %d normal)...", version, total, len(fastSrcs), len(normalSrcs))
@@ -180,6 +227,60 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+
+	// Pro webhook-alert worker. Only spun up in hosted mode; in self-host
+	// nobody can save alert rules so the goroutine would have nothing to do.
+	if cfg.Hosted.Enabled {
+		siteBase := strings.TrimSuffix(cfg.Hosted.OAuthRedirectURL, "/auth/callback")
+		if siteBase == "" {
+			siteBase = "https://omnomfeeds.com"
+		}
+		w := alerts.New(db, siteBase)
+		srv.SetAlertsWorker(w)
+		go w.Run(ctx)
+		log.Printf("[alerts] webhook worker started (site=%s)", siteBase)
+	}
+
+	// Pro AI semantic-dedup worker. Hosted mode + AI provider required;
+	// runs every 30 minutes regardless of user count - the cost is fixed
+	// per cycle, the benefit is shared.
+	if cfg.Hosted.Enabled && aiClient != nil {
+		dw := aidedup.New(db, aiClient)
+		go dw.Run(ctx)
+		log.Printf("[aidedup] semantic-dedup worker started")
+	}
+
+	// Pro email digest worker. Sends daily / weekly summaries to opted-in
+	// users via Resend. Needs both AI provider and Resend API key.
+	if cfg.Hosted.Enabled && aiClient != nil && cfg.Hosted.ResendAPIKey != "" {
+		siteBase := strings.TrimSuffix(cfg.Hosted.OAuthRedirectURL, "/auth/callback")
+		if siteBase == "" {
+			siteBase = "https://omnomfeeds.com"
+		}
+		mw := digestmail.New(db, aiClient, cfg.Hosted.ResendAPIKey, siteBase)
+		srv.SetDigestWorker(mw)
+		go mw.Run(ctx)
+		log.Printf("[digestmail] email digest worker started")
+	}
+
+	// Patch Tuesday brief generator. Hosted mode + AI required; runs
+	// hourly and only does work on calendar-pinned patch days (MS / Adobe
+	// 2nd Tue, Oracle CPU Jan/Apr/Jul/Oct 3rd Tue).
+	if cfg.Hosted.Enabled && aiClient != nil {
+		pw := patchtuesday.New(db, aiClient)
+		go pw.Run(ctx)
+		log.Printf("[patchtuesday] brief worker started")
+	}
+
+	// AI triage worker: generates inline "what? so what?" one-liners
+	// for high-score articles. Hosted mode + AI required. Per-article
+	// cost is ~$0.0005; cache is forever, cost bounded by article
+	// volume not user count.
+	if cfg.Hosted.Enabled && aiClient != nil {
+		tw := aitriage.New(db, aiClient)
+		go tw.Run(ctx)
+		log.Printf("[aitriage] triage worker started")
+	}
 
 	go func() {
 		ticker := time.NewTicker(cfg.PollInterval())

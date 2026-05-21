@@ -1,0 +1,12 @@
+User-agent: *
+Allow: /
+Allow: /pro
+Allow: /live
+Allow: /privacy
+Allow: /terms
+Disallow: /admin
+Disallow: /api/
+Disallow: /login.html
+Disallow: /app
+
+Sitemap: https://omnomfeeds.com/sitemap.xml

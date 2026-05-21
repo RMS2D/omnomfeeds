@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 )
 
@@ -46,16 +47,36 @@ type AIConfig struct {
 // env vars, never from config.json, since they're shared infrastructure
 // secrets not per-user settings.
 type HostedConfig struct {
-	Enabled            bool
-	OAuthRedirectURL   string
-	GoogleClientID     string
-	GoogleClientSecret string
-	SessionSecret      string
-	StripeSecretKey    string
+	Enabled             bool
+	OAuthRedirectURL    string
+	GoogleClientID      string
+	GoogleClientSecret  string
+	SessionSecret       string
+	StripeSecretKey     string
 	StripeWebhookSecret string
-	StripePriceID      string
-	AnthropicAPIKey    string
-	ResendAPIKey       string
+	StripePriceID       string
+	AnthropicAPIKey     string
+	ResendAPIKey        string
+	// AdminEmails is the lowercased list of users who can edit the global
+	// config surfaces (API keys, sources, watched accounts). Populated from
+	// the ADMIN_EMAILS env var (comma-separated). Empty list = no admins;
+	// global config is effectively locked from the UI.
+	AdminEmails []string
+}
+
+// IsAdmin reports whether email is in the configured admin list.
+// Case-insensitive. Always false when AdminEmails is empty.
+func (h HostedConfig) IsAdmin(email string) bool {
+	if email == "" || len(h.AdminEmails) == 0 {
+		return false
+	}
+	e := strings.ToLower(strings.TrimSpace(email))
+	for _, a := range h.AdminEmails {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
 
 type Config struct {
@@ -134,7 +155,25 @@ func loadHostedFromEnv() HostedConfig {
 		StripePriceID:       os.Getenv("STRIPE_PRO_PRICE_ID"),
 		AnthropicAPIKey:     os.Getenv("ANTHROPIC_API_KEY"),
 		ResendAPIKey:        os.Getenv("RESEND_API_KEY"),
+		AdminEmails:         parseAdminEmails(os.Getenv("ADMIN_EMAILS")),
 	}
+}
+
+// parseAdminEmails splits a comma-separated list of admin emails into a
+// lowercased + trimmed slice. Empty / whitespace-only entries are dropped.
+func parseAdminEmails(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		e := strings.ToLower(strings.TrimSpace(p))
+		if e != "" {
+			out = append(out, e)
+		}
+	}
+	return out
 }
 
 func (c *Config) Save() error {

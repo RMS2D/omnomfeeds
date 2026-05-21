@@ -14,6 +14,11 @@ type Article struct {
 	PublishedAt time.Time `json:"published_at"`
 	FetchedAt   time.Time `json:"fetched_at"`
 	Read        bool      `json:"read"`
+	// Triage is the AI-generated "what? so what?" one-liner. Populated
+	// per-request for Pro users from the cached cache (article_ai_triage
+	// table). Empty for non-Pro users and for articles that haven't been
+	// triaged yet.
+	Triage string `json:"triage,omitempty"`
 }
 
 type SourceStatus struct {

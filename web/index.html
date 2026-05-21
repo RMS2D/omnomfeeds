@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>oM noM Security Feeds</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
@@ -103,6 +104,17 @@ body {
   overflow: visible;
 }
 .worm-logo .worm-seg, .worm-logo .worm-head { fill: var(--accent); }
+
+/* Feed-temperature: tint + animation speed of the brand worm reflects how
+   spicy the last 24h of articles look. Set by updateHud() based on KEV
+   tag count. Free for all - sets the mood for the whole app at a glance. */
+.worm-logo.temp-warm .worm-seg, .worm-logo.temp-warm .worm-head { fill: var(--accent-amber); }
+.worm-logo.temp-warm .worm-head { filter: drop-shadow(0 0 5px rgba(255,181,71,0.55)); animation: worm-bob 1.6s ease-in-out infinite; }
+.worm-logo.temp-warm .worm-mouth { animation: worm-chomp 2.4s ease-in-out infinite; }
+.worm-logo.temp-hot .worm-seg, .worm-logo.temp-hot .worm-head { fill: var(--score-crit); }
+.worm-logo.temp-hot .worm-head { filter: drop-shadow(0 0 6px rgba(255,77,106,0.6)); animation: worm-bob 0.9s ease-in-out infinite; }
+.worm-logo.temp-hot .worm-mouth { animation: worm-chomp 1.5s ease-in-out infinite; }
+.worm-logo.temp-hot .worm-eye-glint { fill: var(--accent-amber); }
 .worm-logo .worm-seg.s3 { opacity: 0.35; }
 .worm-logo .worm-seg.s2 { opacity: 0.6; }
 .worm-logo .worm-seg.s1 { opacity: 0.85; }
@@ -190,6 +202,37 @@ body {
   80%      { transform: translateX(2px); }
 }
 
+/* ── Worm mood (persistent, polled from /api/worm/mood) ──────────────
+   Layered onto the SVG sprite via body[data-worm-mood]. Distinct from
+   the one-shot .kev-alert flash and the temp-warm/temp-hot climate
+   styles - this one reflects 24h KEV velocity continuously.
+*/
+body[data-worm-mood="hibernating"] .worm-logo .worm-seg,
+body[data-worm-mood="hibernating"] .worm-logo .worm-head {
+  fill: #5a8a72;
+}
+body[data-worm-mood="hibernating"] .worm-logo .worm-head {
+  filter: drop-shadow(0 0 3px rgba(90,138,114,0.25));
+  animation: worm-bob 4s ease-in-out infinite;
+}
+body[data-worm-mood="hibernating"] .worm-logo {
+  opacity: 0.7;
+}
+body[data-worm-mood="frenzy"] .worm-logo .worm-seg,
+body[data-worm-mood="frenzy"] .worm-logo .worm-head {
+  fill: var(--accent-amber);
+}
+body[data-worm-mood="frenzy"] .worm-logo .worm-head {
+  filter: drop-shadow(0 0 7px rgba(255,181,71,0.7)) drop-shadow(0 0 14px rgba(255,110,110,0.3));
+  animation: worm-bob 0.7s ease-in-out infinite;
+}
+body[data-worm-mood="frenzy"] .worm-logo .worm-mouth {
+  animation: worm-chomp 1.2s ease-in-out infinite;
+}
+body[data-worm-mood="frenzy"] .worm-logo .worm-eye-glint {
+  fill: var(--accent-amber);
+}
+
 /* Easter egg chomp: one-shot mouth flare triggered by typing "nom". */
 .worm-logo.chomp-shot .worm-mouth { animation: worm-chomp-shot 0.55s ease-out; }
 @keyframes worm-chomp-shot {
@@ -210,16 +253,19 @@ body {
   position: relative;
 }
 .rd-loading-worm {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  color: var(--accent);
-  text-shadow: 0 0 6px rgba(0,229,160,0.4);
-  white-space: pre;
-  margin: 10px 0 4px 0;
-  letter-spacing: 0.5px;
+  width: 64px; height: 50px;
+  margin: 10px auto 10px;
+  display: block;
+  filter: drop-shadow(0 0 7px rgba(0,229,160,0.45));
   animation: rd-worm-crawl 3.2s ease-in-out infinite;
-  display: inline-block;
 }
+.rd-loading-worm .seg, .rd-loading-worm .head { fill: var(--accent); }
+.rd-loading-worm .seg.s3 { opacity: 0.35; }
+.rd-loading-worm .seg.s2 { opacity: 0.6; }
+.rd-loading-worm .seg.s1 { opacity: 0.85; }
+.rd-loading-worm .eye   { fill: var(--bg); }
+.rd-loading-worm .glint { fill: var(--accent-cyan); }
+.rd-loading-worm .mouth { fill: var(--bg); }
 @keyframes rd-worm-crawl {
   0%   { transform: translateX(-40px); }
   45%  { transform: translateX(40px); }
@@ -1020,6 +1066,42 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   letter-spacing: 0.3px;
   line-height: 1.6;
 }
+.digest-body .digest-hint-msg strong {
+  color: var(--text-bright);
+  font-weight: 600;
+}
+.digest-body .digest-hint-msg-sub {
+  display: block;
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.75;
+  letter-spacing: 0.3px;
+}
+.digest-body .digest-cta,
+.digest-body .digest-cta-btn {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  padding: 8px 16px;
+  border-radius: 3px;
+  background: rgba(255,181,71,0.10);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  text-shadow: 0 0 6px rgba(255,181,71,0.3);
+  text-decoration: none;
+  cursor: pointer;
+  margin-top: 4px;
+}
+.digest-body .digest-cta:hover,
+.digest-body .digest-cta-btn:hover {
+  background: rgba(255,181,71,0.2);
+  color: var(--bg);
+  background-color: var(--accent-amber);
+  border-color: var(--accent-amber);
+}
 .digest-body code,
 .digest-body .digest-hint-msg code {
   color: var(--accent-cyan);
@@ -1640,6 +1722,230 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 /* Tag chips dropped from list rows - they live in the reader now. */
 .item .tagline { display: none; }
 
+/* AI triage one-liner. Shown inline under the title for Pro users
+   when the server has a cached triage string. Subtle italic in a
+   slightly dim colour - it's context, not the main title.
+   Uses padding (not margin) so the row's selected/hover background
+   covers the indent area, plus a right padding so the text doesn't
+   touch the meta column. Responsive: indent collapses on narrow. */
+.item-triage {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-dim);
+  padding: 2px 14px 4px 56px;
+  line-height: 1.4;
+  letter-spacing: 0.1px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  opacity: 0.78;
+}
+.item.selected .item-triage { opacity: 1; color: var(--text); }
+.item.has-triage .item-triage::before {
+  content: '✦  ';
+  color: var(--accent-cyan);
+  font-style: normal;
+  font-weight: 700;
+}
+/* On narrow viewports the title column isn't 56px in, so the indent
+   collapses to a small consistent inset. Below mobile breakpoint we
+   drop the triage entirely so the row stays compact. */
+@media (max-width: 720px) {
+  .item-triage { padding-left: 14px; }
+}
+@media (max-width: 480px) {
+  .item-triage { display: none; }
+}
+
+/* Patch Tuesday brief banner. Same shape as whats-new but cyan-tinted
+   (treat as "calendar event arrived" not "amber catch-up"). */
+.patch-brief {
+  background: linear-gradient(180deg, rgba(86,226,255,0.05), rgba(86,226,255,0.02));
+  border: 1px solid rgba(86,226,255,0.32);
+  border-left: 3px solid var(--accent-cyan);
+  border-radius: 3px;
+  margin: 10px 12px 8px;
+  padding: 12px 14px 14px;
+}
+.patch-brief-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(86,226,255,0.25);
+}
+.patch-brief-icon {
+  font-size: 22px;
+  filter: drop-shadow(0 0 6px rgba(86,226,255,0.5));
+  flex-shrink: 0;
+}
+.patch-brief-titles { flex: 1; min-width: 0; }
+.patch-brief-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-bright);
+  text-transform: lowercase;
+  letter-spacing: 0.4px;
+}
+.patch-brief-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+.patch-brief-dismiss {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  width: 24px; height: 24px;
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.14s, border-color 0.14s, background 0.14s;
+}
+.patch-brief-dismiss:hover {
+  color: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  background: rgba(86,226,255,0.08);
+}
+.patch-brief-body {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+
+/* "What changed while you were gone" banner. Top of the article list,
+   only visible for Pro users who haven't dismissed in the last 24h. */
+.whats-new {
+  background: linear-gradient(180deg, rgba(255,181,71,0.06), rgba(255,181,71,0.02));
+  border: 1px solid rgba(255,181,71,0.32);
+  border-left: 3px solid var(--accent-amber);
+  border-radius: 3px;
+  margin: 10px 12px 8px;
+  padding: 12px 14px 14px;
+  position: relative;
+}
+.whats-new-head {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255,181,71,0.25);
+}
+.whats-new-worm {
+  width: 36px; height: 28px; flex-shrink: 0;
+  filter: drop-shadow(0 0 6px rgba(255,181,71,0.45));
+  animation: worm-bob 2.4s ease-in-out infinite;
+}
+.whats-new-worm .seg, .whats-new-worm .head { fill: var(--accent-amber); }
+.whats-new-worm .seg.s3 { opacity: 0.4; }
+.whats-new-worm .seg.s2 { opacity: 0.65; }
+.whats-new-worm .seg.s1 { opacity: 0.85; }
+.whats-new-worm .eye   { fill: var(--bg); }
+.whats-new-worm .glint { fill: #ffd9a3; }
+.whats-new-worm .mouth { fill: var(--bg); }
+.whats-new-titles { flex: 1; min-width: 0; }
+.whats-new-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--text-bright);
+  text-transform: lowercase;
+  letter-spacing: 0.4px;
+}
+.whats-new-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+  margin-top: 2px;
+}
+.whats-new-dismiss {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  width: 24px; height: 24px;
+  border-radius: 2px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.14s, border-color 0.14s, background 0.14s;
+}
+.whats-new-dismiss:hover {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber);
+  background: rgba(255,181,71,0.08);
+}
+.whats-new-body {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+  white-space: pre-wrap;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+.whats-new-body.loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Inline "pre-KEV velocity" pill: article touches a CVE that has crossed
+   the multi-source threshold but isn't on CISA KEV yet. Purple so it
+   reads as "intel signal" rather than "alarm" (red is reserved for KEV). */
+.prekev-inline {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  color: #c1abff;
+  background: rgba(124,77,255,0.14);
+  border: 1px solid rgba(124,77,255,0.55);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-right: 6px;
+  text-shadow: 0 0 4px rgba(124,77,255,0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+  animation: prekev-pulse 3s ease-in-out infinite;
+}
+@keyframes prekev-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124,77,255,0.0); }
+  50%      { box-shadow: 0 0 0 2px rgba(124,77,255,0.18); }
+}
+
+/* Inline "your stack" pill rendered next to the article title when the
+   server-side asset-profile matcher found one of the user's keywords. */
+.yours-inline {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent-amber);
+  background: rgba(255,181,71,0.12);
+  border: 1px solid rgba(255,181,71,0.5);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-right: 6px;
+  text-shadow: 0 0 4px rgba(255,181,71,0.3);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Subtle amber left-edge accent on rows that match the user's stack. */
+.item.has-stack-match {
+  box-shadow: inset 2px 0 0 var(--accent-amber);
+}
+.item.has-stack-match .title { color: var(--text-bright); }
+
 /* .tui-preview is dead - replaced by .tui-reader. Hide any orphaned uses. */
 .tui-preview { display: none !important; }
 
@@ -1774,6 +2080,51 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 /* YARA Tags (Green) */
 .tag.yara { background: rgba(0, 229, 160, 0.30); color: #6bf5c8; border-color: rgba(0, 229, 160, 0.55); font-weight: 700; }
 
+/* Threat actor / APT (deep magenta-purple): article references a known
+   nation-state group, ransomware crew, or e-crime gang. Click pops an
+   Insight Card with the curated metadata. */
+.tag.actor {
+  background: rgba(198, 80, 220, 0.18);
+  color: #e6b3f5;
+  border: 1px solid rgba(198, 80, 220, 0.55);
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.tag.actor:hover {
+  background: rgba(198, 80, 220, 0.32);
+  color: #fff;
+  border-color: #e6b3f5;
+}
+/* Malware family (deep red-amber): named family seen in the article. */
+.tag.malware {
+  background: rgba(255, 110, 70, 0.18);
+  color: #ffc8a8;
+  border: 1px solid rgba(255, 110, 70, 0.55);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+}
+.tag.malware:hover {
+  background: rgba(255, 110, 70, 0.32);
+  color: #fff;
+  border-color: #ffc8a8;
+}
+
+/* Your-stack match (amber): article hit a keyword from the user's asset profile. */
+.tag.yours {
+  background: rgba(255,181,71,0.16);
+  color: var(--accent-amber);
+  border: 1px solid rgba(255,181,71,0.55);
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-shadow: 0 0 4px rgba(255,181,71,0.35);
+}
+.tag.yours::before { content: '🎯 '; font-size: 9px; }
+
 button {
   font-family: 'IBM Plex Sans', sans-serif;
   font-size: 13px;
@@ -1846,6 +2197,128 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   flex-direction: column;
   gap: 8px;
 }
+
+/* First-visit tutorial overlay. Keeps the same .modal backdrop / show
+   pattern as the other modals; .tut-content overrides max-width and
+   adds an internal scroll for the longer content. */
+.modal-content.tut-content {
+  max-width: 560px;
+  max-height: 88vh;
+  padding: 22px 26px 18px;
+}
+.tut-head {
+  display: flex; align-items: center; gap: 14px;
+  padding-bottom: 14px; margin-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.tut-worm {
+  width: 44px; height: 34px; flex-shrink: 0;
+  filter: drop-shadow(0 0 8px rgba(0,229,160,0.5));
+  animation: worm-bob 2.2s ease-in-out infinite;
+}
+.tut-worm .seg, .tut-worm .head { fill: var(--accent); }
+.tut-worm .seg.s3 { opacity: 0.35; }
+.tut-worm .seg.s2 { opacity: 0.6; }
+.tut-worm .seg.s1 { opacity: 0.85; }
+.tut-worm .eye   { fill: var(--bg); }
+.tut-worm .glint { fill: var(--accent-cyan); }
+.tut-worm .mouth { fill: var(--bg); }
+.tut-greeting {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px; font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.3px;
+}
+.tut-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim); letter-spacing: 0.4px;
+  margin-top: 2px;
+}
+.tut-section { margin-bottom: 16px; }
+.tut-section:last-of-type { margin-bottom: 8px; }
+.tut-section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-cyan);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.tut-section-title kbd {
+  text-transform: none;
+  letter-spacing: 0;
+}
+.tut-body {
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--text);
+  margin: 0;
+}
+.tut-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  background: rgba(86,226,255,0.10);
+  padding: 1px 5px; border-radius: 2px;
+  color: var(--accent-cyan);
+}
+.tut-keys {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  row-gap: 6px;
+  column-gap: 14px;
+  align-items: center;
+}
+.tut-key { display: inline-flex; gap: 3px; }
+.tut-key-desc {
+  font-size: 12px;
+  color: var(--text);
+}
+.tut-content kbd {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px; font-weight: 700;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  color: var(--text-bright);
+  padding: 1px 6px; min-width: 18px;
+  border-radius: 3px;
+  text-align: center;
+  display: inline-block;
+}
+.tut-foot {
+  display: flex; gap: 10px; align-items: center;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+.tut-btn-primary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 9px 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  letter-spacing: 0.4px;
+  text-transform: lowercase;
+  transition: background 0.14s ease, box-shadow 0.14s ease;
+}
+.tut-btn-primary:hover {
+  background: #00f0a8;
+  box-shadow: 0 0 14px rgba(0,229,160,0.45);
+}
+.tut-btn-secondary {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  background: transparent;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
+.tut-btn-secondary:hover { color: var(--accent-cyan); }
 .modal-btn-group button {
   text-align: left;
   padding: 8px 12px;
@@ -2125,6 +2598,169 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .boot-banner .accent { color: var(--accent-cyan); }
 .boot-banner .dim    { color: var(--text-dim); }
 
+/* New SVG boot banner. Replaces the ASCII art with a centered tableau:
+   two worms facing each other, bouncing "om nom nom" between them,
+   then the brand title + tagline. All animation lives in CSS so the
+   DOM doesn't need rebuilding per frame. */
+.boot-banner-svg {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 28px;
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.boot-banner-svg.visible { opacity: 1; transform: translateY(0); }
+.boot-worms {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+.boot-worm {
+  width: 80px; height: 60px;
+  filter: drop-shadow(0 0 10px rgba(0,229,160,0.55));
+  animation: worm-inline-bob 1.4s ease-in-out infinite;
+}
+.boot-worm.boot-worm-r {
+  /* Mirror so the right worm faces the brand text. The two of them
+     bookend the "om nom nom" syllables, like they're sharing a meal. */
+  transform: scaleX(-1);
+  animation-delay: -0.7s; /* offset so the two worms don't bob in sync */
+}
+.boot-worm .seg, .boot-worm .head { fill: var(--accent); }
+.boot-worm .seg.s3 { opacity: 0.35; }
+.boot-worm .seg.s2 { opacity: 0.6; }
+.boot-worm .seg.s1 { opacity: 0.85; }
+.boot-worm .eye {
+  fill: var(--bg);
+  transform-origin: 25px 11px;
+  animation: worm-inline-blink 3.4s ease-in-out infinite;
+}
+.boot-worm.boot-worm-r .eye { animation-delay: -1.7s; }
+.boot-worm .glint { fill: var(--accent-cyan); }
+.boot-worm .mouth {
+  fill: var(--bg);
+  transform-origin: 28px 14.5px;
+  animation: worm-inline-chomp 1.6s ease-in-out infinite;
+}
+.boot-worm.boot-worm-r .mouth { animation-delay: -0.8s; }
+.boot-noms {
+  display: flex; gap: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--accent);
+  text-shadow: 0 0 12px rgba(0,229,160,0.5);
+  letter-spacing: 1.4px;
+}
+.boot-noms span {
+  display: inline-block;
+  animation: boot-nom-bounce 1.6s ease-in-out infinite;
+}
+.boot-noms span:nth-child(1) { animation-delay: 0s; }
+.boot-noms span:nth-child(2) { animation-delay: 0.2s; }
+.boot-noms span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes boot-nom-bounce {
+  0%, 60%, 100% { transform: translateY(0) scale(1); opacity: 0.95; }
+  18%, 30%      { transform: translateY(-7px) scale(1.12); opacity: 1; }
+}
+.boot-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 5.5px;
+  text-transform: uppercase;
+  text-align: center;
+  text-shadow: 0 0 6px rgba(230,236,245,0.25);
+}
+.boot-title .accent {
+  color: var(--accent);
+  text-shadow: 0 0 10px rgba(0,229,160,0.45);
+  letter-spacing: 0;
+  text-transform: none;
+  margin-right: 4px;
+}
+.boot-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.4px;
+  font-style: italic;
+}
+/* Drifting crumb particles between the two worms - the food the worms
+   are sharing. Faint, slow drift, mostly subliminal. */
+.boot-crumbs {
+  position: relative;
+  width: 0; height: 0;
+  pointer-events: none;
+}
+.boot-crumbs .crumb {
+  position: absolute;
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  background: var(--accent-amber);
+  box-shadow: 0 0 5px rgba(255,181,71,0.7);
+  opacity: 0;
+  animation: boot-crumb-drift 2.6s ease-in-out infinite;
+}
+.boot-crumbs .crumb.c1 { left: -8px; top: -22px; animation-delay: 0s; }
+.boot-crumbs .crumb.c2 { left: -4px; top: -28px; animation-delay: 0.6s; }
+.boot-crumbs .crumb.c3 { left: 6px;  top: -25px; animation-delay: 1.2s; }
+@keyframes boot-crumb-drift {
+  0%   { opacity: 0; transform: translateY(0); }
+  20%  { opacity: 1; }
+  80%  { opacity: 0.4; }
+  100% { opacity: 0; transform: translateY(-18px); }
+}
+
+/* Boot terminal log. Replaces the old feast animation - cleaner
+   terminal-vibe status sequence under the SVG banner. */
+.boot-log {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 8px;
+  min-height: 140px;       /* prevent layout pop as lines append */
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+}
+.boot-log-line {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  animation: boot-log-in 0.32s ease-out backwards;
+  letter-spacing: 0.2px;
+}
+.boot-log-line .ts {
+  color: var(--text-dim);
+  opacity: 0.65;
+  font-size: 10.5px;
+  width: 60px;
+  flex-shrink: 0;
+}
+.boot-log-line .lvl {
+  width: 38px;
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+}
+.boot-log-line .msg { color: var(--text); }
+.boot-log-line.lvl-ok   .lvl { color: var(--accent); }
+.boot-log-line.lvl-info .lvl { color: var(--accent-cyan); }
+.boot-log-line.lvl-warn .lvl { color: var(--accent-amber); }
+.boot-log-line.lvl-crit .lvl { color: var(--score-crit); }
+@keyframes boot-log-in {
+  0%   { opacity: 0; transform: translateX(-6px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+
+/* (legacy feast styles preserved below for reference / inline-worm reuse) */
+
 /* Animated worm feast: a worm crawls right, eating threats in its path.
  * Layered scene: particle row (above worm), feast row, progress meter,
  * status line. Severity colors highlight what's about to get chomped. */
@@ -2157,6 +2793,45 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .feast-line .trail { color: var(--text-dim); opacity: 0.55; }
 .feast-line .worm  { color: var(--accent); font-weight: 700; }
+/* Inline SVG worm in the boot-feast animation. Sized to occupy ~6
+   monospace chars of width so food-word column positions downstream
+   stay aligned with the original ASCII layout. Continuous CSS
+   animations (bob / eye blink / mouth chomp) give it ambient life
+   while the JS x cursor advances. */
+.feast-line .worm-inline-sprite {
+  width: 38px; height: 24px;
+  display: inline-block;
+  vertical-align: -7px;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.4));
+  animation: worm-inline-bob 1.4s ease-in-out infinite;
+}
+.feast-line .worm-inline-sprite .seg, .feast-line .worm-inline-sprite .head { fill: var(--accent); }
+.feast-line .worm-inline-sprite .seg.s3 { opacity: 0.35; }
+.feast-line .worm-inline-sprite .seg.s2 { opacity: 0.6; }
+.feast-line .worm-inline-sprite .seg.s1 { opacity: 0.85; }
+.feast-line .worm-inline-sprite .eye {
+  fill: var(--bg);
+  transform-origin: 25px 11px;
+  animation: worm-inline-blink 3.4s ease-in-out infinite;
+}
+.feast-line .worm-inline-sprite .glint { fill: var(--accent-cyan); }
+.feast-line .worm-inline-sprite .mouth {
+  fill: var(--bg);
+  transform-origin: 28px 14.5px;
+  animation: worm-inline-chomp 1.6s ease-in-out infinite;
+}
+@keyframes worm-inline-bob {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  50%      { transform: translateY(-1.5px) rotate(-2deg); }
+}
+@keyframes worm-inline-blink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  95%, 98%      { transform: scaleY(0.1); }
+}
+@keyframes worm-inline-chomp {
+  0%, 100% { transform: scaleY(0.5); }
+  45%, 55% { transform: scaleY(1.6); }
+}
 .feast-line .t-crit { color: var(--score-crit); text-shadow: 0 0 5px rgba(255,77,106,0.45); font-weight: 700; }
 .feast-line .t-high { color: #ff9940; text-shadow: 0 0 4px rgba(255,153,64,0.35); font-weight: 600; }
 .feast-line .t-med  { color: var(--accent-cyan); font-weight: 500; }
@@ -2386,15 +3061,781 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border: 0;
   border-bottom: 2px solid transparent;
   color: var(--text-dim);
-  padding: 8px 14px;
+  padding: 8px 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  cursor: pointer;
+  border-radius: 0;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+/* Admin-only surfaces stay invisible until /api/me confirms admin status.
+   The body.cfg-admin class is set by applyAdminVisibility(true). This
+   prevents the brief "render then hide" flash non-admin users used to
+   see when the modal opened with admin tabs in the DOM. */
+body:not(.cfg-admin) [data-admin-only="true"] {
+  display: none !important;
+}
+.cfg-tab-btn:hover { color: var(--text); background: transparent; }
+.cfg-tab-pro {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 7px;
+  letter-spacing: 0.9px;
+  background: rgba(255,181,71,0.12);
+  border: 1px solid rgba(255,181,71,0.5);
+  color: var(--accent-amber);
+  padding: 1px 3px;
+  border-radius: 2px;
+  margin-left: 3px;
+  vertical-align: 2px;
+}
+
+/* --- Pro alerts tab --- */
+.cfg-alert-form {
+  display: flex;
+  flex-direction: column;
+}
+.cfg-alert-form .cfg-input {
+  margin-bottom: 0;
+}
+.cfg-alert-form select.cfg-input {
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--text-dim) 50%),
+                    linear-gradient(135deg, var(--text-dim) 50%, transparent 50%);
+  background-position: calc(100% - 14px) calc(50% - 2px),
+                       calc(100% - 9px) calc(50% - 2px);
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+  padding-right: 30px;
+}
+.cfg-alert-row {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: start;
+}
+.cfg-alert-row.disabled { opacity: 0.55; }
+.cfg-alert-row .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.55;
+}
+.cfg-alert-row .meta .kind {
+  display: inline-block;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  background: rgba(86,226,255,0.08);
+  border: 1px solid rgba(86,226,255,0.3);
+  color: var(--accent-cyan);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-right: 6px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+.cfg-alert-row .meta .kind.kev { background: rgba(255,77,106,0.10); border-color: rgba(255,77,106,0.4); color: var(--score-crit); }
+.cfg-alert-row .meta .pat   { color: var(--text-bright); font-weight: 600; }
+.cfg-alert-row .meta .url   { color: var(--text-dim); word-break: break-all; font-size: 10px; opacity: 0.85; }
+.cfg-alert-row .meta .last  { color: var(--accent); font-size: 10px; }
+.cfg-alert-row .acts {
+  display: flex;
+  gap: 4px;
+  flex-direction: column;
+  align-items: stretch;
+}
+.cfg-alert-row .acts button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cfg-alert-row .acts button:hover { color: var(--accent); border-color: var(--accent); }
+.cfg-alert-row .acts button.rm:hover { color: var(--score-crit); border-color: var(--score-crit); }
+.btn-pro-upgrade {
+  background: rgba(255,181,71,0.10);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
+  padding: 9px 16px;
+  border-radius: 3px;
   cursor: pointer;
-  border-radius: 0;
+  text-shadow: 0 0 6px rgba(255,181,71,0.3);
+  text-transform: uppercase;
 }
-.cfg-tab-btn:hover { color: var(--text); background: transparent; }
+.btn-pro-upgrade:hover {
+  background-color: var(--accent-amber);
+  color: var(--bg);
+  border-color: var(--accent-amber);
+}
+
+/* --- Pro tokens tab --- */
+.cfg-token-row {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+.cfg-token-row .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.cfg-token-row .meta .name {
+  color: var(--text-bright);
+  font-weight: 600;
+  font-size: 12px;
+}
+.cfg-token-row .meta .prefix {
+  color: var(--accent-cyan);
+  font-size: 10px;
+  margin-left: 8px;
+}
+.cfg-token-row .meta .when {
+  display: block;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.cfg-token-row .acts button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cfg-token-row .acts button:hover { color: var(--score-crit); border-color: var(--score-crit); }
+
+.cfg-token-reveal {
+  margin-top: 14px;
+  padding: 14px;
+  border: 1px solid var(--accent-amber);
+  border-radius: 3px;
+  background: rgba(255,181,71,0.06);
+}
+.cfg-token-reveal-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-amber);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.cfg-token-reveal-head span {
+  font-size: 9px;
+  color: var(--text-dim);
+  text-transform: none;
+  letter-spacing: 0.3px;
+}
+.cfg-token-reveal-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--text-bright);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  word-break: break-all;
+  line-height: 1.4;
+  user-select: all;
+}
+
+/* --- CVE deep-dive modal --- */
+.cve-panel { width: 720px; }
+.cve-modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 24px 22px;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+}
+.cve-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.cve-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+}
+.cve-card .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.cve-card .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -0.3px;
+}
+.cve-card.crit  .value { color: var(--score-crit); }
+.cve-card.high  .value { color: #ff9940; }
+.cve-card.med   .value { color: #ffd000; }
+.cve-card.low   .value { color: var(--accent); }
+.cve-card .sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+}
+.cve-section-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 16px 0 6px;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.cve-consensus {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin: 4px 0 8px;
+}
+
+/* Per-CVE timeline rows. Vertical stack of milestones with icon +
+   date + source + linked title. Left border tint indicates milestone
+   kind (mention / advisory / PoC / latest). */
+.cve-timeline {
+  display: flex; flex-direction: column;
+  gap: 4px;
+  margin: 4px 0 8px;
+}
+.cve-timeline-row {
+  display: grid;
+  grid-template-columns: 22px 90px 1fr;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--text-dim);
+  border-radius: 2px;
+  text-decoration: none;
+  transition: border-color 0.14s, transform 0.14s;
+}
+/* On narrow viewports the 3-column grid squeezes the title too much.
+   Collapse to a 2-column layout: icon stays left, everything else
+   stacks vertically. */
+@media (max-width: 640px) {
+  .cve-timeline-row {
+    grid-template-columns: 22px 1fr;
+    gap: 6px 10px;
+  }
+  .cve-timeline-row .tl-date {
+    grid-column: 2;
+  }
+  .cve-timeline-row .tl-body {
+    grid-column: 2;
+  }
+}
+.cve-timeline-row:hover {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  transform: translateX(2px);
+}
+.cve-timeline-row.tint-med    { border-left-color: var(--accent); }
+.cve-timeline-row.tint-cyan   { border-left-color: var(--accent-cyan); }
+.cve-timeline-row.tint-crit   { border-left-color: var(--score-crit); }
+.cve-timeline-row.tint-dim    { border-left-color: var(--text-dim); opacity: 0.85; }
+.cve-timeline-row .tl-icon {
+  font-size: 13px;
+  text-align: center;
+  filter: drop-shadow(0 0 4px rgba(0,229,160,0.3));
+}
+.cve-timeline-row .tl-date {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.cve-timeline-row .tl-body {
+  display: flex; flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cve-timeline-row .tl-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-cyan);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.cve-timeline-row .tl-source {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.cve-timeline-row .tl-title {
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.cve-consensus-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: 2px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text);
+  text-decoration: none;
+  transition: border-color 0.14s, transform 0.14s;
+  max-width: 260px;
+}
+.cve-consensus-pill:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+.cve-consensus-pill .src {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 180px;
+}
+.cve-consensus-pill .age {
+  color: var(--text-dim); font-size: 9px;
+  padding-left: 4px; border-left: 1px solid var(--border);
+  margin-left: 2px;
+}
+.cve-consensus-pill .n {
+  color: var(--accent-cyan); font-weight: 700;
+}
+.cve-consensus-pill.fresh {
+  border-color: rgba(86,226,255,0.55);
+  background: rgba(86,226,255,0.05);
+}
+.cve-consensus-pill.fresh .age { color: var(--accent-cyan); }
+.cve-consensus-pill.stale {
+  opacity: 0.55;
+}
+.cve-section-title .ai-tag {
+  font-size: 9px;
+  letter-spacing: 1px;
+  background: rgba(255,181,71,0.12);
+  border: 1px solid rgba(255,181,71,0.4);
+  color: var(--accent-amber);
+  padding: 1px 6px;
+  border-radius: 2px;
+}
+.cve-desc {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.cve-ai-body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.65;
+  color: var(--text);
+  white-space: pre-wrap;
+  background: rgba(255,181,71,0.05);
+  border-left: 2px solid var(--accent-amber);
+  padding: 10px 14px;
+  border-radius: 0 3px 3px 0;
+}
+.cve-ai-loading {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-amber);
+  letter-spacing: 0.4px;
+}
+.cve-ai-loading::after {
+  content: '_';
+  animation: scan-cursor-blink 0.7s steps(2) infinite;
+}
+.cve-ai-upsell {
+  border: 1px solid var(--accent-amber);
+  background: rgba(255,181,71,0.06);
+  padding: 12px 14px;
+  border-radius: 3px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.cve-ai-upsell strong { color: var(--text-bright); }
+.cve-ai-upsell .ai-cta {
+  display: inline-block;
+  margin-top: 8px;
+  background: rgba(255,181,71,0.12);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  padding: 6px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cve-ai-upsell .ai-cta:hover { background-color: var(--accent-amber); color: var(--bg); }
+.cve-modal-body .cve-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 18px;
+}
+.cve-modal-body .cve-links a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent-cyan);
+  text-decoration: none;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  letter-spacing: 0.3px;
+}
+.cve-modal-body .cve-links a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Momentum modal rows */
+.momentum-table {
+  width: 100%;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.momentum-table th {
+  text-align: left;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.momentum-table td {
+  padding: 7px 6px;
+  border-bottom: 1px solid rgba(42,51,64,0.4);
+  vertical-align: middle;
+}
+.momentum-table tr:hover td { background: rgba(86,226,255,0.04); }
+.momentum-table .tag {
+  color: var(--accent-cyan);
+  font-weight: 600;
+  cursor: pointer;
+}
+.momentum-table .tag:hover { color: var(--accent); }
+.momentum-table .name { color: var(--text-dim); font-size: 11px; }
+.momentum-table .now, .momentum-table .prev {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.momentum-table .delta {
+  text-align: right;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.momentum-table .delta.up   { color: var(--accent); }
+.momentum-table .delta.down { color: var(--score-crit); }
+.momentum-table .delta.huge { color: var(--accent-amber); text-shadow: 0 0 6px rgba(255,181,71,0.4); }
+.momentum-empty {
+  padding: 18px 8px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* Score-distribution sparkline: tiny histogram + median/p90 */
+.score-spark {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 12px 6px;
+  border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+  background: rgba(86,226,255,0.02);
+}
+.score-spark[hidden] { display: none; }
+.score-spark .spark-label { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; flex-shrink: 0; }
+.score-spark .spark-bars {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 14px;
+  padding: 0 2px;
+}
+.score-spark .spark-bar {
+  width: 6px;
+  background: var(--text-dim);
+  border-radius: 1px 1px 0 0;
+  transition: height 0.18s ease;
+}
+.score-spark .spark-bar.b-low  { background: rgba(184, 196, 212, 0.45); }
+.score-spark .spark-bar.b-med  { background: var(--accent); opacity: 0.85; }
+.score-spark .spark-bar.b-high { background: #ff9940; }
+.score-spark .spark-bar.b-crit { background: var(--score-crit); }
+.score-spark .spark-stat { color: var(--text-dim); margin-left: auto; }
+.score-spark .spark-stat strong { color: var(--text-bright); font-weight: 700; }
+
+/* Pro channels: quick-filter chip row above the article list */
+.channels-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,229,160,0.02);
+}
+.channels-strip[hidden] { display: none; }
+.channels-strip .ch-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  margin-right: 4px;
+}
+.channels-strip .ch-chip {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  background: rgba(0,229,160,0.06);
+  border: 1px solid rgba(0,229,160,0.3);
+  border-radius: 2px;
+  padding: 2px 8px;
+  cursor: pointer;
+  letter-spacing: 0.3px;
+}
+.channels-strip .ch-chip:hover {
+  background: rgba(0,229,160,0.18);
+  color: var(--text-bright);
+}
+.channels-strip .ch-chip.active {
+  background-color: var(--accent);
+  color: var(--bg);
+  font-weight: 700;
+}
+.channels-strip .ch-add {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  background: transparent;
+  border: 1px dashed var(--border-hi);
+  padding: 2px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  margin-left: auto;
+}
+.channels-strip .ch-add:hover { color: var(--accent-cyan); border-color: var(--accent-cyan); }
+.cfg-channel-row {
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--bg);
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.cfg-channel-row .name { color: var(--text-bright); font-weight: 600; font-size: 12px; }
+.cfg-channel-row .q    { color: var(--accent-cyan); margin-left: 8px; }
+.cfg-channel-row button {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.cfg-channel-row button:hover { color: var(--score-crit); border-color: var(--score-crit); }
+
+/* Per-article AI explainer (✨ button on reader pane + result slot) */
+.tui-reader .rd-actions button.ai-explain-btn {
+  background: rgba(255,181,71,0.08);
+  border-color: rgba(255,181,71,0.4);
+  color: var(--accent-amber);
+}
+.tui-reader .rd-actions button.ai-explain-btn:hover {
+  background: var(--accent-amber);
+  color: var(--bg);
+  border-color: var(--accent-amber);
+}
+#articleExplainSlot:empty { display: none; }
+.article-explain {
+  margin: 12px 0 6px;
+  padding: 12px 14px;
+  border-left: 2px solid var(--accent-amber);
+  background: rgba(255,181,71,0.05);
+  border-radius: 0 3px 3px 0;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+.article-explain-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--accent-amber);
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.article-explain-head .meta { color: var(--text-dim); font-size: 9px; }
+.article-explain.loading {
+  color: var(--accent-amber);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+}
+.article-explain.upsell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.article-explain.upsell .cta {
+  display: inline-block;
+  margin-top: 8px;
+  background: rgba(255,181,71,0.12);
+  border: 1px solid var(--accent-amber);
+  color: var(--accent-amber);
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.article-explain.upsell .cta:hover { background-color: var(--accent-amber); color: var(--bg); }
+
+/* Score chip is now clickable: cursor + subtle hover ring. */
+.item .score { cursor: pointer; }
+.item .score:hover { box-shadow: 0 0 0 1px var(--accent-cyan); }
+
+/* Score-explainer popover, positioned absolutely on click. */
+.score-explain {
+  position: fixed;
+  z-index: 3000;
+  min-width: 280px;
+  max-width: 360px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 14px rgba(0,229,160,0.10);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text);
+  padding: 12px 14px;
+  animation: hud-boot 0.18s ease-out;
+}
+.score-explain[hidden] { display: none; }
+.score-explain .se-title {
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.score-explain .se-total {
+  font-size: 18px;
+  color: var(--text-bright);
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.5px;
+}
+.score-explain .se-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 0;
+  border-top: 1px solid rgba(42,51,64,0.5);
+  line-height: 1.45;
+}
+.score-explain .se-row:first-of-type { border-top: 0; }
+.score-explain .se-cat {
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+.score-explain .se-cat .matched {
+  color: var(--text-dim);
+  font-size: 10px;
+  margin-top: 2px;
+  display: block;
+  word-break: break-word;
+}
+.score-explain .se-weight {
+  color: var(--accent);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.score-explain .se-weight.kev { color: var(--score-crit); }
+.score-explain .se-foot {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.score-explain .se-foot a { color: var(--accent-cyan); }
 .cfg-tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
@@ -2448,6 +3889,57 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
+}
+/* Anchor-as-button styling for download links in cfg sections. The
+   plain button.primary selector doesn't apply to <a>, so download
+   anchors (which need href + download attr instead of onclick) get
+   their own rule. Three variants: primary (filled accent), secondary
+   (outlined), tertiary (dim outlined). */
+.cfg-dl-btn,
+.cfg-dl-btn-secondary,
+.cfg-dl-btn-tertiary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 7px 12px;
+  border-radius: 3px;
+  text-decoration: none;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.14s, border-color 0.14s, color 0.14s;
+}
+.cfg-dl-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.cfg-dl-btn:hover {
+  background: #00f0a8;
+  color: var(--bg);
+  box-shadow: 0 0 10px rgba(0,229,160,0.4);
+}
+.cfg-dl-btn-secondary {
+  background: transparent;
+  color: var(--text);
+  border-color: var(--border);
+}
+.cfg-dl-btn-secondary:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(86,226,255,0.06);
+}
+.cfg-dl-btn-tertiary {
+  background: transparent;
+  color: var(--text-dim);
+  border-color: var(--border);
+}
+.cfg-dl-btn-tertiary:hover {
+  border-color: var(--text);
+  color: var(--text);
 }
 .cfg-checkbox {
   display: inline-flex;
@@ -2523,6 +4015,18 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: 3px;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
+}
+.cfg-auth-strip button.upgrade {
+  background: rgba(255,181,71,0.10);
+  border-color: var(--accent-amber);
+  color: var(--accent-amber);
+  text-shadow: 0 0 6px rgba(255,181,71,0.25);
+}
+.cfg-auth-strip button.upgrade:hover {
+  background: rgba(255,181,71,0.18);
+  color: var(--bg);
+  background-color: var(--accent-amber);
+  border-color: var(--accent-amber);
 }
 .cfg-auth-strip button:hover {
   color: var(--score-crit);
@@ -2625,6 +4129,17 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
+}
+.cfg-curated-row .watched-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.6px;
+  color: var(--accent);
+  background: rgba(0,229,160,0.10);
+  border: 1px solid rgba(0,229,160,0.35);
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
 }
 .cfg-curated-search {
   flex: 1 1 260px;
@@ -2798,7 +4313,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 <div class="tui">
   <div class="tui-status" id="statusBar">
-    <svg class="logo-svg worm-logo" viewBox="0 0 28 24" xmlns="http://www.w3.org/2000/svg" title="om nom nom">
+    <svg id="wormLogoSvg" class="logo-svg worm-logo" viewBox="0 0 28 24" xmlns="http://www.w3.org/2000/svg" title="om nom nom">
       <!-- tail segments -->
       <circle cx="4"  cy="14" r="2.4" class="worm-seg s3"/>
       <circle cx="8"  cy="13" r="3.0" class="worm-seg s2"/>
@@ -2827,13 +4342,50 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
     <span class="live" id="liveIndicator" title="Auto-refresh on. Press c to configure."><span class="dot"></span>LIVE</span>
   </div>
   <div class="filter-chips" id="filterChips" hidden></div>
+  <!-- Pro channels strip: quick-filter chips for the user's saved
+       searches. Hidden until they have at least one channel. -->
+  <div class="channels-strip" id="channelsStrip" hidden></div>
+  <!-- Score-distribution sparkline: tiny histogram of the current feed's
+       score spread + median/p90 stat. Free for everyone, updates with the
+       article list. -->
+  <div class="score-spark" id="scoreSpark" hidden></div>
   <div class="tui-main" id="tuiMain">
     <div class="list-wrap">
+      <!-- Patch Tuesday brief banner: shown when /api/briefs/patch
+           returns a brief for a vendor the user toggled on and hasn't
+           dismissed since generation. -->
+      <div id="patchBriefBanner" class="patch-brief" hidden>
+        <div class="patch-brief-head">
+          <span class="patch-brief-icon">🛠</span>
+          <div class="patch-brief-titles">
+            <div class="patch-brief-title" id="patchBriefTitle">patch brief</div>
+            <div class="patch-brief-sub" id="patchBriefSub">vendor · date</div>
+          </div>
+          <button class="patch-brief-dismiss" type="button" onclick="dismissPatchBrief()" title="hide this brief">×</button>
+        </div>
+        <div class="patch-brief-body" id="patchBriefBody"></div>
+      </div>
+
+      <!-- "What changed while you were gone" banner: shown when GET
+           /api/me/whats-new returns a summary (Pro user, >24h since
+           dismiss). Dismiss button POSTs to bump the timestamp and
+           collapse the banner. -->
+      <div id="whatsNewBanner" class="whats-new" hidden>
+        <div class="whats-new-head">
+          <svg class="whats-new-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
+          <div class="whats-new-titles">
+            <div class="whats-new-title">while you were gone</div>
+            <div class="whats-new-sub" id="whatsNewSub">since ...</div>
+          </div>
+          <button class="whats-new-dismiss" type="button" onclick="dismissWhatsNew()" title="hide for 24h">×</button>
+        </div>
+        <div class="whats-new-body" id="whatsNewBody"></div>
+      </div>
       <div class="tui-list" id="articleList" tabindex="0"></div>
     </div>
     <div class="tui-divider" id="tuiDivider" role="separator" aria-orientation="vertical" title="drag to resize · double-click to reset"></div>
     <div class="tui-reader" id="readerPane">
-      <div class="rd-empty"><div class="rd-loading-worm">~~~_o)</div><br>no feed to nom on. pick one to the left.</div>
+      <div class="rd-empty"><svg class="rd-loading-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg><br>no feed to nom on. pick one to the left.</div>
     </div>
   </div>
   <div class="tui-keybinds" id="keybindBar">
@@ -2861,6 +4413,61 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 <div id="popover" class="popover" hidden></div>
 <div id="helpOverlay" class="help-overlay" hidden></div>
 
+<!-- First-visit tutorial overlay. Shown once per browser (localStorage
+     flag secfeed.tutorial.seen). Dismissed via the "got it" button or by
+     clicking the backdrop / pressing Esc. -->
+<div id="tutorialModal" class="modal" onclick="if(event.target===this)dismissTutorial()">
+  <div class="modal-content tut-content">
+    <div class="tut-head">
+      <svg class="tut-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
+      <div>
+        <div class="tut-greeting">oh hi - first time?</div>
+        <div class="tut-sub">a 20-second tour of what the worm can do</div>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-section-title">:: the feed ::</div>
+      <p class="tut-body">
+        Articles scored 00-99 by relevance, ranked top down. Click any row to read the source; double-click opens in a new tab. Filter by source / score / unread state from the left rail.
+      </p>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-section-title">:: keyboard shortcuts ::</div>
+      <div class="tut-keys">
+        <span class="tut-key"><kbd>j</kbd><kbd>k</kbd></span><span class="tut-key-desc">prev / next article</span>
+        <span class="tut-key"><kbd>enter</kbd></span><span class="tut-key-desc">open source in new tab</span>
+        <span class="tut-key"><kbd>b</kbd></span><span class="tut-key-desc">bookmark (★)</span>
+        <span class="tut-key"><kbd>u</kbd></span><span class="tut-key-desc">toggle unread filter</span>
+        <span class="tut-key"><kbd>r</kbd></span><span class="tut-key-desc">refresh feed</span>
+        <span class="tut-key"><kbd>/</kbd></span><span class="tut-key-desc">search</span>
+        <span class="tut-key"><kbd>i</kbd></span><span class="tut-key-desc">AI brief (last 24h)</span>
+        <span class="tut-key"><kbd>?</kbd></span><span class="tut-key-desc">full keybind list</span>
+      </div>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-section-title">:: config (press <kbd>c</kbd>) ::</div>
+      <p class="tut-body">
+        Sources, Bluesky watched accounts, Filtering, Behaviour, your Profile + stack keywords (to highlight CVEs hitting tech you actually run), Email digest, REST API tokens. Everything per-user, synced across devices once you sign in.
+      </p>
+    </div>
+
+    <div class="tut-section">
+      <div class="tut-section-title">:: the worm ::</div>
+      <p class="tut-body">
+        The sprite in the bottom-left bar reflects worm mood (hibernating / feeding / frenzy) based on KEV activity. Type <code>nom()</code> in the console for a treat.
+      </p>
+    </div>
+
+    <div class="tut-foot">
+      <button class="tut-btn-primary" onclick="dismissTutorial()">got it · feed me &rarr;</button>
+      <button class="tut-btn-secondary" onclick="dismissTutorial()">skip the tour</button>
+    </div>
+  </div>
+</div>
+
 <div id="settingsModal" class="modal" onclick="if(event.target===this)closeSettingsModal()">
   <div class="modal-content" style="max-width: 620px; max-height: 86vh; overflow-y: auto;">
     <div class="modal-title" style="display:flex;align-items:center;gap:10px;">
@@ -2868,70 +4475,277 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
       <span>oM noM Security Feeds // worm controls</span>
     </div>
 
-    <div class="cfg-tabs" style="display:flex;gap:0;margin-top:14px;border-bottom:1px solid var(--border);">
-      <button class="cfg-tab-btn active" data-tab="keys" onclick="cfgSwitch('keys')">API keys</button>
-      <button class="cfg-tab-btn" data-tab="bluesky" onclick="cfgSwitch('bluesky')">Bluesky</button>
+    <div class="cfg-tabs" style="display:flex;gap:0;margin-top:14px;border-bottom:1px solid var(--border);flex-wrap:wrap;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <button class="cfg-tab-btn active" data-tab="bluesky" onclick="cfgSwitch('bluesky')">Bluesky</button>
+      <button class="cfg-tab-btn" data-tab="alerts" data-hosted-only="true" onclick="cfgSwitch('alerts')">Alerts <span class="cfg-tab-pro">PRO</span></button>
+      <button class="cfg-tab-btn" data-tab="tokens" data-hosted-only="true" onclick="cfgSwitch('tokens')">API <span class="cfg-tab-pro">PRO</span></button>
+      <button class="cfg-tab-btn" data-tab="channels" data-hosted-only="true" onclick="cfgSwitch('channels')">Channels <span class="cfg-tab-pro">PRO</span></button>
+      <button class="cfg-tab-btn" data-tab="profile" data-hosted-only="true" onclick="cfgSwitch('profile')">Profile <span class="cfg-tab-pro">PRO</span></button>
       <button class="cfg-tab-btn" data-tab="filtering" onclick="cfgSwitch('filtering')">Filtering</button>
       <button class="cfg-tab-btn" data-tab="behavior" onclick="cfgSwitch('behavior')">Behavior</button>
       <button class="cfg-tab-btn" data-tab="sources" onclick="cfgSwitch('sources')">Sources</button>
     </div>
 
-    <!-- API keys tab -->
-    <div class="cfg-tab" data-tab="keys" style="padding:18px 4px 4px;">
-      <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Bluesky</div>
-        <label class="cfg-label">Identifier</label>
-        <input type="text" id="cfgBskyId" class="cfg-input" placeholder="handle.bsky.social or email">
-        <label class="cfg-label" style="margin-top:8px;">App password</label>
-        <input type="password" id="cfgBskyPw" class="cfg-input" placeholder="********-****-****-****">
-        <button class="primary" onclick="saveBskyConfig()">Save Bluesky</button>
+    <!-- Bluesky watched accounts + curated picker -->
+    <div class="cfg-tab" data-tab="bluesky" style="padding:18px 4px 4px;">
+
+      <!-- Gate: shown when the operator hasn't enabled Bluesky for the
+           deployment (no bot-session identifier+password configured).
+           Watched accounts and the curated picker are useless without
+           that session because the fetcher has nothing to auth with. -->
+      <div id="cfgBlueskyGate" class="cfg-section" hidden>
+        <div class="cfg-section-title"><span class="cfg-accent">::</span> Bluesky not enabled</div>
+        <div class="cfg-hint" id="cfgBlueskyGateHint" style="margin-top:0;margin-bottom:14px;">
+          Bluesky integration isn't enabled on this deployment yet.
+        </div>
+        <button id="cfgBlueskyGateBtn" class="primary" type="button" onclick="cfgSwitch('keys')" style="margin-top:0;" hidden>Go to API keys &rarr;</button>
       </div>
 
-      <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> MalwareBazaar</div>
-        <label class="cfg-label">API key</label>
-        <input type="password" id="cfgBazaarKey" class="cfg-input" placeholder="********">
-        <button class="primary" onclick="saveBazaarConfig()">Save MalwareBazaar</button>
-      </div>
+      <!-- Configured view: actual functional UI. -->
+      <div id="cfgBlueskyContent" hidden>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your watched accounts</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Bluesky researchers you've added on top of the curated list. Only their security-relevant posts make it into your feed (zero-score posts are dropped).
+          </div>
+          <div id="cfgAccountList" class="cfg-account-list"></div>
+          <div class="cfg-account-add">
+            <input type="text" id="cfgNewHandle" class="cfg-input" placeholder="researcher.bsky.social"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();addCfgAccount()}">
+            <button class="primary" onclick="addCfgAccount()" style="margin-top:0;">Add</button>
+          </div>
+        </div>
 
-      <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> GitHub Security Advisories</div>
-        <label class="cfg-checkbox"><input type="checkbox" id="cfgGhEnabled"> <span>Enable GitHub source</span></label>
-        <label class="cfg-label" style="margin-top:8px;">Personal access token (optional, higher rate limit)</label>
-        <input type="password" id="cfgGhToken" class="cfg-input" placeholder="ghp_********  or  github_pat_********">
-        <button class="primary" onclick="saveGhConfig()">Save GitHub</button>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Curated researchers</div>
+          <div class="cfg-hint" id="cfgCuratedHint" style="margin-top:0;margin-bottom:10px;">
+            <span id="cfgCuratedHintCount">107</span> hand-picked Bluesky researchers are already in your feed by default - no action needed. Use the list below to peek at who they are, or search through them.
+          </div>
+          <button id="cfgCuratedToggle" type="button" class="cfg-curated-toggle" onclick="toggleCfgCurated()">
+            <span class="cfg-curated-caret">&#9656;</span> Browse curated list
+            <span id="cfgCuratedCount" class="cfg-curated-count"></span>
+          </button>
+          <div class="cfg-curated-tools" id="cfgCuratedTools" hidden>
+            <input type="text" id="cfgCuratedSearch" class="cfg-curated-search"
+                   placeholder="filter by name, handle, or category..." oninput="renderCfgCurated()">
+            <div class="cfg-curated-meta" id="cfgCuratedMeta"></div>
+          </div>
+          <div id="cfgCuratedPanel" class="cfg-curated-panel" hidden>loading...</div>
+        </div>
       </div>
-
-      <div class="cfg-hint">Secrets are also read from env vars: <code>BLUESKY_APP_PASSWORD</code>, <code>MALWAREBAZAAR_API_KEY</code>, <code>GITHUB_TOKEN</code>. Env vars override the values stored here on next start.</div>
     </div>
 
-    <!-- Bluesky watched accounts + curated picker -->
-    <div class="cfg-tab" data-tab="bluesky" hidden style="padding:18px 4px 4px;">
-      <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Watched accounts</div>
-        <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
-          Specific Bluesky researchers whose posts get pulled into your feed. Only posts matching security keywords appear (zero-score posts are dropped).
+    <!-- Pro: webhook alert rules -->
+    <div class="cfg-tab" data-tab="alerts" hidden style="padding:18px 4px 4px;">
+
+      <!-- Free/anonymous: upgrade prompt -->
+      <div id="cfgAlertsLocked" class="cfg-section" hidden>
+        <div class="cfg-section-title"><span class="cfg-accent">::</span> Webhook alerts (Pro)</div>
+        <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
+          Get a Slack / Discord / generic webhook ping the moment something matches a rule you saved.
+          CISA KEV catalog additions, specific CVEs, keyword matches, tag matches - all fire within a minute of the article landing in the feed.
         </div>
-        <div id="cfgAccountList" class="cfg-account-list"></div>
-        <div class="cfg-account-add">
-          <input type="text" id="cfgNewHandle" class="cfg-input" placeholder="researcher.bsky.social"
-                 onkeydown="if(event.key==='Enter'){event.preventDefault();addCfgAccount()}">
-          <button class="primary" onclick="addCfgAccount()" style="margin-top:0;">Add</button>
-        </div>
+        <button class="btn-pro-upgrade" type="button" onclick="startCheckout()">Upgrade to Pro &rarr;</button>
+        <div class="cfg-hint" style="margin-top:10px;font-size:10px;">$10/mo, founder pricing locked in for life. Self-host the open-source binary if you'd rather wire your own webhook pipeline.</div>
       </div>
 
-      <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Curated researchers</div>
-        <button id="cfgCuratedToggle" type="button" class="cfg-curated-toggle" onclick="toggleCfgCurated()">
-          <span class="cfg-curated-caret">&#9656;</span> Browse curated list
-          <span id="cfgCuratedCount" class="cfg-curated-count"></span>
-        </button>
-        <div class="cfg-curated-tools" id="cfgCuratedTools" hidden>
-          <input type="text" id="cfgCuratedSearch" class="cfg-curated-search"
-                 placeholder="filter by name, handle, or category..." oninput="renderCfgCurated()">
-          <div class="cfg-curated-meta" id="cfgCuratedMeta"></div>
+      <!-- Pro: actual rule list + new-rule form -->
+      <div id="cfgAlertsLive" hidden>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your alert rules</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Rules fire on new articles only; dedup means the same article can't fire the same rule twice.
+            Webhook URLs must be <code>https://</code>; loopback / private addresses are rejected.
+          </div>
+          <div id="cfgAlertsList"><div class="cfg-account-empty">loading...</div></div>
         </div>
-        <div id="cfgCuratedPanel" class="cfg-curated-panel" hidden>loading...</div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Add new rule</div>
+          <div class="cfg-alert-form">
+            <label class="cfg-label">Trigger</label>
+            <select id="cfgAlertKind" class="cfg-input" onchange="toggleCfgAlertPattern()">
+              <option value="kev">CISA KEV catalog addition (no pattern)</option>
+              <option value="keyword">Keyword match (title or summary)</option>
+              <option value="cve">Specific CVE ID</option>
+              <option value="tag">Specific article tag</option>
+            </select>
+
+            <div id="cfgAlertPatternRow" style="margin-top:10px;" hidden>
+              <label class="cfg-label">Pattern</label>
+              <input id="cfgAlertPattern" type="text" class="cfg-input" placeholder="e.g. MSHTA  or  CVE-2026-31431  or  T1059">
+            </div>
+
+            <label class="cfg-label" style="margin-top:10px;">Channel</label>
+            <select id="cfgAlertChannel" class="cfg-input" onchange="updateCfgAlertHint()">
+              <option value="slack">Slack incoming webhook</option>
+              <option value="discord">Discord webhook</option>
+              <option value="generic">Generic JSON POST</option>
+            </select>
+
+            <label class="cfg-label" style="margin-top:10px;">Webhook URL</label>
+            <input id="cfgAlertTarget" type="text" class="cfg-input" placeholder="https://hooks.slack.com/services/..." autocomplete="off" spellcheck="false">
+            <div id="cfgAlertHint" class="cfg-hint" style="margin-top:6px;font-size:10px;"></div>
+
+            <button class="primary" type="button" onclick="saveCfgAlert()" style="margin-top:12px;">Add rule</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro: saved searches as named channels -->
+    <div class="cfg-tab" data-tab="channels" hidden style="padding:18px 4px 4px;">
+
+      <!-- Locked variant for non-Pro -->
+      <div id="cfgChannelsLocked" class="cfg-section" hidden>
+        <div class="cfg-section-title"><span class="cfg-accent">::</span> Channels (Pro)</div>
+        <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
+          Save a search query as a named channel. <code>DLL hijacking</code>, <code>macOS malware</code>, <code>my stack</code> - each one becomes a one-click filter on the article list. Search the operator's full corpus, save the slice that matters to you.
+        </div>
+        <button class="btn-pro-upgrade" type="button" onclick="startCheckout()">Upgrade to Pro &rarr;</button>
+      </div>
+
+      <!-- Pro: live list + create form -->
+      <div id="cfgChannelsLive" hidden>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your channels</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Channels show as quick-filter chips above the article list. Click one to apply its search; click again to clear.
+          </div>
+          <div id="cfgChannelsList"><div class="cfg-account-empty">loading...</div></div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Add new channel</div>
+          <div class="cfg-alert-form">
+            <label class="cfg-label">Name</label>
+            <input id="cfgChannelName" type="text" class="cfg-input" placeholder="e.g. macOS, supply chain, my-stack" maxlength="60">
+            <label class="cfg-label" style="margin-top:10px;">Search query</label>
+            <input id="cfgChannelQuery" type="text" class="cfg-input" placeholder="e.g. mshta  or  CVE-2026  or  ransomware" maxlength="200">
+            <div class="cfg-hint" style="margin-top:6px;font-size:10px;">Substring match against title + summary, case-insensitive. Same syntax as the in-app <code>/</code> search.</div>
+            <button class="primary" type="button" onclick="saveCfgChannel()" style="margin-top:12px;">Save channel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro: "what about me?" AI personalization profile -->
+    <div class="cfg-tab" data-tab="profile" hidden style="padding:18px 4px 4px;">
+      <!-- Locked variant for non-Pro -->
+      <div id="cfgProfileLocked" class="cfg-section" hidden>
+        <div class="cfg-section-title"><span class="cfg-accent">::</span> Personalization (Pro)</div>
+        <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
+          Write 1-2 sentences about what you run / what you care about ("I run a Linux web shop in fintech, my team owns SIEM"). Click <strong>Personalize my feed</strong> and the AI re-sorts the visible list so the things YOU care about float to the top - on top of the keyword scoring.
+        </div>
+        <button class="btn-pro-upgrade" type="button" onclick="startCheckout()">Upgrade to Pro &rarr;</button>
+      </div>
+      <!-- Pro: editor + run button -->
+      <div id="cfgProfileLive" hidden>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your profile</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Plain text. 1-2 sentences. Mention your tech stack, role, threat model, and what you specifically care about. The shorter and more specific, the better the re-ranking.
+          </div>
+          <textarea id="cfgProfileText" class="cfg-input" rows="4" style="resize:vertical;min-height:80px;" maxlength="500" placeholder="e.g. I run a 50-person fintech, Linux + nginx + Postgres, my team owns SIEM. I care about identity, supply chain, and anything affecting our crown jewels."></textarea>
+          <button class="primary" type="button" onclick="saveCfgProfile()" style="margin-top:10px;">Save profile</button>
+          <button type="button" onclick="runPersonalize()" style="margin-top:10px;margin-left:8px;background:rgba(255,181,71,0.10);border:1px solid var(--accent-amber);color:var(--accent-amber);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.4px;padding:8px 14px;border-radius:3px;cursor:pointer;text-transform:uppercase;">✨ Personalize my feed</button>
+          <div class="cfg-hint" id="cfgProfileStatus" style="margin-top:8px;font-size:10px;"></div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your stack</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Comma-separated keywords for the tech you actually run. Articles that mention any keyword get tagged <code>yours:&lt;keyword&gt;</code> so they stand out in the feed. No AI cost - simple word-boundary match on title, summary, and existing tags.
+          </div>
+          <textarea id="cfgAssetProfile" class="cfg-input" rows="2" style="resize:vertical;min-height:54px;" maxlength="500" placeholder="e.g. nginx, postgres, node, kubernetes, fortinet, palo alto, microsoft 365, okta"></textarea>
+          <button class="primary" type="button" onclick="saveCfgAssetProfile()" style="margin-top:10px;">Save stack</button>
+          <div class="cfg-hint" id="cfgAssetProfileStatus" style="margin-top:8px;font-size:10px;"></div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> ATT&amp;CK Navigator export</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Download a MITRE ATT&amp;CK Navigator layer JSON showing TTP frequency across your bookmarked articles. Paste into <a href="https://mitre-attack.github.io/attack-navigator/" target="_blank" rel="noopener" style="color:var(--accent-cyan);">attack-navigator</a> &rarr; <code>Open Existing Layer</code> &rarr; <code>Upload from local</code> to see a coverage heat-map.
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px;">
+            <a class="cfg-dl-btn" href="/api/attack/export?scope=mine" download>⬇ My bookmarks layer</a>
+            <a class="cfg-dl-btn-secondary" href="/api/attack/export?days=30" download>Global (30d)</a>
+            <a class="cfg-dl-btn-tertiary" href="/api/attack/export?days=90" download>Global (90d)</a>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Patch Tuesday alerts</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Calendar-pinned vendors auto-brief on patch days. Toggle which vendors you want to see briefs for. Defaults: MS + Adobe + Oracle on (calendar-pinned); Apple + Linux + Browser off (threshold-triggered, coming soon).
+          </div>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;"><input type="checkbox" id="cfgPatchMicrosoft" onchange="saveCfgPatchToggles()"> <span><strong>Microsoft</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">2nd Tuesday</span></span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;"><input type="checkbox" id="cfgPatchAdobe" onchange="saveCfgPatchToggles()"> <span><strong>Adobe</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">2nd Tuesday (same day as MS)</span></span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;"><input type="checkbox" id="cfgPatchOracle" onchange="saveCfgPatchToggles()"> <span><strong>Oracle CPU</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">3rd Tue Jan / Apr / Jul / Oct</span></span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;opacity:0.55;"><input type="checkbox" id="cfgPatchApple" disabled> <span><strong>Apple</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">threshold-triggered · coming soon</span></span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;opacity:0.55;"><input type="checkbox" id="cfgPatchLinux" disabled> <span><strong>Linux distros</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">threshold-triggered · coming soon</span></span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:6px;opacity:0.55;"><input type="checkbox" id="cfgPatchBrowser" disabled> <span><strong>Browser stable channels</strong> <span style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;">threshold-triggered · coming soon</span></span></label>
+          <div class="cfg-hint" id="cfgPatchStatus" style="margin-top:8px;font-size:10px;"></div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Email digest</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Drop the daily AI brief into your inbox so you don't have to remember to open the app. Same content as the in-app brief; delivered via Resend.
+          </div>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:4px;"><input type="radio" name="cfgDigestFreq" value="off"    onchange="saveCfgDigest(this.value)"> <span>Off</span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:4px;"><input type="radio" name="cfgDigestFreq" value="daily"  onchange="saveCfgDigest(this.value)"> <span>Daily (around 7am UTC, give or take 30 min)</span></label>
+          <label class="cfg-checkbox" style="display:block;margin-bottom:4px;"><input type="radio" name="cfgDigestFreq" value="weekly" onchange="saveCfgDigest(this.value)"> <span>Weekly</span></label>
+          <div class="cfg-hint" id="cfgDigestStatus" style="margin-top:8px;font-size:10px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Pro: REST API tokens -->
+    <div class="cfg-tab" data-tab="tokens" hidden style="padding:18px 4px 4px;">
+
+      <!-- Free/anonymous: upgrade prompt -->
+      <div id="cfgTokensLocked" class="cfg-section" hidden>
+        <div class="cfg-section-title"><span class="cfg-accent">::</span> REST API access (Pro)</div>
+        <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
+          Generate bearer tokens for the read API: pipe articles into Splunk, Sigma, your SIEM, a CI workflow, or whatever you want. Tokens authenticate the same surface your browser session can hit (read articles, mark read, bookmarks, watched accounts).
+        </div>
+        <button class="btn-pro-upgrade" type="button" onclick="startCheckout()">Upgrade to Pro &rarr;</button>
+        <div class="cfg-hint" style="margin-top:10px;font-size:10px;">$10/mo, founder pricing locked in for life.</div>
+      </div>
+
+      <!-- Pro: live token list + create -->
+      <div id="cfgTokensLive" hidden>
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your API tokens</div>
+          <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
+            Use the <code>Authorization: Bearer &lt;token&gt;</code> header to authenticate to <code>https://omnomfeeds.com/api/*</code>. The full token is shown <strong>once</strong> at creation; we only store its SHA-256 hash. Lost it? Delete and mint a new one.
+          </div>
+          <div id="cfgTokensList"><div class="cfg-account-empty">loading...</div></div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Mint new token</div>
+          <div class="cfg-alert-form">
+            <label class="cfg-label">Label</label>
+            <input id="cfgTokenName" type="text" class="cfg-input" placeholder="e.g. siem-ingest, ci-pipeline, mac-laptop" maxlength="80">
+            <button class="primary" type="button" onclick="mintCfgToken()" style="margin-top:12px;">Mint token</button>
+          </div>
+          <div id="cfgTokenReveal" hidden class="cfg-token-reveal">
+            <div class="cfg-token-reveal-head">New token <span>copy now - it will not be shown again</span></div>
+            <div class="cfg-token-reveal-value" id="cfgTokenRevealValue"></div>
+            <button class="primary" type="button" onclick="copyCfgToken()" style="margin-top:8px;">Copy</button>
+            <button type="button" onclick="dismissCfgTokenReveal()" style="margin-top:8px;margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;border-radius:3px;">Done</button>
+          </div>
+        </div>
+
+        <div class="cfg-section">
+          <div class="cfg-section-title"><span class="cfg-accent">::</span> Example</div>
+          <div class="cfg-hint" style="margin-top:0;font-size:11px;line-height:1.7;">
+<pre style="margin:0;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow-x:auto;">curl -H "Authorization: Bearer $TOKEN" \
+  https://omnomfeeds.com/api/articles?min_score=20&amp;limit=50</pre>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2961,8 +4775,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
       <div class="cfg-section">
         <div class="cfg-section-title"><span class="cfg-accent">::</span> Aesthetic</div>
-        <label class="cfg-checkbox"><input type="checkbox" id="cfgDecode" checked> <span>Decode-text animation on new items</span></label>
-        <label class="cfg-checkbox" style="margin-top:6px;"><input type="checkbox" id="cfgScanner" checked> <span>Source-scanning ticker in status bar</span></label>
+        <label class="cfg-checkbox"><input type="checkbox" id="cfgDecode" onchange="saveCfgToggle('decode', this)" checked> <span>Decode-text animation on new items</span></label>
+        <label class="cfg-checkbox" style="margin-top:6px;"><input type="checkbox" id="cfgScanner" onchange="saveCfgToggle('scanner', this)" checked> <span>Source-scanning ticker in status bar</span></label>
       </div>
     </div>
 
@@ -2971,7 +4785,8 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
       <div class="cfg-section">
         <div class="cfg-section-title"><span class="cfg-accent">::</span> Source health</div>
         <div id="cfgSourceList" class="cfg-source-list">loading...</div>
-        <div class="cfg-hint" style="margin-top:8px;">For feed-level edits (add/remove RSS sources), edit your <code>config.json</code> directly - its path is shown in the startup log.</div>
+        <div id="cfgSourceHintSelfhost" class="cfg-hint" style="margin-top:8px;">For feed-level edits (add/remove RSS sources), edit your <code>config.json</code> directly - its path is shown in the startup log.</div>
+        <div id="cfgSourceHintHosted" class="cfg-hint" style="margin-top:8px;" hidden>This list is a live snapshot of what the deployment is currently fetching. The set of sources is curated; you don't manage it.</div>
       </div>
     </div>
 
@@ -3013,6 +4828,39 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 </div>
 
 <!-- AI digest modal (BYOK) -->
+<!-- Momentum modal: "what's heating up" tag movers week over week.
+     Free for all; aggregates over the articles table. -->
+<div id="momentumModal" class="digest-modal" hidden onclick="if(event.target===this)closeMomentum()">
+  <div class="digest-panel">
+    <div class="digest-title">
+      <span>:: WHAT'S HEATING UP</span>
+      <span class="digest-provider" id="momentumLabel">last 7 days vs prior 7 days</span>
+    </div>
+    <div class="digest-body" id="momentumBody">loading...</div>
+    <div class="digest-hint">
+      <span>positive = up this week. ∞ = appeared this week with no prior baseline.</span>
+      <span><kbd>ESC</kbd> close</span>
+    </div>
+  </div>
+</div>
+
+<!-- CVE deep-dive modal: opened from the CVE quick popover. Pulls
+     NVD + EPSS + KEV status (free for everyone) plus a 3-bullet AI
+     deep-dive (Pro). -->
+<div id="cveModal" class="digest-modal" hidden onclick="if(event.target===this)closeCveModal()">
+  <div class="digest-panel cve-panel">
+    <div class="digest-title">
+      <span id="cveModalTitle">:: CVE DEEP-DIVE</span>
+      <span class="digest-provider" id="cveModalKev"></span>
+    </div>
+    <div class="cve-modal-body" id="cveModalBody">loading...</div>
+    <div class="digest-hint">
+      <span><kbd>ESC</kbd> close</span>
+      <span id="cveModalProvider" class="digest-meta"></span>
+    </div>
+  </div>
+</div>
+
 <div id="digestModal" class="digest-modal" hidden>
   <div class="digest-panel">
     <div class="digest-title">
@@ -3137,6 +4985,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 </div>
 
 <div class="toast" id="toast"></div>
+<!-- Score-explainer popover: floats over the article list when a score
+     chip is clicked, shows which scoring categories contributed. -->
+<div id="scoreExplain" class="score-explain" hidden></div>
 
 <!-- Easter-egg breadcrumb: small worm in the bottom-right hints at the nom trigger. -->
 <div id="nomHint" class="nom-hint" title="om nom nom?" onclick="showNomHint(event)">
@@ -3242,16 +5093,41 @@ function renderArticles(articles) {
     const sel = i === selectedIndex ? 'selected' : '';
     const read = a.read ? 'read' : '';
     const tags = (a.tags || []).slice(0, 8).map(t => renderTagChip(t, a.id)).join(' ');
+    // Asset-profile inline badge: when an article matches one of the
+    // user's saved stack keywords, the server appends yours:<kw> tags.
+    // The tagline below is hidden in compact list mode, so surface the
+    // match inline next to the title as a 🎯 pill the user can see at a
+    // glance.
+    const yoursKws = (a.tags || []).filter(t => typeof t === 'string' && t.startsWith('yours:')).map(t => t.slice(6));
+    const yoursInline = yoursKws.length
+      ? `<span class="yours-inline" title="matches your stack: ${esc(yoursKws.join(', '))}">🎯 ${esc(yoursKws.join(' · '))}</span>`
+      : '';
+    // Pre-KEV velocity badge: the server tagged this article's CVE(s)
+    // as crossing the "multiple sources, not yet KEV" threshold. Render
+    // once per row even if multiple CVEs hit; click jumps to the CVE.
+    const preKEVCves = (a.tags || []).filter(t => typeof t === 'string' && t.startsWith('prekev:')).map(t => t.slice(7));
+    const preKEVInline = preKEVCves.length
+      ? `<span class="prekev-inline" title="${esc(preKEVCves.length)} CVE(s) getting traction across multiple sources but not yet on the CISA KEV list - might land there soon: ${esc(preKEVCves.join(', '))}">🔮 PRE-KEV</span>`
+      : '';
+    // AI triage line: shown inline below the title for Pro users when
+    // the server attached a cached triage string. Server omits the
+    // field for non-Pro or uncached articles.
+    const triageLine = (typeof a.triage === 'string' && a.triage.length)
+      ? `<div class="item-triage" title="AI triage line">${esc(a.triage)}</div>`
+      : '';
     return `
-      <div class="item ${sel} ${read} band-${scoreBand} ${bookmarks.has(a.id) ? 'bookmarked' : ''} src-${(a.source_type || 'rss').replace(/[^a-z0-9_]/gi,'')}" data-id="${a.id}" data-idx="${i}" onclick="selectItem(${i},event)" ondblclick="openArticle(${i})">
+      <div class="item ${sel} ${read} band-${scoreBand} ${bookmarks.has(a.id) ? 'bookmarked' : ''} ${yoursKws.length ? 'has-stack-match' : ''} ${triageLine ? 'has-triage' : ''} src-${(a.source_type || 'rss').replace(/[^a-z0-9_]/gi,'')}" data-id="${a.id}" data-idx="${i}" onclick="selectItem(${i},event)" ondblclick="openArticle(${i})">
         <div class="item-line">
           <span class="cursor">${sel ? '>' : ' '}</span>
           <span class="idx">${String(i + 1).padStart(3, '0')}</span>
-          <span class="score ${scoreBand}" style="--p:${Math.max(0, Math.min(100, a.score))}"><span class="score-num">${scoreStr}</span></span>
+          <span class="score ${scoreBand}" style="--p:${Math.max(0, Math.min(100, a.score))}" title="click to see why this scored ${a.score}" onclick="event.stopPropagation(); openScoreExplain(${a.id}, event)"><span class="score-num">${scoreStr}</span></span>
           <span class="star">★</span>
+          ${preKEVInline}
+          ${yoursInline}
           <span class="title">${esc(a.title)}</span>
           <span class="meta"><span class="src">${esc(a.source)}</span><span class="sep">·</span>${timeAgo(a.published_at)}</span>
         </div>
+        ${triageLine}
         ${tags ? `<div class="tagline">${tags}</div>` : ''}
       </div>
     `;
@@ -3270,7 +5146,8 @@ function renderArticles(articles) {
 function toggleBookmark() {
   const a = currentArticles[selectedIndex];
   if (!a) return;
-  if (bookmarks.has(a.id)) {
+  const wasBookmarked = bookmarks.has(a.id);
+  if (wasBookmarked) {
     bookmarks.delete(a.id);
     toast('spit it out');
   } else {
@@ -3278,6 +5155,7 @@ function toggleBookmark() {
     toast('★ saved for later');
   }
   localStorage.setItem('secfeed.bookmarks', JSON.stringify([...bookmarks]));
+  pushMeBookmark(a.id, !wasBookmarked);
   const row = document.querySelector(`.item[data-id="${a.id}"]`);
   if (row) {
     row.classList.toggle('bookmarked', bookmarks.has(a.id));
@@ -3402,6 +5280,7 @@ function buildCommandList() {
     { label: 'MITRE ATT&CK coverage', key: 'T', action: () => openMitreView() },
     { label: 'Feast stats',           key: 'S', action: () => openStatsView() },
     { label: 'AI intel brief (last 24h)', key: 'I', action: () => openDigest(false) },
+    { label: 'Momentum (week-over-week movers)', key: 'H', action: () => openMomentum() },
     { label: 'AI intel brief :: force refresh', action: () => openDigest(true) },
     { label: 'Undo last filter change', key: 'U', action: () => undoLastFilter() },
     { label: 'Toggle preview pane', key: 'SPC', action: () => { previewOpen = !previewOpen; updatePreview(); } },
@@ -3652,7 +5531,28 @@ async function openDigest(force) {
   meta.textContent = '';
   prov.textContent = '';
   try {
-    const r = await fetch('/api/digest', { method: force ? 'POST' : 'GET' });
+    const r = await fetch('/api/digest', { method: force ? 'POST' : 'GET', credentials: 'same-origin' });
+
+    // 401 = anonymous in hosted mode. Push toward sign-in.
+    if (r.status === 401) {
+      body.innerHTML = `<div class="digest-error">[SIGN IN REQUIRED]</div>
+        <div class="digest-hint-msg">
+          The managed AI brief is only available to signed-in Pro users.<br><br>
+          <a href="/login.html" class="digest-cta">Sign in &rarr;</a>
+        </div>`;
+      return;
+    }
+    // 402 = signed in, but not Pro. Show the upgrade path.
+    if (r.status === 402) {
+      body.innerHTML = `<div class="digest-error">[PRO ONLY]</div>
+        <div class="digest-hint-msg">
+          The managed AI daily brief is a Pro feature. It runs on a server-side Anthropic key so you don't have to configure anything; that key costs real money per call, so it's gated to subscribers.<br><br>
+          <strong>$10/mo, cancel anytime.</strong> Founder pricing locks in for the life of the subscription.<br><br>
+          <button type="button" class="digest-cta-btn" onclick="startCheckout(); closeDigest();">Upgrade to Pro &rarr;</button>
+          <span class="digest-hint-msg-sub">Or self-host the open-source binary and bring your own Anthropic key - same feature, no subscription.</span>
+        </div>`;
+      return;
+    }
     if (!r.ok && r.status !== 503) {
       const txt = await r.text();
       body.innerHTML = `<div class="digest-error">[ERROR] ${esc(txt || ('http ' + r.status))}</div>`;
@@ -3961,6 +5861,35 @@ function highlightSearchMatches() {
 
 function renderTagChip(t, articleId) {
   if (t.startsWith('T1')) return `<span class="tag mitre" onclick="event.stopPropagation(); showMitrePopover(event, '${esc(t)}')">${esc(t)}</span>`;
+  if (t.startsWith('yours:')) {
+    // Asset-profile match. Surface the matched keyword in the chip text
+    // so the user can see WHICH stack item triggered the highlight.
+    const kw = t.slice(6);
+    return `<span class="tag yours" title="matches your stack: ${esc(kw)}">${esc(kw)}</span>`;
+  }
+  if (t.startsWith('actor:')) {
+    // Threat actor / APT chip. Tag format: actor:<slug>|<display>.
+    // The display name is the friendly chip text ("Scattered Spider"),
+    // the slug is the lookup key for the Insight Card endpoint.
+    const payload = t.slice(6);
+    const sepIdx = payload.indexOf('|');
+    const slug    = sepIdx >= 0 ? payload.slice(0, sepIdx)  : payload;
+    const display = sepIdx >= 0 ? payload.slice(sepIdx + 1) : payload.toUpperCase();
+    return `<span class="tag actor" onclick="event.stopPropagation(); showActorCard(event, '${esc(slug)}')">⚑ ${esc(display)}</span>`;
+  }
+  if (t.startsWith('malware:')) {
+    // Malware family chip. Tag format: malware:<slug>|<display>.
+    const payload = t.slice(8);
+    const sepIdx = payload.indexOf('|');
+    const slug    = sepIdx >= 0 ? payload.slice(0, sepIdx)  : payload;
+    const display = sepIdx >= 0 ? payload.slice(sepIdx + 1) : payload;
+    return `<span class="tag malware" onclick="event.stopPropagation(); showMalwareCard(event, '${esc(slug)}')">⌬ ${esc(display)}</span>`;
+  }
+  if (t.startsWith('prekev:')) {
+    // Pre-KEV velocity tag - rendered as inline pill in the row, not
+    // in the tagline. Skip here (the row-level inline span handles it).
+    return '';
+  }
   if (t.startsWith('kev:')) {
     const cve = t.slice(4).toUpperCase();
     return `<span class="tag kev" onclick="event.stopPropagation(); showCvePopover(event, '${esc(cve)}', true)">${esc(t)}</span>`;
@@ -4014,6 +5943,8 @@ function updateHud() {
     kv.classList.toggle('crit', kev > 0);
   }
   updateFavicon(kev);
+  updateFeedTemperature(kev);
+  updateScoreSparkline();
   // Shake + red-flash the logo whenever the KEV count climbs (new threat landed).
   triggerKevAlert(kev);
 
@@ -4110,11 +6041,15 @@ function showCvePopover(evt, cveId, isKev) {
     <div id="cveDetailBlock" style="padding:0 12px 6px;font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.3px;">
       <span class="cve-loading" style="color:var(--accent-cyan);">[NVD] fetching detail<span style="animation:scan-cursor-blink 0.7s steps(2) infinite;">_</span></span>
     </div>
+    <div class="opt" data-deepdive="${esc(cve)}" style="color:var(--accent-amber);font-weight:700;">Deep-dive (CVSS + EPSS + AI summary) →</div>
     <div class="opt" data-url="https://nvd.nist.gov/vuln/detail/${esc(cve)}">Open in NVD ➜</div>
     <div class="opt" data-url="https://www.cve.org/CVERecord?id=${esc(cve)}">Open in CVE.org ➜</div>
     <div class="opt" data-url="https://www.exploit-db.com/search?cve=${esc(cve)}">Search Exploit-DB ➜</div>
     <div class="opt" data-search="${esc(cve)}">Filter feed by ${esc(cve)}</div>
   `;
+  pop.querySelectorAll('.opt[data-deepdive]').forEach(el => {
+    el.onclick = () => { openCveDeepDive(el.dataset.deepdive); closeIocPopover(); };
+  });
   pop.querySelectorAll('.opt[data-url]').forEach(el => {
     el.onclick = () => { window.open(el.dataset.url, '_blank'); closeIocPopover(); };
   });
@@ -4137,6 +6072,376 @@ function showCvePopover(evt, cveId, isKev) {
   // Lazy-load NVD/EPSS detail
   fetchCveDetail(cve);
 }
+
+// --- Worm-flavor flourishes ---
+// updateFeedTemperature: the brand worm reacts to KEV-density of the
+// currently-loaded feed. Lazy mood ring; calm > warm > hot as KEV count
+// rises in the visible set.
+function updateFeedTemperature(kevCount) {
+  const w = document.getElementById('wormLogoSvg');
+  if (!w) return;
+  w.classList.remove('temp-warm', 'temp-hot');
+  if (kevCount >= 5)      w.classList.add('temp-hot');
+  else if (kevCount >= 2) w.classList.add('temp-warm');
+  // No class = default calm green; pre-set by CSS.
+  if (kevCount > 0) {
+    w.setAttribute('title', `om nom nom · ${kevCount} active KEV-listed CVE${kevCount > 1 ? 's' : ''} in feed`);
+  } else {
+    w.setAttribute('title', 'om nom nom');
+  }
+}
+
+// updateScoreSparkline: tiny inline stat line above the article list.
+// Renders the median + p90 score and a 10-bucket histogram from the
+// currently-loaded articles. Pure client-side, no API.
+function updateScoreSparkline() {
+  const el = document.getElementById('scoreSpark');
+  if (!el) return;
+  const scores = (currentArticles || []).map(a => Number(a.score) || 0).sort((a, b) => a - b);
+  if (!scores.length) { el.hidden = true; return; }
+  const median = scores[Math.floor(scores.length / 2)];
+  const p90    = scores[Math.floor(scores.length * 0.9)];
+  // 10 buckets across 0..100
+  const buckets = new Array(10).fill(0);
+  for (const s of scores) {
+    const idx = Math.max(0, Math.min(9, Math.floor(s / 10)));
+    buckets[idx]++;
+  }
+  const max = Math.max(1, ...buckets);
+  // Render buckets as inline-block bars; height proportional to bucket count.
+  const bars = buckets.map((c, i) => {
+    const h = Math.max(1, Math.round((c / max) * 12));
+    let cls = 'b-low';
+    if (i >= 6)      cls = 'b-crit';
+    else if (i >= 3) cls = 'b-high';
+    else if (i >= 1) cls = 'b-med';
+    return `<span class="spark-bar ${cls}" style="height:${h}px;" title="score ${i*10}-${i*10+9}: ${c} item${c===1?'':'s'}"></span>`;
+  }).join('');
+  el.innerHTML = `<span class="spark-label">score spread:</span><span class="spark-bars">${bars}</span><span class="spark-stat">median <strong>${median}</strong> · p90 <strong>${p90}</strong> · n <strong>${scores.length}</strong></span>`;
+  el.hidden = false;
+}
+
+// --- Momentum: "what's heating up" ---
+async function openMomentum() {
+  const m = document.getElementById('momentumModal');
+  if (!m) return;
+  m.hidden = false;
+  inputMode = true;
+  const body = document.getElementById('momentumBody');
+  body.innerHTML = '<div class="momentum-empty">crunching tag counts...</div>';
+  try {
+    const r = await fetch('/api/momentum');
+    if (!r.ok) { body.innerHTML = '<div class="momentum-empty">failed to load</div>'; return; }
+    const d = await r.json();
+    renderMomentum(d);
+  } catch (e) {
+    body.innerHTML = '<div class="momentum-empty">network error</div>';
+  }
+}
+
+function renderMomentum(d) {
+  const body = document.getElementById('momentumBody');
+  if (!body) return;
+  const movers = (d && d.movers) || [];
+  if (!movers.length) {
+    body.innerHTML = '<div class="momentum-empty">not enough article data in the last 14 days to compute movers yet. check back tomorrow.</div>';
+    return;
+  }
+  let html = `<table class="momentum-table">
+    <thead><tr><th>tag</th><th></th><th class="now">this week</th><th class="prev">prior week</th><th class="delta">delta</th></tr></thead>
+    <tbody>`;
+  for (const m of movers) {
+    const dp = Number(m.delta_pct);
+    let cls = 'up';
+    let label = (dp >= 0 ? '+' : '') + dp + '%';
+    if (m.prev === 0)        { cls = 'huge'; label = '∞ (new)'; }
+    else if (dp < 0)         { cls = 'down'; }
+    else if (dp >= 200)      { cls = 'huge'; }
+    const name = m.name ? `<span class="name">${esc(m.name)}</span>` : '';
+    html += `<tr>
+      <td><span class="tag" onclick="filterByTag('${esc(m.tag)}')">${esc(m.tag)}</span></td>
+      <td>${name}</td>
+      <td class="now">${esc(String(m.now))}</td>
+      <td class="prev">${esc(String(m.prev))}</td>
+      <td class="delta ${cls}">${label}</td>
+    </tr>`;
+  }
+  html += `</tbody></table>`;
+  body.innerHTML = html;
+}
+
+function closeMomentum() {
+  const m = document.getElementById('momentumModal');
+  if (m) m.hidden = true;
+  inputMode = false;
+}
+
+function filterByTag(tag) {
+  currentSearch = tag;
+  selectedIndex = 0;
+  closeMomentum();
+  loadArticles();
+}
+
+document.addEventListener('keydown', (e) => {
+  const m = document.getElementById('momentumModal');
+  if (m && !m.hidden && e.key === 'Escape') { closeMomentum(); e.preventDefault(); }
+});
+
+// --- Per-article AI explainer (Pro) ---
+// Fires when the user clicks the ✨ explain button on the reader pane.
+// Result is rendered into #articleExplainSlot right above the actions row
+// and cached server-side per article.id so subsequent users (and a re-
+// click on the same article) reuse the same text without a fresh LLM call.
+
+// Client-side per-session cache of explanations keyed by article.id.
+// Why: updatePreview() rewrites the reader pane on every selection /
+// mark-read / auto-refresh, which would otherwise wipe the result the
+// instant something else changed. We re-render from this cache inside
+// updatePreview so explanations persist as long as the article is on
+// screen.
+let articleExplanationCache = {};
+
+function articleExplanationHTML(articleId) {
+  const cached = articleExplanationCache[articleId];
+  if (!cached) return '';
+  return `<div class="article-explain"><div class="article-explain-head"><span>AI summary</span><span class="meta">${esc(cached.meta || '')}</span></div>${esc(cached.text || '')}</div>`;
+}
+
+async function explainCurrentArticle() {
+  const a = currentArticles[selectedIndex];
+  if (!a) return;
+  const slot = document.getElementById('articleExplainSlot');
+  if (!slot) return;
+  slot.innerHTML = `<div class="article-explain loading">[AI] writing plain-English summary<span style="animation:scan-cursor-blink 0.7s steps(2) infinite;">_</span></div>`;
+  try {
+    const r = await fetch('/api/articles/explain/' + encodeURIComponent(a.id), { credentials: 'same-origin' });
+    if (r.status === 401) {
+      slot.innerHTML = `<div class="article-explain upsell"><div class="article-explain-head">AI explainer</div>The 3-line plain-English summary is a Pro feature. <a href="/login.html" class="cta">Sign in &rarr;</a></div>`;
+      return;
+    }
+    if (r.status === 402) {
+      slot.innerHTML = `<div class="article-explain upsell"><div class="article-explain-head">AI explainer · Pro</div>Tap the button, get a 3-line "what / who cares / what to do" summary on any article. Server runs the Anthropic call; you don't have to wire a key. <button type="button" class="cta" onclick="startCheckout()">Upgrade to Pro &rarr;</button></div>`;
+      return;
+    }
+    if (r.status === 503) {
+      slot.innerHTML = `<div class="article-explain upsell"><div class="article-explain-head">AI explainer</div>No AI provider configured on this deployment.</div>`;
+      return;
+    }
+    if (!r.ok) {
+      slot.innerHTML = `<div class="article-explain upsell" style="border-color:var(--score-crit);color:var(--score-crit);">AI request failed (${r.status}).</div>`;
+      return;
+    }
+    const d = await r.json();
+    const metaBits = [];
+    if (d.cached) metaBits.push('cached');
+    else metaBits.push('fresh');
+    if (d.provider) metaBits.push(d.provider);
+    // Persist in the client-side cache so updatePreview() can re-render
+    // it after the reader pane is rewritten (selection change, mark-read,
+    // auto-refresh, etc.).
+    articleExplanationCache[a.id] = { text: d.explanation || '', meta: metaBits.join(' · ') };
+    slot.innerHTML = articleExplanationHTML(a.id);
+  } catch (e) {
+    slot.innerHTML = `<div class="article-explain upsell" style="border-color:var(--score-crit);color:var(--score-crit);">network error</div>`;
+  }
+}
+
+// --- CVE deep-dive modal ---
+// Opens the bigger CVE view from the quick popover. Pulls NVD+EPSS+KEV
+// (everyone) and the AI 3-bullet (Pro). The AI part 402s gracefully into
+// an upgrade CTA, the rest still renders.
+async function openCveDeepDive(cveId) {
+  const m = document.getElementById('cveModal');
+  if (!m) return;
+  const id = String(cveId).toUpperCase();
+  m.hidden = false;
+  inputMode = true;
+  document.getElementById('cveModalTitle').textContent = ':: ' + id;
+  document.getElementById('cveModalKev').textContent = '';
+  document.getElementById('cveModalProvider').textContent = '';
+  document.getElementById('cveModalBody').innerHTML =
+    '<div class="cve-ai-loading">[NVD + EPSS] pulling detail</div>';
+
+  // Pull factual data first; it's the must-have. AI bullet is a bonus.
+  let detail = null;
+  try {
+    const r = await fetch('/api/cve/' + encodeURIComponent(id), { credentials: 'same-origin' });
+    if (r.ok) detail = await r.json();
+  } catch (e) {}
+  renderCveDeepDive(id, detail);
+
+  // Kick off AI fetch in parallel; renderer fills the AI section when done.
+  fetchCveAIExplain(id);
+}
+
+function renderCveDeepDive(id, d) {
+  const body = document.getElementById('cveModalBody');
+  if (!body) return;
+  const sevClass = d ? ({
+    CRITICAL: 'crit', HIGH: 'high', MEDIUM: 'med', LOW: 'low',
+  }[d.cvss_v3_severity] || '') : '';
+  const cvss = (d && typeof d.cvss_v3_score === 'number' && d.cvss_v3_score > 0)
+    ? `<div class="cve-card ${sevClass}"><div class="label">CVSS v3</div><div class="value">${d.cvss_v3_score.toFixed(1)}</div><div class="sub">${esc(d.cvss_v3_severity || '')}</div></div>`
+    : `<div class="cve-card"><div class="label">CVSS v3</div><div class="value" style="font-size:13px;color:var(--text-dim);">not assigned</div></div>`;
+  const epss = (d && typeof d.epss_score === 'number' && d.epss_score > 0)
+    ? `<div class="cve-card"><div class="label">EPSS</div><div class="value">${(d.epss_score * 100).toFixed(1)}%</div><div class="sub">${(d.epss_percentile * 100).toFixed(0)}th percentile</div></div>`
+    : `<div class="cve-card"><div class="label">EPSS</div><div class="value" style="font-size:13px;color:var(--text-dim);">no data</div></div>`;
+  // KEV detection: any tag on any visible article that starts with "kev:" + id.
+  // Cheaper than re-querying the server; the score badge logic already
+  // walked the article's tags.
+  const kev = isCveKEV(id);
+  const kevCard = kev
+    ? '<div class="cve-card crit"><div class="label">CISA KEV</div><div class="value" style="font-size:14px;">ACTIVELY EXPLOITED</div><div class="sub">in the wild per CISA</div></div>'
+    : '<div class="cve-card"><div class="label">CISA KEV</div><div class="value" style="font-size:13px;color:var(--text-dim);">not listed</div></div>';
+  const cwe = d && d.cwe ? `<div class="cve-card"><div class="label">Weakness</div><div class="value" style="font-size:13px;color:var(--accent-cyan);">${esc(d.cwe)}</div></div>` : '';
+  // OTX community-pulse card. Free overlay; higher pulse counts mean more
+  // threat-intel analysts have written reports tagged to this CVE.
+  const otxN = d && typeof d.otx_pulse_count === 'number' ? d.otx_pulse_count : null;
+  const otxRecent = d && typeof d.otx_recent_pulses === 'number' ? d.otx_recent_pulses : 0;
+  const otx = (otxN !== null)
+    ? (otxN > 0
+        ? `<div class="cve-card"><div class="label">OTX pulses</div><div class="value">${otxN}</div><div class="sub">${otxRecent} new in last 7d</div></div>`
+        : `<div class="cve-card"><div class="label">OTX pulses</div><div class="value" style="font-size:13px;color:var(--text-dim);">no community reports</div></div>`)
+    : '';
+
+  document.getElementById('cveModalKev').textContent = kev ? 'KEV · actively exploited' : '';
+
+  let html = `<div class="cve-cards">${cvss}${epss}${kevCard}${cwe}${otx}</div>`;
+
+  if (d && d.description) {
+    html += `<div class="cve-section-title">NVD description</div>`;
+    html += `<div class="cve-desc">${esc(d.description)}</div>`;
+  } else {
+    html += `<div class="cve-section-title">NVD description</div>`;
+    html += `<div class="cve-desc" style="color:var(--text-dim);">No detail available from NVD (very recent publication or rejected entry).</div>`;
+  }
+
+  // Researcher consensus heatmap: which curated sources have posted about
+  // this CVE in the last 30 days. Density of pills + recency = "is this
+  // widely-tracked or one source on a soapbox".
+  if (Array.isArray(d.consensus) && d.consensus.length) {
+    const total = d.consensus_total_sources || d.consensus.length;
+    html += `<div class="cve-section-title"><span>Source consensus</span><span style="color:var(--text-dim);font-size:10px;letter-spacing:0.3px;text-transform:none;font-weight:400;">${total} source${total === 1 ? '' : 's'} · last 30d</span></div>`;
+    html += '<div class="cve-consensus">';
+    const now = Date.now();
+    for (const c of d.consensus) {
+      const t = c.last_seen ? new Date(c.last_seen).getTime() : 0;
+      const hoursAgo = t ? (now - t) / 3600000 : 999;
+      // Recency tint: fresh (<24h) gets cyan, week-old gets dim, in-between is normal.
+      const tone = hoursAgo < 24 ? 'fresh' : hoursAgo > 24 * 7 ? 'stale' : '';
+      const ago = hoursAgo < 1 ? Math.round(hoursAgo * 60) + 'm'
+                : hoursAgo < 24 ? Math.round(hoursAgo) + 'h'
+                : Math.round(hoursAgo / 24) + 'd';
+      const url = c.latest_url || '#';
+      const count = c.count > 1 ? ` <span class="n">×${c.count}</span>` : '';
+      html += `<a class="cve-consensus-pill ${tone}" href="${esc(url)}" target="_blank" rel="noopener" title="latest post ${ago} ago · ${c.count} total"><span class="src">${esc(c.source)}</span>${count}<span class="age">${ago}</span></a>`;
+    }
+    html += '</div>';
+  }
+
+  // Per-CVE timeline: chronological milestones built from the article
+  // corpus (first mention, vendor advisory, first PoC, latest). Pure
+  // data, no AI cost.
+  if (Array.isArray(d.timeline) && d.timeline.length) {
+    html += `<div class="cve-section-title"><span>Timeline</span><span style="color:var(--text-dim);font-size:10px;letter-spacing:0.3px;text-transform:none;font-weight:400;">${d.timeline.length} event${d.timeline.length === 1 ? '' : 's'}</span></div>`;
+    html += '<div class="cve-timeline">';
+    const KIND_ICONS = { first_mention: '👁', advisory: '🛡', first_poc: '🧪', latest: '↻' };
+    const KIND_TINTS = { first_mention: 'med', advisory: 'cyan', first_poc: 'crit', latest: 'dim' };
+    for (const ev of d.timeline) {
+      const icon = KIND_ICONS[ev.kind] || '·';
+      const tint = KIND_TINTS[ev.kind] || 'dim';
+      const date = ev.at ? new Date(ev.at) : null;
+      const dateStr = date && !isNaN(date.getTime())
+        ? date.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'})
+        : '';
+      html += `
+        <a class="cve-timeline-row tint-${tint}" href="${esc(ev.url)}" target="_blank" rel="noopener">
+          <span class="tl-icon">${icon}</span>
+          <span class="tl-date">${esc(dateStr)}</span>
+          <span class="tl-body">
+            <span class="tl-label">${esc(ev.label)}</span>
+            <span class="tl-source">${esc(ev.source)}</span>
+            <span class="tl-title">${esc(ev.title)}</span>
+          </span>
+        </a>`;
+    }
+    html += '</div>';
+  }
+
+  html += `<div class="cve-section-title"><span>Plain-English summary</span><span class="ai-tag">AI · PRO</span></div>`;
+  html += `<div id="cveAiSection"><div class="cve-ai-loading">[AI] generating 3-bullet summary</div></div>`;
+
+  html += `<div class="cve-links">
+    <a href="https://nvd.nist.gov/vuln/detail/${esc(id)}" target="_blank">NVD ↗</a>
+    <a href="https://www.cve.org/CVERecord?id=${esc(id)}" target="_blank">CVE.org ↗</a>
+    <a href="https://www.exploit-db.com/search?cve=${esc(id)}" target="_blank">Exploit-DB ↗</a>
+    <a href="#" onclick="event.preventDefault(); currentSearch='${esc(id)}'; selectedIndex=0; closeCveModal(); loadArticles();">Filter feed by ${esc(id)}</a>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+async function fetchCveAIExplain(id) {
+  const sec = document.getElementById('cveAiSection');
+  if (!sec) return;
+  try {
+    const r = await fetch('/api/cve/' + encodeURIComponent(id) + '/explain', { credentials: 'same-origin' });
+    if (r.status === 401) {
+      sec.innerHTML = `<div class="cve-ai-upsell">
+        <strong>Sign in to read the AI summary.</strong> The 3-bullet deep-dive is a Pro feature; tokens generated server-side via Anthropic.<br>
+        <a href="/login.html" class="ai-cta">Sign in &rarr;</a>
+      </div>`;
+      return;
+    }
+    if (r.status === 402) {
+      sec.innerHTML = `<div class="cve-ai-upsell">
+        <strong>Pro feature.</strong> The 3-bullet AI summary runs on a server-side Anthropic key (real cost per call). Free users see the factual NVD/EPSS data above; Pro gets the plain-English context.<br>
+        <button type="button" class="ai-cta" onclick="startCheckout(); closeCveModal();">Upgrade to Pro &rarr;</button>
+      </div>`;
+      return;
+    }
+    if (r.status === 503) {
+      sec.innerHTML = `<div class="cve-ai-upsell" style="border-color:var(--border);">No AI provider configured on this deployment.</div>`;
+      return;
+    }
+    if (!r.ok) {
+      sec.innerHTML = `<div class="cve-ai-upsell" style="border-color:var(--score-crit);color:var(--score-crit);">AI summary failed (${r.status}).</div>`;
+      return;
+    }
+    const d = await r.json();
+    sec.innerHTML = `<div class="cve-ai-body">${esc(d.explanation || '')}</div>`;
+    if (d.provider) {
+      const meta = document.getElementById('cveModalProvider');
+      if (meta) meta.textContent = (d.cached ? 'cached · ' : 'fresh · ') + d.provider;
+    }
+  } catch (e) {
+    sec.innerHTML = `<div class="cve-ai-upsell" style="border-color:var(--score-crit);color:var(--score-crit);">AI fetch error.</div>`;
+  }
+}
+
+// isCveKEV: scan currently-loaded articles for any tag of form kev:CVE-...
+// True if any article carries that exact KEV tag.
+function isCveKEV(cveId) {
+  const want = ('kev:' + cveId).toLowerCase();
+  for (const a of (currentArticles || [])) {
+    for (const t of (a.tags || [])) {
+      if (String(t).toLowerCase() === want) return true;
+    }
+  }
+  return false;
+}
+
+function closeCveModal() {
+  const m = document.getElementById('cveModal');
+  if (m) m.hidden = true;
+  inputMode = false;
+}
+
+document.addEventListener('keydown', (e) => {
+  const m = document.getElementById('cveModal');
+  if (m && !m.hidden && e.key === 'Escape') { closeCveModal(); e.preventDefault(); }
+});
 
 async function fetchCveDetail(cveId) {
   const block = document.getElementById('cveDetailBlock');
@@ -4171,6 +6476,68 @@ async function fetchCveDetail(cveId) {
   } catch (e) {
     block.innerHTML = `<span style="color:var(--score-crit);">[NVD] error fetching detail</span>`;
   }
+}
+
+// showActorCard pops the Insight Card popover for a threat actor /
+// malware slug. Fetches curated metadata + recent mention count from
+// the server, renders into the shared popover, hooks "filter by" and
+// "open in MITRE" actions.
+function showActorCard(evt, slug)   { _showInsightCard(evt, 'actor', slug); }
+function showMalwareCard(evt, slug) { _showInsightCard(evt, 'malware', slug); }
+async function _showInsightCard(evt, kind, slug) {
+  const pop = document.getElementById('popover');
+  closeSourcePicker();
+  inputMode = false;
+  const endpoint = '/api/' + (kind === 'actor' ? 'actors' : 'malware') + '/' + encodeURIComponent(slug);
+  pop.innerHTML = `<div style="padding:8px 12px;color:var(--text-dim);font-size:11px;">loading...</div>`;
+  positionPopAt(pop, evt);
+  pop.style.display = 'block';
+  try {
+    const r = await fetch(endpoint);
+    if (!r.ok) {
+      pop.innerHTML = `<div style="padding:8px 12px;color:var(--score-crit);font-size:11px;">not in curated list (${esc(slug)})</div>`;
+      return;
+    }
+    const d = await r.json();
+    const kindLabel = (kind === 'actor') ? 'Threat actor' : 'Malware family';
+    const kindCol   = (kind === 'actor') ? '#e6b3f5' : '#ffc8a8';
+    const aliases   = (d.aliases || []).slice(0, 6).join(', ');
+    const originBit = d.origin && d.origin !== '??' ? `<span style="color:var(--text-dim);">origin:</span> <span style="color:var(--accent-cyan);">${esc(d.origin)}</span>` : '';
+    const kindBit   = d.kind ? `<span style="color:var(--text-dim);">kind:</span> <span style="color:var(--accent-cyan);">${esc(d.kind)}</span>` : '';
+    const searchTerm = (d.aliases && d.aliases[0]) || d.display || slug;
+    pop.innerHTML = `
+      <div style="padding:6px 12px 4px;color:${kindCol};font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.6px;text-transform:uppercase;">
+        :: ${esc(kindLabel)}
+      </div>
+      <div style="padding:4px 12px 6px;color:var(--text-bright);font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;">${esc(d.display)}</div>
+      <div style="padding:0 12px 8px;color:var(--text-dim);font-size:10.5px;line-height:1.5;">
+        <div><span style="color:var(--text-dim);">aliases:</span> ${esc(aliases)}</div>
+        ${originBit ? `<div>${originBit}</div>` : ''}
+        ${kindBit ? `<div>${kindBit}</div>` : ''}
+        <div><span style="color:var(--text-dim);">seen in last 30d:</span> <span style="color:var(--accent);font-weight:700;">${d.recent_count || 0} article(s)</span></div>
+      </div>
+      <div class="opt" data-search="${esc(searchTerm)}">Filter feed by ${esc(d.display)}</div>
+      <div class="opt" data-url="${esc(d.mitre_url)}">Open MITRE ATT&CK ➜</div>
+    `;
+    pop.querySelectorAll('.opt[data-url]').forEach(el => {
+      el.onclick = () => { window.open(el.dataset.url, '_blank'); closeIocPopover(); };
+    });
+    pop.querySelectorAll('.opt[data-search]').forEach(el => {
+      el.onclick = () => {
+        currentSearch = el.dataset.search;
+        selectedIndex = 0;
+        closeIocPopover();
+        loadArticles();
+      };
+    });
+  } catch (e) {
+    pop.innerHTML = `<div style="padding:8px 12px;color:var(--score-crit);font-size:11px;">lookup failed</div>`;
+  }
+}
+function positionPopAt(pop, evt) {
+  const rect = evt.target.getBoundingClientRect();
+  pop.style.left = `${Math.min(rect.left, window.innerWidth - 320)}px`;
+  pop.style.top = `${rect.bottom + 4}px`;
 }
 
 function showMitrePopover(evt, tag) {
@@ -4559,7 +6926,7 @@ function updatePreview() {
   if (!pane) return;
   const a = currentArticles[selectedIndex];
   if (!a) {
-    pane.innerHTML = '<div class="rd-empty"><div class="rd-loading-worm">~~~_o)</div><br>no feed to nom on. pick one to the left.</div>';
+    pane.innerHTML = '<div class="rd-empty"><svg class="rd-loading-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg><br>no feed to nom on. pick one to the left.</div>';
     return;
   }
   const tags = (a.tags || []).map(t => renderTagChip(t, a.id)).join(' ');
@@ -4583,10 +6950,12 @@ function updatePreview() {
     </div>
     <div class="rd-body">${esc(a.summary || '(no summary available)')}</div>
     ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
+    <div id="articleExplainSlot">${articleExplanationHTML(a.id)}</div>
     <div class="rd-actions">
       <a class="primary" href="${esc(a.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(a.id)}', true)">open ↗</a>
       <button type="button" onclick="toggleBookmark()">${bookmarked ? '★ bookmarked' : '☆ bookmark'}</button>
       <button type="button" onclick="markRead('${esc(a.id)}', ${!a.read})">${a.read ? 'mark unread' : 'mark read'}</button>
+      <button type="button" class="ai-explain-btn" title="AI plain-English summary (Pro)" onclick="explainCurrentArticle()">✨ explain</button>
     </div>
   `;
   pane.scrollTop = 0;
@@ -4705,26 +7074,77 @@ function osintLinksFor(value, kind, articleId) {
 async function openSettingsModal() {
   document.getElementById('settingsModal').classList.add('show');
   inputMode = true;
-  cfgSwitch('keys');
+  // Default to Bluesky: it's the per-user surface most users care about,
+  // and unlike the API keys tab it's visible to everyone, so non-admin
+  // visitors never land on a hidden tab on first open.
+  cfgSwitch('bluesky');
   try {
+    // Only need to know whether the operator has Bluesky enabled so we can
+    // show the gate or the per-user watch UI. API key editing has moved
+    // to the /admin page.
     const resp = await fetch(API + '/api/config');
     const cfg = await resp.json();
-    document.getElementById('cfgBskyId').value = cfg.bluesky?.identifier || '';
-    document.getElementById('cfgBskyPw').value = cfg.bluesky?.password ? '********' : '';
-    document.getElementById('cfgBazaarKey').value = cfg.malwarebazaar?.api_key ? '********' : '';
-    document.getElementById('cfgGhEnabled').checked = !!cfg.github?.enabled;
-    document.getElementById('cfgGhToken').value = cfg.github?.token ? '********' : '';
+    applyBlueskyGate(!!(cfg.bluesky?.identifier && cfg.bluesky?.password));
   } catch (e) {
     console.error('Failed to load config', e);
+    applyBlueskyGate(false);
   }
   document.getElementById('cfgAutoSec').value = autoRefreshSec;
   document.getElementById('cfgDecode').checked = localStorage.getItem('secfeed.decode') !== 'off';
   document.getElementById('cfgScanner').checked = localStorage.getItem('secfeed.scanner') !== 'off';
   loadCfgSources();
-  loadCfgAccounts();
-  loadCfgCurated();
   loadScoringTab();
   loadAuthStrip();
+}
+
+// applyAdminVisibility toggles the body-level .cfg-admin class which CSS
+// uses to reveal [data-admin-only] surfaces. Default state (no class) hides
+// them, so non-admin users never see admin UI even briefly while /api/me
+// is in flight. Admins flip the class on and the elements appear together.
+function applyAdminVisibility(isAdmin) {
+  document.body.classList.toggle('cfg-admin', !!isAdmin);
+  // If the currently-active tab is admin-only and we just hid it, jump to
+  // a tab the user can actually see. Bluesky is the natural landing for
+  // non-admins since the per-user watchlist lives there.
+  if (!isAdmin) {
+    const activeBtn = document.querySelector('.cfg-tab-btn.active');
+    if (activeBtn && activeBtn.dataset.adminOnly === 'true') {
+      cfgSwitch('bluesky');
+    }
+  }
+}
+
+// applyBlueskyGate toggles the Bluesky tab between the operator-baseline
+// gate and the live watched-accounts / curated picker. The gate fires when
+// the operator hasn't configured a fetcher session (no bsky identifier +
+// password in the global config). When the gate IS active, admin-only
+// users get a CTA to jump to the API keys tab; regular users just see the
+// "not enabled" message because they can't do anything about it.
+function applyBlueskyGate(configured) {
+  const gate    = document.getElementById('cfgBlueskyGate');
+  const content = document.getElementById('cfgBlueskyContent');
+  if (!gate || !content) return;
+  gate.hidden    = configured;
+  content.hidden = !configured;
+  if (configured) {
+    loadCfgAccounts();
+    loadCfgCurated();
+    return;
+  }
+  // Tailor the gate copy to who's reading it.
+  const hint = document.getElementById('cfgBlueskyGateHint');
+  const btn  = document.getElementById('cfgBlueskyGateBtn');
+  const adminTabBtn = document.querySelector('.cfg-tab-btn[data-tab="keys"]');
+  // The keys tab is admin-only-marked; if it's currently displayed we know
+  // this viewer is the operator. Cheaper than threading is_admin again.
+  const isOperator = adminTabBtn && adminTabBtn.style.display !== 'none';
+  if (isOperator) {
+    if (hint) hint.textContent = 'Bluesky integration needs a fetcher session. Add a Bluesky identifier + app password in the API keys tab to enable it for the deployment.';
+    if (btn)  btn.hidden = false;
+  } else {
+    if (hint) hint.textContent = 'Bluesky integration isn\'t enabled on this deployment yet.';
+    if (btn)  btn.hidden = true;
+  }
 }
 
 // --- Auth strip in the c-modal footer ---
@@ -4739,16 +7159,51 @@ async function loadAuthStrip() {
   strip.className = 'cfg-auth-strip';
   try {
     const m = await fetch(API + '/api/auth/methods').then(r => r.json()).catch(() => ({}));
-    if (!m || !m.hosted_mode) return; // self-host: leave hidden
+    hostedMode = !!(m && m.hosted_mode);
+    // Swap the Sources-tab hint: self-host explains the config.json file
+    // path; hosted explains that the list is curated and not user-editable.
+    const hintSelf   = document.getElementById('cfgSourceHintSelfhost');
+    const hintHosted = document.getElementById('cfgSourceHintHosted');
+    if (hintSelf && hintHosted) {
+      hintSelf.hidden   = hostedMode;
+      hintHosted.hidden = !hostedMode;
+    }
+    // The Alerts tab needs a hosted-mode webhook worker behind it; in
+    // self-host the worker doesn't run, so don't dangle the surface.
+    document.querySelectorAll('[data-hosted-only="true"]').forEach(el => {
+      el.style.display = hostedMode ? '' : 'none';
+    });
+    if (!hostedMode) {
+      // Self-host: no auth concept, you ARE the operator, show every tab.
+      applyAdminVisibility(true);
+      return;
+    }
     const me = await fetch(API + '/api/me', { credentials: 'same-origin' }).then(r => r.json()).catch(() => null);
     if (!me) {
+      // Hosted but anonymous: nothing global-config-shaped should be visible
+      // since they can't act on it anyway.
+      applyAdminVisibility(false);
+      applyAlertsTab(false);
+      applyTokensTab(false);
+      applyChannelsTab(false);
+      applyProfileTab(false);
       strip.hidden = false;
       strip.innerHTML =
         '<span>Sign in to sync settings, bookmarks, and read state across devices.</span>' +
         '<a href="/login.html">Sign in &rarr;</a>';
       return;
     }
+    // Signed in. Global-config surfaces are only useful to the operator.
+    applyAdminVisibility(!!me.is_admin);
+    // Stash the resolved user globally so the sync helpers know to fire.
+    meState = me;
+    pullMeState();
     const isPro = !!me.is_pro;
+    // Pro-gated tabs swap from "upgrade" to "live UI" the moment we know.
+    applyAlertsTab(isPro);
+    applyTokensTab(isPro);
+    applyChannelsTab(isPro);
+    applyProfileTab(isPro);
     strip.hidden = false;
     strip.classList.add('signed-in');
     if (isPro) strip.classList.add('pro');
@@ -4756,11 +7211,121 @@ async function loadAuthStrip() {
     const proExpiry = (isPro && me.pro_until)
       ? '<span style="color:var(--text-dim);margin-left:8px;">renews ' + esc(new Date(me.pro_until).toLocaleDateString()) + '</span>'
       : '';
+    // Billing CTA: upgrade for free users, manage subscription for Pro users.
+    let billingBtn = '';
+    if (m.billing) {
+      billingBtn = isPro
+        ? '<button type="button" onclick="openBillingPortal()" style="margin-right:8px;">Manage billing</button>'
+        : '<button type="button" class="upgrade" onclick="startCheckout()" style="margin-right:8px;">Upgrade to Pro</button>';
+    }
+    // Admin gets a deep link into the dashboard.
+    const adminLink = me.is_admin
+      ? '<a href="/admin" style="margin-right:12px;font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;color:var(--accent-amber);">admin &rarr;</a>'
+      : '';
     strip.innerHTML =
       '<span>Signed in as <span class="email">' + esc(me.email || '') + '</span>' + proBadge + proExpiry + '</span>' +
-      '<button type="button" onclick="logoutAuth()">Log out</button>';
+      '<span>' + adminLink + billingBtn + '<button type="button" onclick="logoutAuth()">Log out</button></span>';
   } catch (e) {
     // Network error: leave strip hidden, no need to alarm.
+  }
+}
+
+// Per-user server-side state mirror. Populated when a hosted-mode user is
+// signed in. Anonymous + self-host visitors keep localStorage as the source
+// of truth; meState stays null and the helpers below no-op.
+let meState = null;
+let hostedMode = false;
+
+// accountsEndpoint picks the right watched-accounts API for the current
+// session shape:
+//   - hosted + signed in : /api/me/bluesky/accounts  (per-user list)
+//   - self-host          : /api/config/accounts      (single operator config)
+//   - hosted + anonymous : /api/config/accounts      (read-only baseline)
+function accountsEndpoint() {
+  return (hostedMode && meState) ? '/api/me/bluesky/accounts' : '/api/config/accounts';
+}
+
+// Normalize the accounts-list field across the two endpoint shapes.
+function extractAccounts(body) {
+  if (!body) return [];
+  if (Array.isArray(body)) return body;
+  return body.handles || body.accounts || [];
+}
+
+// pullMeState overrides local state with whatever the server has on file
+// for this user. Called right after we know there's a session. Server wins
+// on conflict because if you log in on a second device, you expect that
+// device to look like your account, not like an anonymous browser.
+async function pullMeState() {
+  if (!meState) return;
+  try {
+    const [settings, marks] = await Promise.all([
+      fetch('/api/me/settings', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/me/bookmarks', { credentials: 'same-origin' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]);
+    if (settings && typeof settings === 'object') {
+      // Mirror the server keys back into localStorage so the rest of the
+      // page (which reads from localStorage) picks them up without code
+      // changes elsewhere.
+      if (typeof settings.decode === 'string')         localStorage.setItem('secfeed.decode', settings.decode);
+      if (typeof settings.scanner === 'string')        localStorage.setItem('secfeed.scanner', settings.scanner);
+      if (typeof settings.spicy === 'string')          localStorage.setItem('secfeed.spicy', settings.spicy);
+      if (typeof settings.autoRefreshSec === 'number') localStorage.setItem('secfeed.autoRefreshSec', String(settings.autoRefreshSec));
+      if (typeof settings.profile === 'string')        localStorage.setItem('secfeed.profile', settings.profile);
+      if (typeof settings.asset_profile === 'string')  localStorage.setItem('secfeed.assetProfile', settings.asset_profile);
+    }
+    if (marks && Array.isArray(marks.ids)) {
+      bookmarks = new Set(marks.ids);
+      localStorage.setItem('secfeed.bookmarks', JSON.stringify([...bookmarks]));
+      // Repaint star flags on whatever rows are currently in the DOM.
+      document.querySelectorAll('.item').forEach(row => {
+        const id = Number(row.dataset.id);
+        row.classList.toggle('bookmarked', bookmarks.has(id));
+      });
+    }
+    // The Bluesky tab's watched-accounts list was loaded earlier from
+    // /api/config/accounts before meState existed; now that it does,
+    // refetch from /api/me/bluesky/accounts so the per-user list shows.
+    if (!document.getElementById('cfgBlueskyContent')?.hidden) {
+      loadCfgAccounts();
+    }
+  } catch (e) {
+    // Server unreachable; leave localStorage as-is and try again next load.
+  }
+}
+
+// pushMeSettings serialises the local UI preferences into one JSON blob
+// and PUTs it. Fire-and-forget; the local write already succeeded.
+function pushMeSettings() {
+  if (!meState) return;
+  const body = {
+    decode:          localStorage.getItem('secfeed.decode')   || 'on',
+    scanner:         localStorage.getItem('secfeed.scanner')  || 'on',
+    spicy:           localStorage.getItem('secfeed.spicy')    || 'off',
+    autoRefreshSec:  Number(localStorage.getItem('secfeed.autoRefreshSec') || 60),
+    profile:         localStorage.getItem('secfeed.profile')  || '',
+    asset_profile:   localStorage.getItem('secfeed.assetProfile') || '',
+  };
+  fetch('/api/me/settings', {
+    method: 'PUT', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+// pushMeBookmark mirrors a single toggle to the server.
+function pushMeBookmark(id, added) {
+  if (!meState) return;
+  if (added) {
+    fetch('/api/me/bookmarks', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id }),
+    }).catch(() => {});
+  } else {
+    fetch('/api/me/bookmarks/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin',
+    }).catch(() => {});
   }
 }
 
@@ -4768,8 +7333,36 @@ async function logoutAuth() {
   try {
     await fetch('/auth/logout', { method: 'POST', credentials: 'same-origin' });
   } catch (e) {}
-  // Reload to clear any in-memory user state and re-resolve session middleware.
-  location.reload();
+  // Send the now-anonymous visitor back to the landing instead of leaving
+  // them on /app with a half-rendered logged-out shell.
+  location.href = '/';
+}
+
+// Kick off Stripe Checkout. Server creates the Session and returns its URL;
+// we swap location to Stripe, which handles the rest and bounces back to /
+// with ?billing=ok or ?billing=cancelled.
+async function startCheckout() {
+  try {
+    const r = await fetch('/api/billing/checkout', { method: 'POST', credentials: 'same-origin' });
+    if (r.status === 401) { location.href = '/login.html'; return; }
+    if (!r.ok) { alert('Checkout is temporarily unavailable. Try again in a minute.'); return; }
+    const j = await r.json();
+    if (j.url) { location.href = j.url; }
+  } catch (e) {
+    alert('Network error. Try again.');
+  }
+}
+
+// Open the Stripe Customer Portal for self-service subscription management.
+async function openBillingPortal() {
+  try {
+    const r = await fetch('/api/billing/portal', { method: 'POST', credentials: 'same-origin' });
+    if (!r.ok) { alert('Billing portal is temporarily unavailable.'); return; }
+    const j = await r.json();
+    if (j.url) { location.href = j.url; }
+  } catch (e) {
+    alert('Network error. Try again.');
+  }
 }
 
 // --- Filtering tab (scoring transparency) ---
@@ -4832,10 +7425,11 @@ let cfgCuratedData = null;
 
 async function loadCfgAccounts() {
   try {
-    const r = await fetch(API + '/api/config/accounts');
-    const accounts = await r.json();
-    cfgWatchedSet = new Set((accounts || []).map(h => String(h).toLowerCase()));
-    renderCfgAccounts(accounts || []);
+    const r = await fetch(API + accountsEndpoint(), { credentials: 'same-origin' });
+    const body = await r.json();
+    const accounts = extractAccounts(body);
+    cfgWatchedSet = new Set(accounts.map(h => String(h).toLowerCase()));
+    renderCfgAccounts(accounts);
     if (cfgCuratedData) renderCfgCurated();
   } catch (e) {
     const list = document.getElementById('cfgAccountList');
@@ -4863,16 +7457,18 @@ async function addCfgAccount() {
   let handle = (input.value || '').trim().replace(/^@/, '');
   if (!handle) return;
   try {
-    const r = await fetch(API + '/api/config/accounts', {
+    const r = await fetch(API + accountsEndpoint(), {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ action: 'add', handle })
     });
+    if (r.status === 401) { toast('sign in to manage your watch list', true); return; }
     const result = await r.json();
-    if (result.ok) {
+    if (result.ok || result.ok === 'true') {
       input.value = '';
       cfgWatchedSet.add(handle.toLowerCase());
-      renderCfgAccounts(result.accounts || []);
+      renderCfgAccounts(extractAccounts(result));
       if (cfgCuratedData) renderCfgCurated();
       toast('now nom-ing @' + handle);
     } else {
@@ -4885,15 +7481,17 @@ async function addCfgAccount() {
 
 async function removeCfgAccount(handle) {
   try {
-    const r = await fetch(API + '/api/config/accounts', {
+    const r = await fetch(API + accountsEndpoint(), {
       method: 'POST',
+      credentials: 'same-origin',
       headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ action: 'remove', handle })
     });
+    if (r.status === 401) { toast('sign in to manage your watch list', true); return; }
     const result = await r.json();
-    if (result.ok) {
+    if (result.ok || result.ok === 'true') {
       cfgWatchedSet.delete(handle.toLowerCase());
-      renderCfgAccounts(result.accounts || []);
+      renderCfgAccounts(extractAccounts(result));
       if (cfgCuratedData) renderCfgCurated();
       toast('spit out @' + handle);
     }
@@ -4929,6 +7527,11 @@ function renderCfgCurated() {
   if (!cfgCuratedData) return;
   const panel = document.getElementById('cfgCuratedPanel');
   const meta = document.getElementById('cfgCuratedMeta');
+  // Reflect the count in the inline hint so the user knows exactly how
+  // many curated handles are auto-watched.
+  const hintCount = document.getElementById('cfgCuratedHintCount');
+  if (hintCount) hintCount.textContent = cfgCuratedData.length;
+
   const q = (document.getElementById('cfgCuratedSearch')?.value || '').trim().toLowerCase();
   let filtered = cfgCuratedData;
   if (q) {
@@ -4951,22 +7554,17 @@ function renderCfgCurated() {
     if (!groups[cat]) { groups[cat] = []; order.push(cat); }
     groups[cat].push(e);
   }
+  // Read-only rendering: every curated researcher is auto-watched, so the
+  // panel is informational - no add / remove buttons.
   panel.innerHTML = order.map(cat => {
-    const rows = groups[cat].map(e => {
-      const added = cfgWatchedSet.has(e.handle.toLowerCase());
-      return `
-        <div class="cfg-curated-row ${added ? 'added' : ''}" data-handle="${esc(e.handle)}">
+    const rows = groups[cat].map(e => `
+        <div class="cfg-curated-row added" data-handle="${esc(e.handle)}">
           <span class="name">${esc(e.name || e.handle)}</span>
           <span class="handle">@${esc(e.handle)}</span>
           <span class="desc">${esc(e.description || '')}</span>
-          <span class="act">
-            <button type="button" ${added ? 'disabled' : ''} onclick="subscribeCfgCurated('${esc(e.handle)}', this)">
-              ${added ? '&#10003; added' : '+ add'}
-            </button>
-          </span>
+          <span class="act"><span class="watched-tag">&#10003; watched</span></span>
         </div>
-      `;
-    }).join('');
+      `).join('');
     return `
       <div class="cfg-curated-cat">
         <div class="cfg-curated-cat-title">
@@ -4977,33 +7575,7 @@ function renderCfgCurated() {
       </div>
     `;
   }).join('');
-  const addedCount = filtered.filter(e => cfgWatchedSet.has(e.handle.toLowerCase())).length;
-  if (meta) meta.textContent = `${filtered.length} of ${cfgCuratedData.length} · ${addedCount} already watched`;
-}
-
-async function subscribeCfgCurated(handle, btn) {
-  if (!handle) return;
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
-  try {
-    const r = await fetch(API + '/api/config/accounts', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ action: 'add', handle })
-    });
-    const result = await r.json();
-    if (result.ok) {
-      cfgWatchedSet.add(handle.toLowerCase());
-      renderCfgAccounts(result.accounts || []);
-      renderCfgCurated();
-      toast('now nom-ing @' + handle);
-    } else {
-      if (btn) { btn.disabled = false; btn.textContent = '+ add'; }
-      toast(result.error || 'add failed', true);
-    }
-  } catch (e) {
-    if (btn) { btn.disabled = false; btn.textContent = '+ add'; }
-    toast('add failed', true);
-  }
+  if (meta) meta.textContent = `${filtered.length} of ${cfgCuratedData.length} shown - all auto-watched`;
 }
 
 function closeSettingsModal() {
@@ -5016,31 +7588,593 @@ function cfgSwitch(name) {
   document.querySelectorAll('.cfg-tab').forEach(t => t.hidden = t.dataset.tab !== name);
 }
 
-async function saveBskyConfig() {
-  const payload = {
-    identifier: document.getElementById('cfgBskyId').value.trim(),
-    password: document.getElementById('cfgBskyPw').value,
-  };
-  await fetch('/api/config/bluesky', { method: 'POST', body: JSON.stringify(payload) });
-  toast('Bluesky saved.');
-  document.getElementById('cfgBskyPw').value = '********';
+// API-key save functions used to live here; they were moved to /admin
+// when API keys / operator-baseline Bluesky management migrated off the
+// Config (c) modal. Look at web/admin.html for the replacements.
+
+// --- Pro: webhook alert rules ---
+function applyAlertsTab(isPro) {
+  const locked = document.getElementById('cfgAlertsLocked');
+  const live   = document.getElementById('cfgAlertsLive');
+  if (!locked || !live) return;
+  locked.hidden = !!isPro;
+  live.hidden   = !isPro;
+  if (isPro) {
+    loadCfgAlerts();
+    // Prime the channel hint so the user isn't staring at an empty
+    // helper line before they interact with the dropdown.
+    updateCfgAlertHint();
+  }
 }
 
-async function saveBazaarConfig() {
-  const payload = { api_key: document.getElementById('cfgBazaarKey').value };
-  await fetch('/api/config/bazaar', { method: 'POST', body: JSON.stringify(payload) });
-  toast('MalwareBazaar saved.');
-  document.getElementById('cfgBazaarKey').value = '********';
+async function loadCfgAlerts() {
+  const list = document.getElementById('cfgAlertsList');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/me/alerts', { credentials: 'same-origin' });
+    if (r.status === 402 || r.status === 401) { applyAlertsTab(false); return; }
+    if (!r.ok) { list.innerHTML = '<div class="cfg-account-empty">failed to load alerts</div>'; return; }
+    const body = await r.json();
+    renderCfgAlerts(body.rules || []);
+  } catch (e) {
+    list.innerHTML = '<div class="cfg-account-empty">network error loading alerts</div>';
+  }
 }
 
-async function saveGhConfig() {
-  const payload = {
-    enabled: document.getElementById('cfgGhEnabled').checked,
-    token: document.getElementById('cfgGhToken').value,
+function renderCfgAlerts(rules) {
+  const list = document.getElementById('cfgAlertsList');
+  if (!list) return;
+  if (!rules.length) {
+    list.innerHTML = '<div class="cfg-account-empty">no rules yet. add one below to start getting webhook pings.</div>';
+    return;
+  }
+  list.innerHTML = rules.map(rl => {
+    const cls = rl.enabled ? '' : 'disabled';
+    const kindCls = rl.kind === 'kev' ? 'kev' : '';
+    const patBit = rl.kind === 'kev'
+      ? 'every KEV catalog addition'
+      : '<span class="pat">' + esc(rl.pattern || '') + '</span>';
+    const last = rl.last_fired_at
+      ? '<div class="last">last fired ' + esc(fmtRelative(rl.last_fired_at)) + '</div>'
+      : '<div class="last" style="color:var(--text-dim);">never fired yet</div>';
+    return `
+      <div class="cfg-alert-row ${cls}">
+        <div class="meta">
+          <span class="kind ${kindCls}">${esc(rl.kind)}</span>
+          ${patBit}
+          <div class="url">${esc(rl.channel)} &middot; ${esc(rl.channel_target)}</div>
+          ${last}
+        </div>
+        <div class="acts">
+          <button type="button" onclick="toggleCfgAlertEnabled('${esc(rl.id)}', ${rl.enabled})">${rl.enabled ? 'disable' : 'enable'}</button>
+          <button type="button" class="rm" onclick="removeCfgAlert('${esc(rl.id)}')">delete</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function fmtRelative(iso) {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '-';
+  const sec = (Date.now() - d.getTime()) / 1000;
+  if (sec < 60)    return Math.floor(sec) + 's ago';
+  if (sec < 3600)  return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+
+function toggleCfgAlertPattern() {
+  const kind = document.getElementById('cfgAlertKind').value;
+  const row  = document.getElementById('cfgAlertPatternRow');
+  if (!row) return;
+  row.hidden = kind === 'kev';
+  const pat = document.getElementById('cfgAlertPattern');
+  if (pat) {
+    pat.placeholder = kind === 'keyword' ? 'e.g. MSHTA  or  lateral movement'
+                    : kind === 'cve'     ? 'e.g. CVE-2026-31431'
+                    : kind === 'tag'     ? 'e.g. T1059  or  ransomware'
+                    : '';
+  }
+}
+
+function updateCfgAlertHint() {
+  const ch = document.getElementById('cfgAlertChannel').value;
+  const hint = document.getElementById('cfgAlertHint');
+  const tgt  = document.getElementById('cfgAlertTarget');
+  if (!hint || !tgt) return;
+  if (ch === 'slack') {
+    hint.textContent = 'Get this URL from Slack: Workspace settings -> Apps -> Custom Integrations -> Incoming Webhooks. Must be https://.';
+    tgt.placeholder  = 'https://hooks.slack.com/services/T0...';
+  } else if (ch === 'discord') {
+    hint.textContent = 'In Discord: Server Settings -> Integrations -> Webhooks -> New Webhook -> Copy URL. Must be https://.';
+    tgt.placeholder  = 'https://discord.com/api/webhooks/...';
+  } else {
+    hint.textContent = 'Generic: POSTs a JSON envelope with the article + rule. Any https:// endpoint that accepts JSON works.';
+    tgt.placeholder  = 'https://your-service.example.com/hook';
+  }
+}
+
+async function saveCfgAlert() {
+  const kind = document.getElementById('cfgAlertKind').value;
+  const pat  = document.getElementById('cfgAlertPattern').value.trim();
+  const ch   = document.getElementById('cfgAlertChannel').value;
+  const tgt  = document.getElementById('cfgAlertTarget').value.trim();
+  if (kind !== 'kev' && !pat)            { toast('pattern required', true); return; }
+  if (!tgt.startsWith('https://'))       { toast('webhook URL must be https', true); return; }
+
+  const body = { kind, pattern: pat, channel: ch, channel_target: tgt, enabled: true };
+  try {
+    const r = await fetch('/api/me/alerts', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (r.status === 402) { applyAlertsTab(false); return; }
+    if (!r.ok) {
+      const errTxt = await r.text();
+      toast(errTxt || 'save failed', true);
+      return;
+    }
+    const result = await r.json();
+    renderCfgAlerts(result.rules || []);
+    document.getElementById('cfgAlertPattern').value = '';
+    document.getElementById('cfgAlertTarget').value  = '';
+    toast('rule added');
+  } catch (e) {
+    toast('network error', true);
+  }
+}
+
+async function removeCfgAlert(id) {
+  if (!confirm('Delete this alert rule?')) return;
+  try {
+    const r = await fetch('/api/me/alerts/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin',
+    });
+    if (r.ok || r.status === 204) {
+      loadCfgAlerts();
+      toast('rule removed');
+    } else {
+      toast('delete failed', true);
+    }
+  } catch (e) { toast('network error', true); }
+}
+
+// --- Pro: AI personalization profile ---
+function applyProfileTab(isPro) {
+  const locked = document.getElementById('cfgProfileLocked');
+  const live   = document.getElementById('cfgProfileLive');
+  if (!locked || !live) return;
+  locked.hidden = !!isPro;
+  live.hidden   = !isPro;
+  if (isPro) {
+    // Profile + asset-profile both live in the /api/me/settings JSON
+    // blob; localStorage mirrors them via the existing sync helpers.
+    const stored = localStorage.getItem('secfeed.profile') || '';
+    const ta = document.getElementById('cfgProfileText');
+    if (ta) ta.value = stored;
+    const apStored = localStorage.getItem('secfeed.assetProfile') || '';
+    const apTa = document.getElementById('cfgAssetProfile');
+    if (apTa) apTa.value = apStored;
+    loadCfgPatchToggles();
+    loadCfgDigest();
+  }
+}
+
+async function loadCfgDigest() {
+  try {
+    const r = await fetch('/api/me/digest', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const d = await r.json();
+    const freq = (d.frequency || 'off').toLowerCase();
+    document.querySelectorAll('input[name="cfgDigestFreq"]').forEach(el => {
+      el.checked = (el.value === freq);
+    });
+    const s = document.getElementById('cfgDigestStatus');
+    if (s) {
+      if (d.last_sent_at) {
+        s.textContent = 'last sent ' + new Date(d.last_sent_at).toLocaleString();
+      } else if (freq === 'off') {
+        s.textContent = 'currently off';
+      } else {
+        s.textContent = 'subscribed - first email lands in the next 30 minutes if data is ready';
+      }
+    }
+  } catch (e) {}
+}
+
+async function saveCfgDigest(freq) {
+  try {
+    const r = await fetch('/api/me/digest', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ frequency: freq }),
+    });
+    if (!r.ok) { toast('save failed', true); return; }
+    const s = document.getElementById('cfgDigestStatus');
+    if (s) s.textContent = freq === 'off' ? 'digest turned off' : 'digest set to ' + freq;
+    toast('digest ' + freq);
+  } catch (e) { toast('network error', true); }
+}
+
+function saveCfgProfile() {
+  const txt = (document.getElementById('cfgProfileText').value || '').trim();
+  localStorage.setItem('secfeed.profile', txt);
+  // Push into the synced settings blob so it follows the user across
+  // devices. Re-uses the existing pushMeSettings helper plumbing.
+  pushMeProfileSetting(txt);
+  const s = document.getElementById('cfgProfileStatus');
+  if (s) s.textContent = 'saved · ' + txt.length + ' chars';
+  toast('profile saved');
+}
+
+// Send the profile string up to /api/me/settings as part of the blob the
+// rest of the app uses.
+function pushMeProfileSetting(profile) {
+  if (!meState) return;
+  const body = {
+    decode:         localStorage.getItem('secfeed.decode')  || 'on',
+    scanner:        localStorage.getItem('secfeed.scanner') || 'on',
+    spicy:          localStorage.getItem('secfeed.spicy')   || 'off',
+    autoRefreshSec: Number(localStorage.getItem('secfeed.autoRefreshSec') || 60),
+    profile:        profile,
+    asset_profile:  localStorage.getItem('secfeed.assetProfile') || '',
   };
-  await fetch('/api/config/github', { method: 'POST', body: JSON.stringify(payload) });
-  toast('GitHub saved.');
-  document.getElementById('cfgGhToken').value = '********';
+  fetch('/api/me/settings', {
+    method: 'PUT', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).catch(() => {});
+}
+
+// Save the comma-separated asset-profile keyword list. The server reads
+// asset_profile from the settings JSON and tags matching articles with
+// yours:&lt;keyword&gt; on /api/articles so the feed highlights them.
+function saveCfgAssetProfile() {
+  const txt = (document.getElementById('cfgAssetProfile').value || '').trim();
+  localStorage.setItem('secfeed.assetProfile', txt);
+  // Reuse the existing settings-PUT path - same shape, just with the
+  // updated asset_profile key picked up from localStorage.
+  pushMeSettings();
+  const s = document.getElementById('cfgAssetProfileStatus');
+  const keywords = txt.split(/[,;\n|]/).map(p => p.trim().toLowerCase()).filter(p => p.length >= 2 && p.length <= 30);
+  const uniq = [...new Set(keywords)];
+  if (s) s.textContent = 'saved · ' + uniq.length + ' keyword(s) - refresh the feed to see matches';
+  toast('stack saved');
+}
+
+async function runPersonalize() {
+  const profile = (document.getElementById('cfgProfileText').value || '').trim();
+  if (!profile) { toast('write a profile first', true); return; }
+  const status = document.getElementById('cfgProfileStatus');
+  const ids = (currentArticles || []).map(a => a.id);
+  if (!ids.length) { toast('no articles to personalize', true); return; }
+  if (status) status.textContent = '[AI] re-ranking ' + ids.length + ' items...';
+  try {
+    const r = await fetch('/api/me/personalize', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ profile, article_ids: ids }),
+    });
+    if (r.status === 402) { applyProfileTab(false); return; }
+    if (!r.ok) {
+      const t = await r.text();
+      if (status) status.textContent = 'failed: ' + t;
+      toast('personalize failed', true);
+      return;
+    }
+    const data = await r.json();
+    if (!data.sorted_ids || !data.sorted_ids.length) {
+      if (status) status.textContent = 'no result returned';
+      return;
+    }
+    reorderArticlesBySortedIds(data.sorted_ids);
+    if (status) status.textContent = 'done · ' + (data.provider || '');
+    toast('feed re-ranked');
+    closeSettingsModal();
+  } catch (e) {
+    if (status) status.textContent = 'network error';
+    toast('network error', true);
+  }
+}
+
+function reorderArticlesBySortedIds(sortedIds) {
+  if (!Array.isArray(sortedIds) || !sortedIds.length) return;
+  const byId = new Map();
+  for (const a of currentArticles) byId.set(a.id, a);
+  const out = [];
+  for (const id of sortedIds) {
+    const a = byId.get(id);
+    if (a) { out.push(a); byId.delete(id); }
+  }
+  // Any ids the LLM dropped go to the end (preserve their original order).
+  for (const a of currentArticles) {
+    if (byId.has(a.id)) out.push(a);
+  }
+  currentArticles = out;
+  selectedIndex = 0;
+  // Re-render the list with the new order. renderArticleList exists from
+  // the loadArticles path; trigger it via the existing render pipeline.
+  if (typeof renderArticles === 'function') renderArticles(currentArticles);
+}
+
+// --- Pro: saved-search channels ---
+let cfgChannelsCache = [];
+
+function applyChannelsTab(isPro) {
+  const locked = document.getElementById('cfgChannelsLocked');
+  const live   = document.getElementById('cfgChannelsLive');
+  if (!locked || !live) return;
+  locked.hidden = !!isPro;
+  live.hidden   = !isPro;
+  if (isPro) loadCfgChannels();
+  // Whether or not it's Pro, repaint the chip strip so it disappears
+  // for free users and reappears after a successful upgrade.
+  renderChannelsStrip();
+}
+
+async function loadCfgChannels() {
+  const list = document.getElementById('cfgChannelsList');
+  try {
+    const r = await fetch('/api/me/channels', { credentials: 'same-origin' });
+    if (r.status === 401 || r.status === 402 || r.status === 403) {
+      applyChannelsTab(false);
+      return;
+    }
+    if (!r.ok) { if (list) list.innerHTML = '<div class="cfg-account-empty">failed to load</div>'; return; }
+    const body = await r.json();
+    cfgChannelsCache = body.channels || [];
+    renderCfgChannels();
+    renderChannelsStrip();
+  } catch (e) {
+    if (list) list.innerHTML = '<div class="cfg-account-empty">network error</div>';
+  }
+}
+
+function renderCfgChannels() {
+  const list = document.getElementById('cfgChannelsList');
+  if (!list) return;
+  if (!cfgChannelsCache.length) {
+    list.innerHTML = '<div class="cfg-account-empty">no channels yet. add one below.</div>';
+    return;
+  }
+  list.innerHTML = cfgChannelsCache.map(c => `
+    <div class="cfg-channel-row">
+      <div>
+        <span class="name">${esc(c.name)}</span>
+        <span class="q">→ ${esc(c.query)}</span>
+      </div>
+      <button type="button" onclick="deleteCfgChannel('${esc(c.id)}', '${esc(c.name)}')">delete</button>
+    </div>
+  `).join('');
+}
+
+function renderChannelsStrip() {
+  const strip = document.getElementById('channelsStrip');
+  if (!strip) return;
+  if (!meState || !cfgChannelsCache.length) {
+    strip.hidden = true;
+    strip.innerHTML = '';
+    return;
+  }
+  const chips = cfgChannelsCache.map(c => {
+    const active = currentSearch && currentSearch.toLowerCase() === c.query.toLowerCase() ? 'active' : '';
+    return `<span class="ch-chip ${active}" onclick="applyChannel('${esc(c.id)}')">${esc(c.name)}</span>`;
+  }).join('');
+  strip.innerHTML = `<span class="ch-label">channels:</span>${chips}<button class="ch-add" type="button" onclick="quickSaveChannel()">+ save current search</button>`;
+  strip.hidden = false;
+}
+
+function applyChannel(id) {
+  const c = cfgChannelsCache.find(x => x.id === id);
+  if (!c) return;
+  // Toggle off if already active.
+  if (currentSearch && currentSearch.toLowerCase() === c.query.toLowerCase()) {
+    currentSearch = '';
+  } else {
+    currentSearch = c.query;
+  }
+  selectedIndex = 0;
+  renderChannelsStrip();
+  loadArticles();
+}
+
+async function quickSaveChannel() {
+  const q = (currentSearch || '').trim();
+  if (!q) { toast('type a search first (/)', true); return; }
+  const name = prompt('Name this channel:', q.slice(0, 30));
+  if (!name) return;
+  await postChannel(name.trim(), q);
+}
+
+async function saveCfgChannel() {
+  const name  = document.getElementById('cfgChannelName').value.trim();
+  const query = document.getElementById('cfgChannelQuery').value.trim();
+  if (!name || !query) { toast('name and query required', true); return; }
+  await postChannel(name, query);
+  document.getElementById('cfgChannelName').value  = '';
+  document.getElementById('cfgChannelQuery').value = '';
+}
+
+async function postChannel(name, query) {
+  try {
+    const r = await fetch('/api/me/channels', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, query }),
+    });
+    if (r.status === 402) { applyChannelsTab(false); return; }
+    if (!r.ok) { toast('save failed', true); return; }
+    const result = await r.json();
+    cfgChannelsCache = result.channels || [];
+    renderCfgChannels();
+    renderChannelsStrip();
+    toast('channel saved');
+  } catch (e) { toast('network error', true); }
+}
+
+async function deleteCfgChannel(id, name) {
+  if (!confirm('Delete channel "' + name + '"?')) return;
+  try {
+    const r = await fetch('/api/me/channels/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin',
+    });
+    if (r.ok || r.status === 204) {
+      cfgChannelsCache = cfgChannelsCache.filter(c => c.id !== id);
+      renderCfgChannels();
+      renderChannelsStrip();
+      toast('channel removed');
+    }
+  } catch (e) { toast('network error', true); }
+}
+
+// --- Pro: REST API tokens ---
+function applyTokensTab(isPro) {
+  const locked = document.getElementById('cfgTokensLocked');
+  const live   = document.getElementById('cfgTokensLive');
+  if (!locked || !live) return;
+  locked.hidden = !!isPro;
+  live.hidden   = !isPro;
+  if (isPro) loadCfgTokens();
+}
+
+async function loadCfgTokens() {
+  const list = document.getElementById('cfgTokensList');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/me/tokens', { credentials: 'same-origin' });
+    if (r.status === 402 || r.status === 401 || r.status === 403) {
+      applyTokensTab(false);
+      return;
+    }
+    if (!r.ok) { list.innerHTML = '<div class="cfg-account-empty">failed to load tokens</div>'; return; }
+    const body = await r.json();
+    renderCfgTokens(body.tokens || []);
+  } catch (e) {
+    list.innerHTML = '<div class="cfg-account-empty">network error loading tokens</div>';
+  }
+}
+
+function renderCfgTokens(tokens) {
+  const list = document.getElementById('cfgTokensList');
+  if (!list) return;
+  if (!tokens.length) {
+    list.innerHTML = '<div class="cfg-account-empty">no tokens yet. mint one below to start hitting the API.</div>';
+    return;
+  }
+  list.innerHTML = tokens.map(t => `
+    <div class="cfg-token-row">
+      <div class="meta">
+        <span class="name">${esc(t.name)}</span>
+        <span class="prefix">${esc(t.prefix || '')}...</span>
+        <span class="when">created ${esc(fmtRelative(t.created_at))}${t.last_used_at ? ' &middot; last used ' + esc(fmtRelative(t.last_used_at)) : ' &middot; never used'}</span>
+      </div>
+      <div class="acts">
+        <button type="button" onclick="revokeCfgToken('${esc(t.id)}', '${esc(t.name)}')">revoke</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function mintCfgToken() {
+  const nameInput = document.getElementById('cfgTokenName');
+  const name = (nameInput.value || '').trim();
+  if (!name) { toast('label required', true); return; }
+  try {
+    const r = await fetch('/api/me/tokens', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (r.status === 402 || r.status === 403) {
+      const txt = await r.text();
+      toast(txt || 'pro required', true);
+      return;
+    }
+    if (!r.ok) { toast('mint failed', true); return; }
+    const result = await r.json();
+    nameInput.value = '';
+    showCfgTokenReveal(result.token);
+    loadCfgTokens();
+  } catch (e) {
+    toast('network error', true);
+  }
+}
+
+function showCfgTokenReveal(token) {
+  const box  = document.getElementById('cfgTokenReveal');
+  const val  = document.getElementById('cfgTokenRevealValue');
+  if (!box || !val) return;
+  val.textContent = token;
+  box.hidden = false;
+  // Auto-select so a quick triple-click + Ctrl-C lifts the whole token.
+  setTimeout(() => {
+    const range = document.createRange();
+    range.selectNodeContents(val);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }, 30);
+}
+
+function dismissCfgTokenReveal() {
+  const box = document.getElementById('cfgTokenReveal');
+  const val = document.getElementById('cfgTokenRevealValue');
+  if (box) box.hidden = true;
+  if (val) val.textContent = '';
+}
+
+async function copyCfgToken() {
+  const val = document.getElementById('cfgTokenRevealValue');
+  if (!val) return;
+  try {
+    await navigator.clipboard.writeText(val.textContent);
+    toast('copied to clipboard');
+  } catch (e) {
+    toast('copy failed; select + Ctrl-C manually', true);
+  }
+}
+
+async function revokeCfgToken(id, name) {
+  if (!confirm('Revoke token "' + name + '"? Anything using it will start getting 401s immediately.')) return;
+  try {
+    const r = await fetch('/api/me/tokens/' + encodeURIComponent(id), {
+      method: 'DELETE', credentials: 'same-origin',
+    });
+    if (r.ok || r.status === 204) {
+      loadCfgTokens();
+      toast('token revoked');
+    } else {
+      toast('revoke failed', true);
+    }
+  } catch (e) { toast('network error', true); }
+}
+
+async function toggleCfgAlertEnabled(id, currentlyEnabled) {
+  // Fetch current state so we don't lose pattern / channel on toggle.
+  try {
+    const list = await fetch('/api/me/alerts', { credentials: 'same-origin' }).then(r => r.json());
+    const rule = (list.rules || []).find(x => x.id === id);
+    if (!rule) return;
+    const body = {
+      id: rule.id,
+      kind: rule.kind,
+      pattern: rule.pattern,
+      channel: rule.channel,
+      channel_target: rule.channel_target,
+      enabled: !currentlyEnabled,
+    };
+    const r = await fetch('/api/me/alerts', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (r.ok) {
+      const result = await r.json();
+      renderCfgAlerts(result.rules || []);
+    }
+  } catch (e) { toast('toggle failed', true); }
 }
 
 function saveBehaviorConfig() {
@@ -5048,7 +8182,15 @@ function saveBehaviorConfig() {
   setAutoRefreshSec(sec);
   localStorage.setItem('secfeed.decode', document.getElementById('cfgDecode').checked ? 'on' : 'off');
   localStorage.setItem('secfeed.scanner', document.getElementById('cfgScanner').checked ? 'on' : 'off');
+  pushMeSettings();
   toast(`refresh: ${sec > 0 ? sec + 's' : 'off'}`);
+}
+
+// Autosave a single preference checkbox the moment the user toggles it -
+// no Apply button required for these one-shot aesthetic toggles.
+function saveCfgToggle(key, el) {
+  localStorage.setItem('secfeed.' + key, el.checked ? 'on' : 'off');
+  pushMeSettings();
 }
 
 async function loadCfgSources() {
@@ -5126,8 +8268,18 @@ async function markRead(id, value) {
 function timeAgo(dateStr) {
   if (!dateStr) return '';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return '';
   const now = new Date();
   const diff = Math.floor((now - d) / 1000);
+  // Future-dated rows (event calendars, pre-published advisories) used
+  // to render as "just now" because any negative diff fell into the
+  // first branch. Surface them honestly instead.
+  if (diff < 0) {
+    const ahead = -diff;
+    if (ahead < 3600) return 'scheduled';
+    if (ahead < 86400) return 'in ' + Math.floor(ahead / 3600) + 'h';
+    return 'in ' + Math.floor(ahead / 86400) + 'd';
+  }
   if (diff < 60) return 'just now';
   if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
   if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
@@ -5147,6 +8299,97 @@ function toast(msg) {
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+// --- Score-explainer popover ---
+// Click the score chip on an article -> floating popover showing exactly
+// which scoring categories fired and which keywords matched. Re-runs the
+// server's match logic client-side against (title + summary) so no new API
+// is needed - we already have all the data on-screen.
+async function openScoreExplain(articleId, evt) {
+  const a = (currentArticles || []).find(x => x.id === articleId);
+  if (!a) return;
+  // Categories cache: lazy-load on first open, persists per session.
+  if (!cfgScoringData) {
+    try {
+      const r = await fetch(API + '/api/scoring');
+      cfgScoringData = await r.json();
+    } catch (e) {
+      toast('couldn’t load scoring rules', true);
+      return;
+    }
+  }
+  renderScoreExplain(a, evt);
+}
+
+function renderScoreExplain(a, evt) {
+  const box = document.getElementById('scoreExplain');
+  if (!box || !cfgScoringData?.categories) return;
+
+  const text = ((a.title || '') + ' ' + (a.summary || '')).toLowerCase();
+  const hits = [];
+  for (const cat of cfgScoringData.categories) {
+    const matched = (cat.keywords || []).filter(kw => text.includes(String(kw).toLowerCase()));
+    if (matched.length) hits.push({ name: cat.name, weight: cat.weight, matched });
+  }
+
+  // KEV special-case: any kev:* tag instantly escalates score to 100.
+  const kevTags = (a.tags || []).filter(t => String(t).toLowerCase().startsWith('kev:'));
+
+  let html = `
+    <div class="se-title"><span>scoring breakdown</span><a href="#" onclick="closeScoreExplain(event)" style="color:var(--text-dim);text-decoration:none;font-size:14px;line-height:1;">×</a></div>
+    <div class="se-total">${a.score}</div>
+  `;
+
+  if (kevTags.length) {
+    html += `<div class="se-row"><div class="se-cat">CISA KEV catalog match<span class="matched">${kevTags.map(esc).join(', ')}</span></div><div class="se-weight kev">↑ 100</div></div>`;
+  }
+
+  if (hits.length) {
+    for (const h of hits) {
+      html += `<div class="se-row"><div class="se-cat">${esc(h.name || 'category')}<span class="matched">matched: ${h.matched.map(esc).join(', ')}</span></div><div class="se-weight">+${h.weight}</div></div>`;
+    }
+  } else if (!kevTags.length) {
+    html += `<div class="se-row"><div class="se-cat" style="color:var(--text-dim);">no keyword categories matched. score is 0 (or boosted only by IOC / artifact extraction).</div></div>`;
+  }
+
+  html += `<div class="se-foot">categories ship in the binary. open Config (c) → Filtering tab for the full rule set.</div>`;
+  box.innerHTML = html;
+  box.hidden = false;
+
+  // Position near the click but keep on-screen. Prefer below+right of the
+  // click; flip to above/left if it overflows the viewport.
+  const margin = 10;
+  const r = box.getBoundingClientRect();
+  let x = (evt.clientX || 0) + 12;
+  let y = (evt.clientY || 0) + 12;
+  if (x + r.width + margin > window.innerWidth)  x = window.innerWidth  - r.width  - margin;
+  if (y + r.height + margin > window.innerHeight) y = window.innerHeight - r.height - margin;
+  if (x < margin) x = margin;
+  if (y < margin) y = margin;
+  box.style.left = x + 'px';
+  box.style.top  = y + 'px';
+
+  // One-shot dismiss handlers. Bind on the next tick so this very click
+  // doesn't immediately close the popover we just opened.
+  setTimeout(() => {
+    document.addEventListener('mousedown', scoreExplainOutside, { once: true });
+    document.addEventListener('keydown',   scoreExplainEsc,     { once: true });
+  }, 0);
+}
+
+function scoreExplainOutside(e) {
+  const box = document.getElementById('scoreExplain');
+  if (box && !box.contains(e.target)) closeScoreExplain();
+}
+function scoreExplainEsc(e) {
+  if (e.key === 'Escape') { closeScoreExplain(); e.preventDefault(); }
+  else { document.addEventListener('keydown', scoreExplainEsc, { once: true }); }
+}
+function closeScoreExplain(e) {
+  if (e) e.preventDefault();
+  const box = document.getElementById('scoreExplain');
+  if (box) box.hidden = true;
 }
 
 function openSearchInput() {
@@ -5389,6 +8632,7 @@ document.addEventListener('keydown', (e) => {
 
   // AI digest (BYOK)
   if (e.key === 'I') { openDigest(false); e.preventDefault(); return; }
+  if (e.key === 'H') { openMomentum();   e.preventDefault(); return; }
 
   // Filter undo
   if (e.key === 'U') { undoLastFilter(); e.preventDefault(); return; }
@@ -5539,16 +8783,33 @@ async function runBoot() {
   const overlay = document.getElementById('bootOverlay');
   if (!overlay) return;
 
-  // ---- Banner (static, fade in). Two worms munching the brand. ----
+  // ---- Banner (SVG, fade in). Two SVG worms bookend a bouncing
+  // "om nom nom", brand title + tagline below. All animation is CSS;
+  // the DOM stays stable so keyframes actually get to play through. ----
   const banner = document.createElement('div');
-  banner.className = 'boot-banner';
-  banner.innerHTML = [
-    '                                                                  ',
-    '     <span class="accent">~~~_o)</span>   ~~~~~~~~~  <span class="accent">om   nom   nom</span>   ~~~~~~~~~   <span class="accent">~~~_o)</span>     ',
-    '                                                                  ',
-    '     ::    <span class="accent">oM noM</span>   S E C U R I T Y   F E E D S    ::          ',
-    '     ::    <span class="dim">chew safely. nibble responsibly.</span>          ::          ',
-  ].join('\n');
+  banner.className = 'boot-banner-svg';
+  const wormSVG = (extraClass) => `
+    <svg class="boot-worm ${extraClass}" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+      <circle cx="5" cy="17" r="3.0" class="seg s3"/>
+      <circle cx="10" cy="16" r="3.6" class="seg s2"/>
+      <circle cx="16" cy="14" r="4.4" class="seg s1"/>
+      <circle cx="24" cy="13" r="5.4" class="head"/>
+      <circle cx="25" cy="11" r="1.4" class="eye"/>
+      <circle cx="25.5" cy="10.5" r="0.5" class="glint"/>
+      <ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/>
+    </svg>`;
+  banner.innerHTML = `
+    <div class="boot-worms">
+      ${wormSVG('boot-worm-l')}
+      <div class="boot-noms">
+        <span>om</span><span>nom</span><span>nom</span>
+        <span class="boot-crumbs"><span class="crumb c1"></span><span class="crumb c2"></span><span class="crumb c3"></span></span>
+      </div>
+      ${wormSVG('boot-worm-r')}
+    </div>
+    <div class="boot-title"><span class="accent">oM noM</span>Security Feeds</div>
+    <div class="boot-tag">chew safely. nibble responsibly.</div>
+  `;
   overlay.appendChild(banner);
   // Brief tick so the .visible transition actually animates from opacity 0.
   // setTimeout is more reliable than rAF in background tabs / headless contexts.
@@ -5556,20 +8817,14 @@ async function runBoot() {
   banner.classList.add('visible');
   await new Promise(r => setTimeout(r, 200));
 
-  // ---- Feast: worm crawls right, eats a row of threats. ----
-  const feast = document.createElement('div');
-  feast.className = 'boot-feast';
-  feast.innerHTML = `
-    <pre class="feast-particles" id="feastParticles"> </pre>
-    <pre class="feast-line" id="feastLine"></pre>
-    <pre class="feast-meter" id="feastMeter"></pre>
-    <div class="feast-status" id="feastStatus">larva online. fangs out.</div>
-  `;
-  overlay.appendChild(feast);
-  await new Promise(r => setTimeout(r, 30));
-  feast.classList.add('visible');
+  // ---- Status log: terminal-style typed lines under the banner.
+  // Pulls one random message from each BOOT_POOL bucket so repeat boots
+  // look slightly different. Replaces the old feast animation -- the
+  // banner + typed status feels less busy. ----
+  const log = document.createElement('div');
+  log.className = 'boot-log';
+  overlay.appendChild(log);
 
-  // Skip hint.
   const skipHint = document.createElement('div');
   skipHint.className = 'boot-skip';
   skipHint.innerHTML = 'press <kbd>SPACE</kbd> to skip the worm';
@@ -5584,120 +8839,31 @@ async function runBoot() {
   };
   window.addEventListener('keydown', skipHandler);
 
-  // Targets are positioned (in column units) along the feast line. The worm
-  // eats one when its head passes. Severity tints them red/orange/cyan.
-  const TARGETS = [
-    { x: 14, text: 'CVE-2026-1337',   sev: 'crit', flavor: 'looks crunchy.' },
-    { x: 34, text: 'mimikatz.exe',    sev: 'med',  flavor: 'salty. could use less LSASS.' },
-    { x: 52, text: 'kernel exploit',  sev: 'high', flavor: 'crunchy outer, gooey inner.' },
-    { x: 72, text: '0-day PoC',       sev: 'crit', flavor: 'still warm. handle with care.' },
-    { x: 88, text: 'rootkit',         sev: 'high', flavor: 'a little gamey. swallowing whole.' },
-    { x: 104, text: 'C2 beacon',      sev: 'high', flavor: 'callback returned. om nom.' },
+  const STEPS = [
+    ['ok',   _pick(BOOT_POOLS.init)],
+    ['info', _pick(BOOT_POOLS.ok1)],
+    ['info', _pick(BOOT_POOLS.boot)],
+    ['info', _pick(BOOT_POOLS.scan)],
+    ['ok',   _pick(BOOT_POOLS.ok2)],
+    ['ok',   _pick(BOOT_POOLS.ready)],
   ];
-  const TOTAL_X = 122;
-  const FRAME_MS = 35;
-  // Sprite frames for a wiggling worm crawling right. Body undulates between
-  // ~~~_ and _~~~ , head holds an eye (o) and a closing-mouth (). Wider O
-  // marks a chomp tick. Deliberately no ">" so it doesn't read as a bird.
-  const WORM_SPRITES = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)'];
-  // Particle frames painted ABOVE the worm head for a few frames after a chomp.
-  const PARTICLE_FRAMES = [
-    ' *  +  *',
-    '  +  . *',
-    '  .  +  ',
-    '   .    ',
-  ];
-  const AMBIENT_STATUS = [
-    'nomming.',
-    'mouth open.',
-    'sniffing for more.',
-    'scanning the buffet.',
-    'sharpening fangs.',
-    'palette cleansed.',
-  ];
-  const partEl = document.getElementById('feastParticles');
-  const lineEl = document.getElementById('feastLine');
-  const meterEl = document.getElementById('feastMeter');
-  const statusEl = document.getElementById('feastStatus');
-  let statusMsg = 'larva online. fangs out.';
-  let statusHoldUntil = 0;
-  let chompUntil = 0;
-  let chompX = 0;
+  const LINE_DELAY = 220; // ms between lines
 
-  function paintParticles(x) {
-    if (x >= chompUntil) { partEl.textContent = ' '; return; }
-    const phase = chompUntil - x - 1; // 3 → 0
-    const tpl = PARTICLE_FRAMES[3 - phase] || '';
-    const start = Math.max(0, chompX - 3);
-    partEl.textContent = ' '.repeat(start) + tpl;
-  }
-
-  function paintMeter(x) {
-    const eaten = TARGETS.filter(t => t.chomped).length;
-    const pct = Math.round((eaten / TARGETS.length) * 100);
-    const BAR = 28;
-    const filled = Math.round((eaten / TARGETS.length) * BAR);
-    const fillCh = '█'.repeat(filled);
-    const empty  = '░'.repeat(BAR - filled);
-    const recent = x < chompUntil;
-    const glowCls = recent ? 'bar-fill hot' : 'bar-fill';
-    meterEl.innerHTML =
-      `<span class="bar-bracket">[</span>` +
-      `<span class="${glowCls}">${fillCh}</span>` +
-      `<span class="bar-empty">${empty}</span>` +
-      `<span class="bar-bracket">]</span>  ` +
-      `<span class="bar-pct">${pct}%</span>  ` +
-      `<span class="bar-fed">${eaten}/${TARGETS.length} fed</span>`;
-  }
-
-  function paintFeast(x, worm) {
-    let html = `<span class="trail">${'·'.repeat(x)}</span><span class="worm">${esc(worm)}</span>`;
-    let pos = x + worm.length;
-    for (const t of TARGETS) {
-      if (!t.chomped) {
-        while (pos < t.x) { html += ' '; pos++; }
-        // Brighten the target when the worm is close enough to chomp soon.
-        const near = (t.x - x) <= 4;
-        html += `<span class="t-${t.sev}${near ? ' panic' : ''}">${esc(t.text)}</span>`;
-        pos += t.text.length;
-      }
-    }
-    lineEl.innerHTML = html;
-  }
-
-  for (let x = 0; x <= TOTAL_X && !skipped; x++) {
-    const worm = WORM_SPRITES[Math.floor(x / 3) % WORM_SPRITES.length];
-
-    for (const t of TARGETS) {
-      if (!t.chomped && x >= t.x - 2 && x <= t.x + 2) {
-        t.chomped = true;
-        chompUntil = x + 4;
-        chompX = t.x;
-        statusMsg = `*chomp*  ${t.text} :: ${t.flavor}`;
-        statusHoldUntil = Date.now() + 800;
-      }
-    }
-    if (statusHoldUntil && Date.now() > statusHoldUntil) {
-      statusMsg = AMBIENT_STATUS[Math.floor(x / 12) % AMBIENT_STATUS.length];
-      statusHoldUntil = 0;
-    }
-
-    paintParticles(x);
-    paintFeast(x, worm);
-    paintMeter(x);
-    statusEl.textContent = statusMsg;
-    await new Promise(r => setTimeout(r, FRAME_MS));
+  for (const [level, msg] of STEPS) {
+    if (skipped) break;
+    const line = document.createElement('div');
+    line.className = `boot-log-line lvl-${level}`;
+    const ts = new Date().toTimeString().slice(0, 8);
+    line.innerHTML =
+      `<span class="ts">${ts}</span>` +
+      `<span class="lvl">${level.toUpperCase()}</span>` +
+      `<span class="msg">${esc(msg)}</span>`;
+    log.appendChild(line);
+    await new Promise(r => setTimeout(r, LINE_DELAY));
   }
 
   if (!skipped) {
-    partEl.textContent = ' '.repeat(TOTAL_X - 4) + 'zZz';
-    lineEl.innerHTML = `<span class="trail">${'·'.repeat(TOTAL_X)}</span><span class="worm">~~~_o)</span>  <span class="t-burp">~burp~</span>`;
-    meterEl.innerHTML = `<span class="bar-bracket">[</span><span class="bar-fill hot">${'█'.repeat(28)}</span><span class="bar-bracket">]</span>  <span class="bar-pct">100%</span>  <span class="bar-fed">all fed</span>`;
-    statusEl.textContent = 'stomach full. firehose primed. ready to rx.';
-    await new Promise(r => setTimeout(r, 650));
-  } else {
-    statusEl.textContent = 'skipped. mouth still open. ready to rx.';
-    await new Promise(r => setTimeout(r, 120));
+    await new Promise(r => setTimeout(r, 320));
   }
 
   window.removeEventListener('keydown', skipHandler);
@@ -5972,6 +9138,7 @@ function __toggleSpicyMode() {
   const on = !document.body.classList.contains('spicy-mode');
   document.body.classList.toggle('spicy-mode', on);
   localStorage.setItem('secfeed.spicy', on ? 'on' : 'off');
+  pushMeSettings();
   if (typeof toast === 'function') {
     toast(on ? 'spicy mode :: extra peppers' : 'spicy mode :: cooled down');
   }
@@ -6084,6 +9251,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await runBoot();
   logEvent('ok', 'larva online');
   loadMitreMap();
+  applyDeepLinkSearch();
   loadArticles().then(() => {
     logEvent('info', `loaded ${currentArticles.length} items`);
     const kev = currentArticles.filter(a => (a.tags||[]).some(t=>String(t).toLowerCase().startsWith('kev:'))).length;
@@ -6091,7 +9259,216 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   startSSE();           // primary: server-pushed refresh
   startAutoRefresh();   // fallback: time-based polling (covers SSE disconnects)
+  surfaceBillingReturn();
+  // Show the tour once per browser, after the boot animation completes
+  // so the modal doesn't fight the boot sequence for attention.
+  setTimeout(maybeShowTutorial, 1500);
+  // Pro: check for the "while you were gone" summary. Cheap GET; server
+  // returns {dismissed:true} or {empty:true} when there's nothing to show.
+  setTimeout(loadWhatsNew, 800);
+  // Patch Tuesday brief - always loaded, gated client-side by per-vendor
+  // toggle preferences in localStorage. No AI cost on the read path.
+  setTimeout(loadPatchBriefs, 1000);
 });
+
+// What's-new banner. Pro-gated server-side; we fetch on every /app load
+// for signed-in users and only render if the response carries summary
+// text (server omits it when we're inside the 24h quiet window or there
+// are no scored articles in the window). Idempotent on repeat opens
+// because the server caches the summary per (user, since) for 6h.
+// Patch Tuesday brief banner. Fetches /api/briefs/patch (last 30d),
+// filters to vendors the user toggled on, picks the freshest unread
+// brief, renders it. Dismiss is per (vendor, brief_date) so a new
+// month's brief still shows after the previous one's been dismissed.
+function patchTogglesGet() {
+  const defaults = { microsoft: true, adobe: true, oracle: true, apple: false, linux: false, browser: false };
+  try {
+    const raw = localStorage.getItem('secfeed.patchToggles');
+    if (!raw) return defaults;
+    return Object.assign(defaults, JSON.parse(raw));
+  } catch (e) { return defaults; }
+}
+function patchTogglesPut(t) {
+  try { localStorage.setItem('secfeed.patchToggles', JSON.stringify(t)); } catch (e) {}
+}
+function patchBriefDismissKey(b) { return 'secfeed.patchBriefDismiss:' + b.vendor + ':' + b.brief_date; }
+async function loadPatchBriefs() {
+  try {
+    const r = await fetch('/api/briefs/patch?days=30');
+    if (!r.ok) return;
+    const d = await r.json();
+    const all = Array.isArray(d.briefs) ? d.briefs : [];
+    if (!all.length) return;
+    const toggles = patchTogglesGet();
+    // Pick the freshest brief for an enabled, non-dismissed vendor.
+    let chosen = null;
+    for (const b of all) {
+      if (!toggles[b.vendor]) continue;
+      try { if (localStorage.getItem(patchBriefDismissKey(b))) continue; } catch (e) {}
+      chosen = b;
+      break;
+    }
+    if (!chosen) return;
+    const banner = document.getElementById('patchBriefBanner');
+    const body   = document.getElementById('patchBriefBody');
+    const title  = document.getElementById('patchBriefTitle');
+    const sub    = document.getElementById('patchBriefSub');
+    if (!banner) return;
+    const VENDOR_LABELS = { microsoft: 'Microsoft Patch Tuesday', adobe: 'Adobe Patch Tuesday', oracle: 'Oracle CPU' };
+    title.textContent = (VENDOR_LABELS[chosen.vendor] || chosen.vendor) + ' brief';
+    sub.textContent   = chosen.brief_date + ' · ' + (chosen.article_count || 0) + ' articles · auto-generated';
+    body.textContent  = chosen.brief_text;
+    banner.dataset.vendor = chosen.vendor;
+    banner.dataset.date   = chosen.brief_date;
+    banner.hidden = false;
+  } catch (e) {}
+}
+function dismissPatchBrief() {
+  const banner = document.getElementById('patchBriefBanner');
+  if (!banner) return;
+  const vendor = banner.dataset.vendor;
+  const date   = banner.dataset.date;
+  try { localStorage.setItem(patchBriefDismissKey({vendor, brief_date: date}), '1'); } catch (e) {}
+  banner.hidden = true;
+}
+function loadCfgPatchToggles() {
+  const t = patchTogglesGet();
+  const m = { microsoft: 'cfgPatchMicrosoft', adobe: 'cfgPatchAdobe', oracle: 'cfgPatchOracle' };
+  for (const [k, id] of Object.entries(m)) {
+    const el = document.getElementById(id);
+    if (el) el.checked = !!t[k];
+  }
+}
+function saveCfgPatchToggles() {
+  const t = patchTogglesGet();
+  t.microsoft = !!document.getElementById('cfgPatchMicrosoft').checked;
+  t.adobe     = !!document.getElementById('cfgPatchAdobe').checked;
+  t.oracle    = !!document.getElementById('cfgPatchOracle').checked;
+  patchTogglesPut(t);
+  const s = document.getElementById('cfgPatchStatus');
+  const on = ['microsoft','adobe','oracle'].filter(k => t[k]);
+  if (s) s.textContent = on.length ? 'saved · briefs enabled: ' + on.join(', ') : 'all calendar briefs disabled';
+}
+
+async function loadWhatsNew() {
+  if (!meState || !meState.is_pro) return;
+  try {
+    const r = await fetch('/api/me/whats-new', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (d.dismissed || d.empty || !d.summary) return;
+    const banner = document.getElementById('whatsNewBanner');
+    const body   = document.getElementById('whatsNewBody');
+    const sub    = document.getElementById('whatsNewSub');
+    if (!banner || !body || !sub) return;
+    body.textContent = d.summary;
+    body.classList.remove('loading');
+    const sinceDate = new Date(d.since);
+    const hoursAgo = (Date.now() - sinceDate.getTime()) / 3600000;
+    const window = hoursAgo < 48
+      ? Math.round(hoursAgo) + 'h ago'
+      : Math.round(hoursAgo / 24) + 'd ago';
+    sub.textContent = 'since ' + sinceDate.toLocaleDateString() + ' · ' + (d.article_count || 0) + ' scored articles · ' + window;
+    banner.hidden = false;
+  } catch (e) { /* silent - banner is non-essential */ }
+}
+async function dismissWhatsNew() {
+  const banner = document.getElementById('whatsNewBanner');
+  if (banner) banner.hidden = true;
+  try {
+    await fetch('/api/me/whats-new', {
+      method: 'POST', credentials: 'same-origin',
+    });
+  } catch (e) {}
+}
+
+// Tutorial visibility lives in localStorage so the worm doesn't pester
+// returning visitors. Dismiss = set the flag. The "show again" affordance
+// is hitting "?" or running showTutorial() in the console.
+function maybeShowTutorial() {
+  try {
+    if (localStorage.getItem('secfeed.tutorial.seen') === '1') return;
+  } catch (e) { /* private mode etc. - just show it */ }
+  showTutorial();
+}
+function showTutorial() {
+  const el = document.getElementById('tutorialModal');
+  if (!el) return;
+  el.classList.add('show');
+  // Trap Esc to dismiss without affecting the rest of the page.
+  document.addEventListener('keydown', tutorialKeyHandler);
+}
+function dismissTutorial() {
+  const el = document.getElementById('tutorialModal');
+  if (el) el.classList.remove('show');
+  document.removeEventListener('keydown', tutorialKeyHandler);
+  try { localStorage.setItem('secfeed.tutorial.seen', '1'); } catch (e) {}
+}
+function tutorialKeyHandler(e) {
+  if (e.key === 'Escape') {
+    e.stopPropagation();
+    e.preventDefault();
+    dismissTutorial();
+  }
+}
+// Console affordance: type showTutorial() to re-open the tour.
+window.showTutorial = showTutorial;
+
+// Deep-link search: when someone arrives at /app?search=CVE-..., apply
+// the value as the active filter and open the search input pre-filled
+// so they can see they're filtered (and tweak / clear it). Used by the
+// /live page's hottest-CVEs leaderboard and anywhere else that wants to
+// hand off into a filtered feed.
+function applyDeepLinkSearch() {
+  try {
+    const params = new URLSearchParams(location.search);
+    const q = (params.get('search') || '').trim();
+    if (!q) return;
+    currentSearch = q;
+    logEvent('info', 'filter set from URL :: ' + q);
+    // Surface the search bar so the user can SEE they're filtered and
+    // can clear it with esc or by hitting /.
+    openSearchInput();
+    const input = document.getElementById('searchInput');
+    if (input) input.value = q;
+  } catch (e) { /* malformed URL - ignore */ }
+}
+
+// Stripe Checkout bounces back to / with ?billing=ok|cancelled. Show a tiny
+// toast and clean the param out of the URL so a refresh doesn't replay it.
+function surfaceBillingReturn() {
+  const params = new URLSearchParams(location.search);
+  const b = params.get('billing');
+  if (b === 'ok')        toast('welcome to Pro - chomp chomp');
+  else if (b === 'cancelled') toast('checkout cancelled');
+  if (b) {
+    params.delete('billing');
+    const clean = location.pathname + (params.toString() ? '?' + params.toString() : '');
+    history.replaceState(null, '', clean);
+  }
+}
+</script>
+
+<script>
+// Worm mood poller. Sets body[data-worm-mood] which retints the SVG worm
+// sprite in the status bar (hibernating / eating / frenzy) based on 24h
+// KEV velocity. Runs at startup and every 5 minutes; failures are silent.
+(function() {
+  async function tick() {
+    try {
+      const r = await fetch('/api/worm/mood');
+      if (!r.ok) return;
+      const m = await r.json();
+      document.body.setAttribute('data-worm-mood', m.label || 'eating');
+      const logo = document.getElementById('wormLogoSvg');
+      if (logo) {
+        logo.setAttribute('title', 'worm mood :: ' + m.label + ' (' + m.kev_24h + ' KEV in last 24h)');
+      }
+    } catch (e) { /* mood is decorative - swallow errors */ }
+  }
+  tick();
+  setInterval(tick, 300000);
+})();
 </script>
 
 </body>

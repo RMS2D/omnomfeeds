@@ -37,13 +37,66 @@ func NewAnthropicClient(apiKey, model, focus string) *AnthropicClient {
 func (a *AnthropicClient) Name() string { return "anthropic:" + a.model }
 
 func (a *AnthropicClient) Summarize(ctx context.Context, articles []Article) (string, error) {
+	return a.complete(ctx, BuildPrompt(articles, a.focus), 1500)
+}
+
+// ExplainCVE returns a 3-bullet deep-dive on a single CVE. ~150 tokens out
+// keeps the cost at well under a tenth of a cent per call; the worker
+// caches per CVE id so each CVE costs at most once across all Pro users.
+func (a *AnthropicClient) ExplainCVE(ctx context.Context, cve CVEDetail) (string, error) {
+	return a.complete(ctx, BuildCVEPrompt(cve), 350)
+}
+
+// ExplainArticle returns 2-3 lines summarising a single article. Cached
+// per article.id so every Pro user who clicks "explain" on the same item
+// pays the LLM call only once across the whole deployment.
+func (a *AnthropicClient) ExplainArticle(ctx context.Context, art Article) (string, error) {
+	return a.complete(ctx, BuildArticlePrompt(art), 250)
+}
+
+// TriageArticle returns a single-sentence "what? so what?" line for
+// inline rendering next to the article title in the reader. Cached
+// per article.id forever, so the cost is bounded to ~$0.0005 per new
+// article that crosses the score threshold.
+func (a *AnthropicClient) TriageArticle(ctx context.Context, art Article) (string, error) {
+	return a.complete(ctx, BuildTriagePrompt(art), 80)
+}
+
+// ClusterArticles groups semantic duplicates in a batch. ~500-1500 input
+// tokens depending on batch size + ~200 out. One call per fetch cycle
+// gives the whole deployment a less-noisy feed.
+func (a *AnthropicClient) ClusterArticles(ctx context.Context, items []ClusterItem) ([]ClusterGroup, error) {
+	if len(items) == 0 {
+		return nil, nil
+	}
+	text, err := a.complete(ctx, BuildClusterPrompt(items), 700)
+	if err != nil {
+		return nil, err
+	}
+	return ParseClusterResponse(text)
+}
+
+// RankForProfile re-orders a batch of articles by relevance to a free-
+// form user-supplied profile. Output is just a sorted id list; the
+// caller maps it back to articles.
+func (a *AnthropicClient) RankForProfile(ctx context.Context, profile string, items []ClusterItem) ([]int64, error) {
+	if profile == "" || len(items) == 0 {
+		return nil, nil
+	}
+	text, err := a.complete(ctx, BuildRankPrompt(profile, items), 700)
+	if err != nil {
+		return nil, err
+	}
+	return ParseRankResponse(text)
+}
+
+func (a *AnthropicClient) complete(ctx context.Context, prompt string, maxTokens int) (string, error) {
 	if a.apiKey == "" {
 		return "", fmt.Errorf("anthropic: no API key configured")
 	}
-	prompt := BuildPrompt(articles, a.focus)
 	body := map[string]any{
 		"model":      a.model,
-		"max_tokens": 1500,
+		"max_tokens": maxTokens,
 		"messages": []map[string]any{
 			{"role": "user", "content": prompt},
 		},

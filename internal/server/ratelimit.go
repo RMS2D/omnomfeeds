@@ -16,6 +16,7 @@ package server
 import (
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -87,16 +88,67 @@ func (rl *rateLimiter) sweep() {
 	}
 }
 
-// clientIP pulls the originating client IP, preferring the X-Forwarded-
-// For first hop when present (Caddy in front of the service sets it).
-// Falls back to RemoteAddr's host portion.
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if comma := strings.Index(xff, ","); comma > 0 {
-			xff = xff[:comma]
+// trustedProxyCIDRs is the allow-list of network prefixes whose
+// X-Forwarded-For headers we honour. Configured via TRUSTED_PROXY_CIDR
+// env var (comma-separated CIDRs); defaults to loopback only. If a
+// request arrives from outside this set, the XFF header is IGNORED and
+// we use the actual TCP source address. Stops spoofed XFF from
+// bypassing rate limits or anonymising magic-link floods when the
+// service is ever reached directly (local dev, debug deploys, mistake).
+var trustedProxyCIDRs = parseTrustedProxyCIDRs(os.Getenv("TRUSTED_PROXY_CIDR"))
+
+func parseTrustedProxyCIDRs(env string) []*net.IPNet {
+	raw := env
+	if raw == "" {
+		raw = "127.0.0.0/8,::1/128"
+	}
+	var out []*net.IPNet
+	for _, part := range strings.Split(raw, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
 		}
-		if ip := strings.TrimSpace(xff); ip != "" {
-			return ip
+		_, n, err := net.ParseCIDR(part)
+		if err != nil {
+			continue
+		}
+		out = append(out, n)
+	}
+	return out
+}
+
+func remoteIsTrustedProxy(remoteAddr string) bool {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, n := range trustedProxyCIDRs {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// clientIP returns the originating client IP. The X-Forwarded-For header
+// is consulted ONLY when the request arrived from a trusted proxy
+// (TRUSTED_PROXY_CIDR env var, defaults to loopback). Otherwise we use
+// the direct TCP source. Without this, a client sending
+// `X-Forwarded-For: 1.2.3.4` on each request can bypass per-IP rate
+// limits and anonymise magic-link rate-limiting.
+func clientIP(r *http.Request) string {
+	if remoteIsTrustedProxy(r.RemoteAddr) {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if comma := strings.Index(xff, ","); comma > 0 {
+				xff = xff[:comma]
+			}
+			if ip := strings.TrimSpace(xff); ip != "" {
+				return ip
+			}
 		}
 	}
 	if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {

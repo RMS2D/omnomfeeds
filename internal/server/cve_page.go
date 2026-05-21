@@ -12,6 +12,8 @@ import (
 	"time"
 
 	"github.com/RMS2D/omnomfeeds/internal/analytics"
+	"github.com/RMS2D/omnomfeeds/internal/models"
+	"github.com/RMS2D/omnomfeeds/internal/storage"
 )
 
 // cvePageCache stores rendered HTML per CVE ID. The page combines NVD,
@@ -89,12 +91,10 @@ func (s *Server) handleCVEPage(w http.ResponseWriter, r *http.Request, webFS fs.
 
 // renderCVEPage builds the HTML for one CVE. Returns the body + the
 // HTTP status it should be served with (404 when we have no data at all,
-// 200 otherwise). Stays self-contained - no template files, no shared
-// header partial; this is a one-shot SEO surface and the duplication
-// keeps the dependency graph thin.
+// 200 otherwise). Fans the 4 expensive fetches out to goroutines (NVD,
+// OTX, and three storage queries) so cold renders are bounded by the
+// slowest single call rather than their sum.
 func (s *Server) renderCVEPage(ctx context.Context, id string) ([]byte, int) {
-	// Pull everything in parallel where possible. NVD is the most likely
-	// to be slow; everything else hits local SQLite.
 	type nvdResult struct {
 		desc, cwe, published, lastMod string
 		cvssScore                     float64
@@ -108,25 +108,58 @@ func (s *Server) renderCVEPage(ctx context.Context, id string) ([]byte, int) {
 
 	var nvd nvdResult
 	var otx otxResult
-	var epssScore, epssPct float64
-	var hasEPSS bool
+	var consensusRaw []storage.CVEConsensusRow
+	var timelineRaw []storage.CVETimelineEvent
+	var articlesRaw []models.Article
 
-	// NVD with its own timeout.
+	var wg sync.WaitGroup
+
+	// NVD - the slowest external call; cap at 10s.
 	if s.enrich != nil && s.enrich.NVD != nil {
-		nvdCtx, cancel := context.WithTimeout(ctx, 12*time.Second)
-		if d, err := s.enrich.NVD.Get(nvdCtx, id); err == nil {
-			nvd.desc = d.Description
-			nvd.cvssScore = d.CVSSv3Score
-			nvd.cvssSev = d.CVSSv3Severity
-			nvd.cvssVec = d.CVSSv3Vector
-			nvd.cwe = d.CWE
-			nvd.published = d.Published
-			nvd.lastMod = d.LastModified
-			nvd.found = true
-		}
-		cancel()
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			nvdCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
+			defer cancel()
+			if d, err := s.enrich.NVD.Get(nvdCtx, id); err == nil {
+				nvd.desc = d.Description
+				nvd.cvssScore = d.CVSSv3Score
+				nvd.cvssSev = d.CVSSv3Severity
+				nvd.cvssVec = d.CVSSv3Vector
+				nvd.cwe = d.CWE
+				nvd.published = d.Published
+				nvd.lastMod = d.LastModified
+				nvd.found = true
+			}
+		}()
 	}
 
+	// OTX - best-effort; cap at 5s (was 8, but OTX caches aggressively
+	// upstream so this is enough for the cold case).
+	if s.enrich != nil && s.enrich.OTX != nil {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			otxCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+			defer cancel()
+			if o, err := s.enrich.OTX.Get(otxCtx, id); err == nil && o != nil {
+				otx.pulses = o.PulseCount
+				otx.recent = o.RecentCount
+				otx.found = true
+			}
+		}()
+	}
+
+	// Three local storage queries in parallel.
+	wg.Add(3)
+	go func() { defer wg.Done(); consensusRaw, _ = s.store.CVEConsensus(id, 90) }()
+	go func() { defer wg.Done(); timelineRaw, _ = s.store.CVETimeline(id) }()
+	go func() { defer wg.Done(); articlesRaw, _ = s.store.ArticlesForCVE(id, 50) }()
+
+	// EPSS + KEV are local-only lookups; they're cheap enough that the
+	// goroutine overhead would dominate.
+	var epssScore, epssPct float64
+	var hasEPSS bool
 	if s.enrich != nil && s.enrich.EPSS != nil {
 		if e := s.enrich.EPSS.Get(id); e != nil {
 			epssScore = e.Score
@@ -134,23 +167,9 @@ func (s *Server) renderCVEPage(ctx context.Context, id string) ([]byte, int) {
 			hasEPSS = true
 		}
 	}
-
 	isKEV := s.scorer != nil && s.scorer.IsKEV(id)
 
-	// OTX is best-effort.
-	if s.enrich != nil && s.enrich.OTX != nil {
-		otxCtx, cancel := context.WithTimeout(ctx, 8*time.Second)
-		if o, err := s.enrich.OTX.Get(otxCtx, id); err == nil && o != nil {
-			otx.pulses = o.PulseCount
-			otx.recent = o.RecentCount
-			otx.found = true
-		}
-		cancel()
-	}
-
-	consensusRaw, _ := s.store.CVEConsensus(id, 90)
-	timelineRaw, _ := s.store.CVETimeline(id)
-	articlesRaw, _ := s.store.ArticlesForCVE(id, 50)
+	wg.Wait()
 
 	// If neither NVD nor our own corpus knows about this CVE, surface a
 	// 404 with the themed not-found page rather than render an empty

@@ -306,6 +306,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 			case r.URL.Path == "/trending":
 				s.emit(w, r, analytics.EvPageView, "/trending", nil)
 				serveEmbeddedFile(w, r, webFS, "trending.html")
+			case r.URL.Path == "/api":
+				s.emit(w, r, analytics.EvPageView, "/api", nil)
+				serveEmbeddedFile(w, r, webFS, "api-docs.html")
 			case r.URL.Path == "/robots.txt":
 				serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
 			case r.URL.Path == "/sitemap.xml":
@@ -337,6 +340,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		})
 		mux.HandleFunc("/trending", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFile(w, r, webFS, "trending.html")
+		})
+		mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
+			serveEmbeddedFile(w, r, webFS, "api-docs.html")
 		})
 		mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")

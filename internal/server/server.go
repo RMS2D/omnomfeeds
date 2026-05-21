@@ -308,7 +308,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 			case r.URL.Path == "/og-cover.png":
 				serveEmbeddedFileAs(w, r, webFS, "og-cover.png", "image/png")
 			default:
-				fileServer.ServeHTTP(w, r)
+				serveStaticOr404(w, r, webFS, fileServer)
 			}
 		})
 	} else {
@@ -341,7 +341,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		mux.HandleFunc("/og-cover.png", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFileAs(w, r, webFS, "og-cover.png", "image/png")
 		})
-		mux.Handle("/", fileServer)
+		mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+			serveStaticOr404(w, r, webFS, fileServer)
+		})
 	}
 
 	var handler http.Handler = mux
@@ -431,6 +433,44 @@ func serveEmbeddedFile(w http.ResponseWriter, r *http.Request, webFS fs.FS, name
 		return
 	}
 	http.ServeContent(w, r, name, info.ModTime(), f.(io.ReadSeeker))
+}
+
+// serveNotFound serves web/404.html with a real 404 status. Used by the
+// catch-all path so unknown URLs render the themed page instead of the
+// stdlib's bare 'page not found' text.
+func serveNotFound(w http.ResponseWriter, r *http.Request, webFS fs.FS) {
+	f, err := webFS.Open("404.html")
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	defer f.Close()
+	body, err := io.ReadAll(f)
+	if err != nil {
+		http.NotFound(w, r)
+		return
+	}
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(http.StatusNotFound)
+	w.Write(body)
+}
+
+// serveStaticOr404 tries to find the requested file in webFS; on a
+// match it falls through to the file server, otherwise it serves the
+// themed 404 page. Keeps the catch-all default branches in the routing
+// switch from leaking Go's default 404 text to visitors.
+func serveStaticOr404(w http.ResponseWriter, r *http.Request, webFS fs.FS, fileServer http.Handler) {
+	path := strings.TrimPrefix(r.URL.Path, "/")
+	if path == "" {
+		fileServer.ServeHTTP(w, r)
+		return
+	}
+	if _, err := fs.Stat(webFS, path); err == nil {
+		fileServer.ServeHTTP(w, r)
+		return
+	}
+	serveNotFound(w, r, webFS)
 }
 
 // serveEmbeddedFileAs is like serveEmbeddedFile but pins the

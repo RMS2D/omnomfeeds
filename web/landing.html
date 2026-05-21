@@ -1258,11 +1258,11 @@ footer a:hover { color: var(--accent-cyan); }
        Hidden until the fetch resolves so a slow/failed request stays
        invisible rather than rendering "-" placeholders. -->
   <div class="live-stats-strip" id="liveStats" aria-live="polite" aria-label="Live feed stats">
-    <span class="stat"><span class="pulse" aria-hidden="true"></span><span class="n" id="lsSrcA">-</span><span class="l">feeds active, 24h</span></span>
-    <span class="stat"><span class="n" id="lsArt30">-</span><span class="l">articles, 30d</span></span>
-    <span class="stat"><span class="n" id="lsCves">-</span><span class="l">CVEs surfaced, 7d</span></span>
-    <span class="stat"><span class="n" id="lsKev">-</span><span class="l">KEV pops, 7d</span></span>
-    <span class="stat"><span class="n" id="lsAgo">-</span><span class="l">since last sip</span></span>
+    <span class="stat" title="distinct source feeds that produced at least one article in the last 24 hours"><span class="pulse" aria-hidden="true"></span><span class="n" id="lsSrcA">-</span><span class="l">feeds active</span></span>
+    <span class="stat" title="articles ingested in the last 30 days"><span class="n" id="lsArt30">-</span><span class="l">articles</span></span>
+    <span class="stat" title="distinct CVE-IDs mentioned across feeds in the last 7 days"><span class="n" id="lsCves">-</span><span class="l">CVEs surfaced</span></span>
+    <span class="stat" title="articles flagged against the CISA KEV catalog in the last 7 days"><span class="n" id="lsKev">-</span><span class="l">KEV pops</span></span>
+    <span class="stat" title="time since the most recent article landed in the database"><span class="n" id="lsAgo">-</span><span class="l">since last sip</span></span>
   </div>
 </div>
 

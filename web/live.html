@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>oM noM Security Feeds · live ticker</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="description" content="Public live ticker of the highest-scoring security articles from the last 24h and the hottest CVEs being talked about right now across multiple sources. No login required.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://omnomfeeds.com/live">
+<meta property="og:title" content="Live security ticker - oM noM Security Feeds">
+<meta property="og:description" content="Top-scoring security stories from the last 24h + the hottest CVEs across all sources. Public, no login.">
+<meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="oM noM Security Feeds - a worm with teeth above the wordmark">
+<meta property="og:site_name" content="oM noM Security Feeds">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Live security ticker - oM noM Security Feeds">
+<meta name="twitter:description" content="Top-scoring security stories from the last 24h + the hottest CVEs across all sources. No login.">
+<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
+<meta name="description" content="Live ticker of the highest-scoring security news from the last 24h. Public, no login required.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14; --bg-card: #14191f; --border: #2a3340;
+  --text: #e6ecf5; --text-dim: #b8c4d4; --text-bright: #ffffff;
+  --accent: #00e5a0; --accent-cyan: #56e2ff; --accent-amber: #ffb547;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 14px; line-height: 1.5; min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 20px; border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.brand {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--text-bright); font-weight: 600; letter-spacing: 0.4px;
+  display: flex; align-items: center; gap: 10px;
+}
+.brand .worm-sprite {
+  width: 30px; height: 24px; flex-shrink: 0; vertical-align: middle;
+  animation: bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+}
+.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
+.brand .worm-sprite .seg.s3 { opacity: 0.35; }
+.brand .worm-sprite .seg.s2 { opacity: 0.6; }
+.brand .worm-sprite .seg.s1 { opacity: 0.85; }
+.brand .worm-sprite .eye   { fill: var(--bg); }
+.brand .worm-sprite .glint { fill: var(--accent-cyan); }
+.brand .worm-sprite .mouth { fill: var(--bg); }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+.top nav {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  letter-spacing: 0.6px; text-transform: uppercase;
+  display: flex; gap: 16px; align-items: center;
+}
+.top nav .live {
+  color: var(--accent); display: flex; align-items: center; gap: 6px;
+}
+.top nav .live .dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 6px rgba(0,229,160,0.6);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 50% { opacity: 0.3; } }
+
+.wrap { max-width: 920px; margin: 0 auto; padding: 22px 20px 64px; }
+.intro {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-dim); letter-spacing: 0.3px;
+  margin-bottom: 18px; line-height: 1.55;
+}
+.intro strong { color: var(--text-bright); }
+
+.ticker { display: flex; flex-direction: column; gap: 6px; }
+.row {
+  display: grid; grid-template-columns: auto auto 1fr auto;
+  align-items: center; gap: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--border); border-left: 2px solid var(--text-dim);
+  background: var(--bg-card); border-radius: 3px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.row:hover { border-color: var(--accent); transform: translateX(2px); }
+.row.crit { border-left-color: var(--score-crit); }
+.row.high { border-left-color: #ff9940; }
+.row.med  { border-left-color: var(--accent); }
+.row.low  { border-left-color: var(--text-dim); }
+.row .score {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  background: var(--bg); color: var(--text-bright);
+  padding: 3px 7px; border-radius: 3px;
+  min-width: 32px; text-align: center;
+}
+.row .score.crit { color: var(--score-crit); }
+.row .score.high { color: #ff9940; }
+.row .score.med  { color: var(--accent); }
+.row .src {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--accent-cyan); letter-spacing: 0.3px;
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.row .title {
+  color: var(--text); font-size: 14px; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+.row .age {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-dim); letter-spacing: 0.3px; white-space: nowrap;
+}
+.row .kev {
+  font-family: 'JetBrains Mono', monospace; font-size: 9px;
+  letter-spacing: 0.9px; color: var(--score-crit);
+  border: 1px solid var(--score-crit); border-radius: 2px;
+  padding: 1px 5px; margin-right: 4px;
+  background: rgba(255,77,106,0.08);
+  text-transform: uppercase;
+}
+.empty {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); text-align: center; padding: 40px 20px;
+}
+
+/* Hottest CVEs leaderboard: compact pill row above the ticker. Each
+   pill is a clickable chip to the in-app search for that CVE. */
+.hot-section { margin-bottom: 22px; }
+.hot-head {
+  display: flex; align-items: baseline; gap: 10px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent-cyan); text-transform: uppercase; letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+.hot-head .flame { color: var(--score-crit); text-shadow: 0 0 6px rgba(255,77,106,0.5); }
+.hot-head .sub {
+  color: var(--text-dim); text-transform: none; letter-spacing: 0.2px;
+  font-size: 10px;
+}
+.hot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 6px;
+}
+.hot-pill {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--accent-cyan);
+  border-radius: 3px;
+  text-decoration: none;
+  transition: border-color 0.15s, transform 0.15s, background 0.15s;
+}
+.hot-pill:hover {
+  border-color: var(--accent);
+  border-left-color: var(--accent);
+  transform: translateX(2px);
+  background: #181f27;
+}
+.hot-pill.kev { border-left-color: var(--score-crit); }
+.hot-pill.kev:hover { border-left-color: var(--score-crit); }
+.hot-pill .rank {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--text-dim); min-width: 18px;
+}
+.hot-pill .cve {
+  font-family: 'JetBrains Mono', monospace; font-size: 12px;
+  color: var(--text-bright); font-weight: 600;
+  flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.hot-pill .count {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  color: var(--accent-cyan); font-weight: 700;
+  background: rgba(86,226,255,0.08);
+  padding: 2px 6px; border-radius: 2px;
+  white-space: nowrap;
+}
+.hot-pill .kev-badge {
+  font-family: 'JetBrains Mono', monospace; font-size: 8px;
+  letter-spacing: 0.6px; color: var(--score-crit);
+  border: 1px solid var(--score-crit); border-radius: 2px;
+  padding: 1px 4px; background: rgba(255,77,106,0.08);
+  text-transform: uppercase;
+}
+.hot-empty {
+  grid-column: 1 / -1;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); padding: 14px;
+  border: 1px dashed var(--border); border-radius: 3px;
+  text-align: center;
+}
+footer {
+  margin-top: 40px; padding-top: 22px;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+@media (max-width: 600px) {
+  .row { grid-template-columns: auto 1fr auto; gap: 8px; }
+  .row .src { display: none; }
+  .top nav { gap: 10px; font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand"><svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg> oM noM Security Feeds <span style="color:var(--text-dim);font-size:10px;letter-spacing:1px;">live</span></div>
+  <nav>
+    <span class="live"><span class="dot"></span>LIVE</span>
+    <a href="/">about</a>
+    <a href="/login.html">sign in</a>
+  </nav>
+</div>
+
+<div class="wrap">
+  <div class="intro">
+    Public ticker of the top-scoring security stories from the last 24h. <strong>Auto-refreshes every 60 seconds.</strong>
+    No login, no account, no ads.
+    <br><br>
+    Want to filter by your stack, get webhook alerts, or save channels?
+    <a href="/login.html">Sign in (free)</a> &middot;
+    <a href="/" style="color:var(--accent);">see what Pro gets you →</a>
+  </div>
+
+  <div class="hot-section">
+    <div class="hot-head">
+      <span class="flame">🔥</span>
+      <span>HOTTEST CVES — LAST 72H</span>
+      <span class="sub">by mention count across all sources</span>
+    </div>
+    <div class="hot-grid" id="hotGrid">
+      <div class="hot-empty">loading...</div>
+    </div>
+  </div>
+
+  <div class="hot-head" style="margin-bottom:10px;">
+    <span style="color:var(--accent);">⧗</span>
+    <span>LIVE TICKER — LAST 24H</span>
+    <span class="sub">top stories above score 20</span>
+  </div>
+  <div class="ticker" id="ticker">
+    <div class="empty">loading ticker...</div>
+  </div>
+</div>
+
+<footer>
+  <span>refresh: <span id="lastUpdate">-</span> &middot; <a href="https://github.com/RMS2D/omnomfeeds">github</a></span>
+  <span><a href="/privacy">Privacy</a> &middot; <a href="/terms">Terms</a></span>
+</footer>
+
+<script>
+function esc(s){return String(s==null?'':s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+function timeAgo(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const sec = (Date.now() - d.getTime()) / 1000;
+  if (sec < 60)    return Math.floor(sec) + 's ago';
+  if (sec < 3600)  return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+async function load() {
+  try {
+    const r = await fetch('/api/articles?min_score=20&limit=25');
+    if (!r.ok) return;
+    const articles = await r.json();
+    render(articles || []);
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+  } catch (e) {}
+}
+function render(list) {
+  const el = document.getElementById('ticker');
+  if (!list.length) { el.innerHTML = '<div class="empty">no articles in the last 24h scored above 20. either it\'s quiet or the worm is still digesting.</div>'; return; }
+  el.innerHTML = list.map(a => {
+    const score = Number(a.score || 0);
+    const band = score >= 60 ? 'crit' : score >= 30 ? 'high' : score >= 10 ? 'med' : 'low';
+    const hasKEV = (a.tags || []).some(t => String(t).toLowerCase().startsWith('kev:'));
+    const kev = hasKEV ? '<span class="kev">KEV</span>' : '';
+    return `
+      <a class="row ${band}" href="${esc(a.url)}" target="_blank" rel="noopener">
+        <span class="score ${band}">${String(score).padStart(2,'0')}</span>
+        <span class="src">${esc(a.source)}</span>
+        <span class="title">${kev}${esc(a.title)}</span>
+        <span class="age">${esc(timeAgo(a.published_at))}</span>
+      </a>
+    `;
+  }).join('');
+}
+async function loadHottest() {
+  try {
+    const r = await fetch('/api/cves/hottest?hours=72&limit=12');
+    if (!r.ok) return;
+    const body = await r.json();
+    renderHottest(body.rows || []);
+  } catch (e) {}
+}
+function renderHottest(rows) {
+  const el = document.getElementById('hotGrid');
+  if (!rows.length) {
+    el.innerHTML = '<div class="hot-empty">nothing CVE-tagged in the last 72h. quiet times.</div>';
+    return;
+  }
+  el.innerHTML = rows.map((r, i) => {
+    const kev = r.kev ? '<span class="kev-badge">KEV</span>' : '';
+    const cve = esc(r.cve);
+    const cnt = Number(r.mentions || 0);
+    return `
+      <a class="hot-pill ${r.kev ? 'kev' : ''}" href="/app?search=${encodeURIComponent(cve)}" target="_blank" rel="noopener" title="${esc(r.latest_title || '')}">
+        <span class="rank">#${i+1}</span>
+        <span class="cve">${cve}</span>
+        ${kev}
+        <span class="count">${cnt}×</span>
+      </a>
+    `;
+  }).join('');
+}
+
+load();
+loadHottest();
+setInterval(load, 60000);
+setInterval(loadHottest, 60000);
+</script>
+
+</body>
+</html>

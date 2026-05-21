@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Privacy - oM noM Security Feeds</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14; --bg-card: #14191f; --border: #2a3340;
+  --text: #e6ecf5; --text-dim: #b8c4d4; --text-bright: #ffffff;
+  --accent: #00e5a0; --accent-cyan: #56e2ff;
+}
+html, body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 15px; line-height: 1.65; min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text-bright); background: rgba(86,226,255,0.07); padding: 1px 5px; border-radius: 2px; }
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 36px 24px 80px; }
+header {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--text-bright); font-weight: 600;
+  letter-spacing: 0.4px;
+  display: flex; align-items: center; gap: 10px;
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+  position: relative;
+}
+header::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--accent-cyan), var(--accent) 50%, var(--accent-amber));
+  opacity: 0.35;
+}
+header .worm-sprite {
+  width: 32px;
+  height: 25px;
+  flex-shrink: 0;
+  vertical-align: middle;
+  animation: worm-bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+}
+header .worm-sprite .seg, header .worm-sprite .head { fill: var(--accent); }
+header .worm-sprite .seg.s3 { opacity: 0.35; }
+header .worm-sprite .seg.s2 { opacity: 0.6; }
+header .worm-sprite .seg.s1 { opacity: 0.85; }
+header .worm-sprite .eye   { fill: var(--bg); }
+header .worm-sprite .glint { fill: var(--accent-cyan); }
+header .worm-sprite .mouth { fill: var(--bg); }
+@keyframes worm-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+header .stage-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: lowercase;
+  padding: 2px 7px;
+  margin-left: 4px;
+  border-radius: 2px;
+  background: rgba(86,226,255,0.05);
+  border: 1px solid rgba(86,226,255,0.25);
+  color: var(--text-dim);
+  font-weight: 400;
+}
+header .stage-chip .sep    { color: var(--border); }
+header .stage-chip .label  { color: var(--accent-cyan); font-weight: 700; letter-spacing: 0.5px; }
+header .home-link {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  text-decoration: none;
+  letter-spacing: 0.4px;
+  transition: color 0.14s ease;
+}
+header .home-link:hover { color: var(--accent-cyan); }
+h1 {
+  font-size: 32px; font-weight: 600; color: var(--text-bright);
+  letter-spacing: -0.5px; margin: 14px 0 6px;
+}
+.subhead {
+  font-family: 'JetBrains Mono', monospace;
+  color: var(--text-dim); font-size: 12px;
+  letter-spacing: 0.6px; margin-bottom: 32px;
+}
+h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px; color: var(--accent-cyan);
+  text-transform: uppercase; letter-spacing: 1.4px;
+  margin: 30px 0 12px;
+  padding-bottom: 6px; border-bottom: 1px solid var(--border);
+}
+p { color: var(--text); margin-bottom: 14px; }
+ul { margin: 8px 0 18px 22px; }
+li { color: var(--text); margin-bottom: 6px; }
+.note {
+  border-left: 2px solid var(--accent);
+  background: rgba(0,229,160,0.04);
+  padding: 12px 16px;
+  border-radius: 0 4px 4px 0;
+  margin: 18px 0;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+footer {
+  margin-top: 56px; padding-top: 22px;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px; color: var(--text-dim);
+  display: flex; gap: 18px; flex-wrap: wrap;
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header><svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg> oM noM Security Feeds <span class="stage-chip"><span class="stage">legal</span><span class="sep">·</span><span class="label">privacy</span></span><a class="home-link" href="/">&larr; home</a></header>
+
+<h1>Privacy</h1>
+<p class="subhead">Plain-English summary of what data the hosted version of oM noM Security Feeds (omnomfeeds.com) collects, why, and where it goes. Last updated 2026-05-20.</p>
+
+<div class="note">
+  oM noM Security Feeds is a side project run by a single developer. The hosted version exists so people who don't want to run the open-source binary themselves can read the same feed without setting anything up. The product is intentionally small and the data handling reflects that.
+</div>
+
+<h2>:: What is collected ::</h2>
+
+<p><strong>Account data.</strong> When you sign in with Google, the deployment stores your Google account's email, display name, and Google subject ID. When you sign in via magic link, it stores the email you entered. That's the entire user identity.</p>
+
+<p><strong>Session data.</strong> A random 32-byte session token is hashed with SHA-256 and stored server-side; the unhashed value sits in an HttpOnly cookie on your browser. The session row also stores your user agent string (so you can see which device a session belongs to) and an SHA-256 hash of the IP that issued it (used only as a rate-limit fingerprint, never logged in plaintext).</p>
+
+<p><strong>Preferences.</strong> Settings you set in the app (theme toggles, refresh interval, bookmarks, watched Bluesky handles you added on top of the curated list) are stored against your account so they sync across devices.</p>
+
+<p><strong>Billing data.</strong> If you subscribe to Pro, your Stripe customer ID and subscription ID get linked to your account row so renewals extend access. Payment-card data never touches this server - Stripe handles the entire checkout.</p>
+
+<p><strong>Aggregated reading patterns.</strong> Which articles you marked read is stored so the "unread only" filter works across devices. No clickstream tracking, no analytics pixel, no advertising profile.</p>
+
+<h2>:: What is not collected ::</h2>
+<ul>
+  <li>No analytics SDK, no Google Analytics, no Meta Pixel, no Mixpanel, no Hotjar.</li>
+  <li>No third-party advertising trackers. The site shows no ads.</li>
+  <li>No fingerprinting. Browser type is read only from the User-Agent string the browser already sends.</li>
+  <li>No IP address logging in plaintext. IPs are SHA-256 hashed before storage and used only for rate limits.</li>
+  <li>No tracking pixels in the magic-link email.</li>
+</ul>
+
+<h2>:: Where data is stored ::</h2>
+<p>A single SQLite database on a DigitalOcean droplet in NYC1. The file is owned by the service user, mode 600. Daily backups land on the same droplet's local filesystem with the same permissions. No third-party database. No replication to other regions. No data sold or shared.</p>
+
+<h2>:: Third parties (sub-processors) ::</h2>
+<ul>
+  <li><strong>Google</strong> - OAuth sign-in. Only when you choose to sign in with Google. <a href="https://policies.google.com/privacy">Google's privacy policy</a>.</li>
+  <li><strong>Resend</strong> - sends the magic-link email when you use email-based sign-in. <a href="https://resend.com/legal/privacy-policy">Resend's privacy policy</a>.</li>
+  <li><strong>Stripe</strong> - handles all payment processing for Pro subscriptions. <a href="https://stripe.com/privacy">Stripe's privacy policy</a>.</li>
+  <li><strong>Anthropic</strong> - used to generate the optional managed AI daily brief. Only the article titles and short summaries you've already seen in your feed are sent. No personal data is sent. <a href="https://www.anthropic.com/legal/privacy">Anthropic's privacy policy</a>.</li>
+  <li><strong>DigitalOcean</strong> - hosts the server. <a href="https://www.digitalocean.com/legal/privacy-policy">DigitalOcean's privacy policy</a>.</li>
+  <li><strong>Cloudflare</strong> - DNS for omnomfeeds.com.</li>
+</ul>
+
+<h2>:: Data sources fetched on your behalf ::</h2>
+<p>The feed is built by pulling public posts from RSS, Bluesky, Mastodon, Reddit (via RSS), and GitHub Security Advisories. Those upstream sources see the server's IP when it polls them. They do not see anything tied to you personally.</p>
+
+<h2>:: Your rights ::</h2>
+<p>You can:</p>
+<ul>
+  <li><strong>See your data.</strong> Email a request to <a href="mailto:support@omnomfeeds.com">support@omnomfeeds.com</a> and you'll get a JSON dump of your account row, settings, bookmarks, read marks, and Stripe linkage.</li>
+  <li><strong>Delete your account.</strong> Email a deletion request and the row plus all dependent data is hard-deleted via <code>DELETE FROM users WHERE id = ?</code>. Foreign keys cascade so sessions, settings, bookmarks, read state, watched accounts, and subscription linkage all go with it. Stripe subscriptions are cancelled at the same time. Backups roll out within 14 days.</li>
+  <li><strong>Export your bookmarks + watched accounts.</strong> Same email; you'll get a JSON file.</li>
+</ul>
+
+<h2>:: Cookies ::</h2>
+<p>One cookie: the session token (<code>omnom_session</code>). HttpOnly, Secure, SameSite=Lax, 30-day expiry. No third-party cookies are set by this site.</p>
+
+<h2>:: Self-hosted installs ::</h2>
+<p>This page describes the hosted deployment at omnomfeeds.com only. If you run the open-source binary on your own machine, no data leaves your machine except what you explicitly configure (BYOK AI key calls to the model vendor, polling upstream feeds, etc.).</p>
+
+<h2>:: Changes ::</h2>
+<p>Material changes to this page will be announced in the GitHub repo's release notes and posted at <a href="https://omnomfeeds.com">omnomfeeds.com</a>. The "Last updated" date at the top is authoritative.</p>
+
+<h2>:: Contact ::</h2>
+<p>Questions, deletion requests, anything else - <a href="mailto:support@omnomfeeds.com">support@omnomfeeds.com</a>. Single dev, side project, plain inbox.</p>
+
+<footer>
+  <span><a href="/">&larr; back to home</a></span>
+  <span><a href="/terms">Terms</a></span>
+  <span><a href="https://github.com/RMS2D/omnomfeeds">source on GitHub</a></span>
+</footer>
+
+</div>
+</body>
+</html>

@@ -18,7 +18,7 @@
     { "name": "SecurityWeek",           "url": "https://www.securityweek.com/feed/" },
     { "name": "Dark Reading",           "url": "https://www.darkreading.com/rss.xml" },
     { "name": "Rapid7 Blog",            "url": "https://blog.rapid7.com/rss/" },
-    { "name": "SentinelOne Blog",       "url": "https://www.sentinelone.com/blog/feed/" },
+    { "name": "SentinelOne Blog",       "url": "https://feeds.feedburner.com/sentinelone" },
     { "name": "Microsoft Security",     "url": "https://www.microsoft.com/en-us/security/blog/feed/" },
     { "name": "Project Zero",           "url": "https://googleprojectzero.blogspot.com/feeds/posts/default?alt=rss" },
     { "name": "Elastic Security",       "url": "https://www.elastic.co/security-labs/rss/feed.xml" },
@@ -38,7 +38,6 @@
     { "name": "Microsoft Threat Intel", "url": "https://www.microsoft.com/en-us/security/blog/topic/threat-intelligence/feed/" },
     { "name": "Securelist (Kaspersky)", "url": "https://securelist.com/feed/" },
     { "name": "ESET WeLiveSecurity",    "url": "https://www.welivesecurity.com/en/rss/feed/" },
-    { "name": "Check Point Research",   "url": "https://research.checkpoint.com/feed/" },
     { "name": "Bishop Fox",             "url": "https://bishopfox.com/blog/rss.xml" },
     { "name": "Praetorian",             "url": "https://www.praetorian.com/blog/feed/" },
     { "name": "Volatility Labs",        "url": "https://volatility-labs.blogspot.com/feeds/posts/default" },
@@ -48,7 +47,20 @@
     { "name": "CyberScoop",             "url": "https://cyberscoop.com/feed/" },
     { "name": "NCSC UK",                "url": "https://www.ncsc.gov.uk/api/1/services/v1/all-rss-feed.xml" },
     { "name": "arXiv cs.CR",            "url": "https://arxiv.org/rss/cs.CR" },
-    { "name": "Wiz Research",           "url": "https://www.wiz.io/blog/rss" }
+    { "name": "Wiz Research",           "url": "https://www.wiz.io/blog/rss" },
+
+    { "name": "Palo Alto PSIRT",        "url": "https://security.paloaltonetworks.com/rss.xml", "fast": true },
+    { "name": "Fortinet PSIRT",         "url": "https://filestore.fortinet.com/fortiguard/rss/ir.xml", "fast": true },
+    { "name": "AWS Security Bulletins", "url": "https://aws.amazon.com/security/security-bulletins/feed/" },
+
+    { "name": "Sophos Security Advisories", "url": "https://www.sophos.com/en-us/security-advisories/feed" },
+    { "name": "Google Security",        "url": "https://security.googleblog.com/feeds/posts/default" },
+    { "name": "GitHub Security Lab",    "url": "https://github.blog/security/feed/" },
+
+    { "name": "Ubuntu Security Notices","url": "https://ubuntu.com/security/notices/rss.xml", "fast": true },
+    { "name": "Debian DSA",             "url": "https://www.debian.org/security/dsa.rdf", "fast": true },
+    { "name": "Chrome Releases",        "url": "https://chromereleases.googleblog.com/feeds/posts/default", "fast": true },
+    { "name": "Mozilla Security",       "url": "https://blog.mozilla.org/security/feed/" }
   ],
   "subreddits": [
     "netsec",

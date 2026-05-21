@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>What Pro looks like - oM noM Security Feeds</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<meta name="description" content="Every Pro feature in oM noM Security Feeds rendered with sample data. AI daily brief, per-article + per-CVE explainers, semantic dedup, KEV webhook alerts, REST API, saved channels, personalization, asset-profile highlighting, source consensus, OTX overlay. $10/mo founder pricing.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://omnomfeeds.com/pro">
+<meta property="og:title" content="What Pro looks like - oM noM Security Feeds">
+<meta property="og:description" content="Every Pro feature with realistic sample data. AI brief, CVE deep-dives with OTX + source consensus, KEV webhook alerts, REST API, asset-profile highlighting. $10/mo.">
+<meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="oM noM Security Feeds - a worm with teeth above the wordmark">
+<meta property="og:site_name" content="oM noM Security Feeds">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="What Pro looks like - oM noM Security Feeds">
+<meta name="twitter:description" content="Every Pro feature with realistic sample data. $10/mo founder pricing.">
+<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
+<meta name="description" content="See every Pro feature rendered with real sample data. Honest preview - this is exactly what you get if you upgrade.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14; --bg-card: #14191f; --bg-row: #11161d;
+  --border: #2a3340; --border-hi: #3a4555;
+  --text: #e6ecf5; --text-dim: #b8c4d4; --text-bright: #ffffff;
+  --accent: #00e5a0; --accent-cyan: #56e2ff; --accent-amber: #ffb547;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg); color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 15px; line-height: 1.6; min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text-bright); background: rgba(86,226,255,0.07); padding: 1px 5px; border-radius: 2px; }
+
+header.top {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 24px; border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  position: sticky; top: 0; z-index: 50;
+  backdrop-filter: blur(8px);
+  /* Thin gradient accent on the top edge so the bar reads as a deliberate
+     surface, not a tacked-on strip. Cyan -> green -> amber mirrors the
+     palette used across the page (Pro features, free features, worm). */
+  background-image:
+    linear-gradient(90deg, var(--accent-cyan), var(--accent) 50%, var(--accent-amber)),
+    linear-gradient(var(--bg-card), var(--bg-card));
+  background-size: 100% 1px, 100% 100%;
+  background-position: top left, top left;
+  background-repeat: no-repeat;
+}
+header.top .brand {
+  font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  color: var(--text-bright); font-weight: 600; letter-spacing: 0.4px;
+  display: flex; align-items: center; gap: 10px;
+}
+header.top .brand .worm-sprite {
+  width: 32px; height: 25px; flex-shrink: 0; vertical-align: middle;
+  animation: bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+}
+header.top .brand .worm-sprite .seg, header.top .brand .worm-sprite .head { fill: var(--accent); }
+header.top .brand .worm-sprite .seg.s3 { opacity: 0.35; }
+header.top .brand .worm-sprite .seg.s2 { opacity: 0.6; }
+header.top .brand .worm-sprite .seg.s1 { opacity: 0.85; }
+header.top .brand .worm-sprite .eye   { fill: var(--bg); }
+header.top .brand .worm-sprite .glint { fill: var(--accent-cyan); }
+header.top .brand .worm-sprite .mouth { fill: var(--bg); }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-1.5px); } }
+/* Combined "stage" chip - mirrors the landing's larva·feeding pattern,
+   but static and contextualized to this surface ("larva · pro preview"). */
+header.top .brand .stage-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: lowercase;
+  padding: 2px 7px;
+  margin-left: 4px;
+  border-radius: 2px;
+  background: rgba(255,181,71,0.07);
+  border: 1px solid rgba(255,181,71,0.32);
+  color: var(--text-dim);
+}
+header.top .brand .stage-chip .sep    { color: var(--border); }
+header.top .brand .stage-chip .label  { color: var(--accent-amber); font-weight: 700; letter-spacing: 0.5px; }
+header.top nav { display: flex; gap: 18px; font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.6px; text-transform: uppercase; align-items: center; }
+
+.hero {
+  max-width: 980px; margin: 0 auto; padding: 56px 24px 36px;
+  text-align: center;
+}
+.hero h1 {
+  font-size: 38px; font-weight: 700; color: var(--text-bright);
+  letter-spacing: -0.6px; margin-bottom: 14px;
+}
+.hero .tagline {
+  font-size: 17px; color: var(--text-dim); max-width: 680px; margin: 0 auto 26px;
+}
+.hero .cta-row {
+  display: inline-flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 10px 22px; border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600;
+  letter-spacing: 0.4px; border: 1px solid; cursor: pointer; text-decoration: none; transition: all 0.14s ease;
+}
+.btn-primary { background: rgba(255,181,71,0.10); border-color: var(--accent-amber); color: var(--accent-amber); text-shadow: 0 0 6px rgba(255,181,71,0.3); }
+.btn-primary:hover { background-color: var(--accent-amber); color: var(--bg); }
+.btn-secondary { background: rgba(86,226,255,0.08); border-color: var(--border-hi); color: var(--text-bright); }
+.btn-secondary:hover { border-color: var(--accent-cyan); }
+
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 24px 80px; }
+.feature {
+  margin: 40px 0 0;
+  padding-top: 36px;
+  border-top: 1px solid var(--border);
+}
+.feature:first-of-type { border-top: 0; padding-top: 0; }
+.feature .label {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent-amber); text-transform: uppercase; letter-spacing: 1.3px;
+  margin-bottom: 4px;
+}
+.feature h2 {
+  font-size: 26px; font-weight: 600; color: var(--text-bright);
+  letter-spacing: -0.3px; margin-bottom: 10px;
+}
+.feature .desc {
+  color: var(--text-dim); max-width: 680px; margin-bottom: 20px; font-size: 15px; line-height: 1.65;
+}
+.feature .desc strong { color: var(--text); }
+.feature .mock { margin-top: 18px; }
+.feature .mock-caption {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); text-align: center; margin-top: 8px; letter-spacing: 0.3px;
+}
+
+/* ==== Score-explainer popover mock ==== */
+.mock-score-row {
+  display: grid; grid-template-columns: auto auto 1fr auto; gap: 10px; align-items: center;
+  padding: 8px 12px; background: var(--bg-card); border: 1px solid var(--border);
+  border-left: 2px solid var(--score-crit); border-radius: 3px;
+}
+.mock-score-row .cursor { color: var(--text-dim); font-family: 'JetBrains Mono', monospace; }
+.mock-score-row .score-chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 700;
+  background: var(--bg); color: var(--score-crit); padding: 3px 7px; border-radius: 3px;
+  min-width: 36px; text-align: center; cursor: pointer;
+  box-shadow: 0 0 0 1px var(--accent-cyan);
+}
+.mock-score-row .title { color: var(--text); font-size: 14px; }
+.mock-score-row .age { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
+.score-explain-mock {
+  margin-top: 14px;
+  width: 320px; max-width: 100%;
+  background: var(--bg-card); border: 1px solid var(--border); border-left: 2px solid var(--accent);
+  border-radius: 4px; padding: 12px 14px; font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 14px rgba(0,229,160,0.10);
+  margin-left: 60px;
+}
+.score-explain-mock .se-title {
+  color: var(--accent); font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.score-explain-mock .se-total {
+  font-size: 18px; color: var(--text-bright); font-weight: 700; margin-bottom: 10px; letter-spacing: -0.5px;
+}
+.score-explain-mock .se-row {
+  display: flex; justify-content: space-between; gap: 8px; padding: 5px 0;
+  border-top: 1px solid rgba(42,51,64,0.5);
+}
+.score-explain-mock .se-row:first-of-type { border-top: 0; }
+.score-explain-mock .se-cat { color: var(--text); flex: 1; }
+.score-explain-mock .se-cat .matched { color: var(--text-dim); font-size: 10px; margin-top: 2px; display: block; }
+.score-explain-mock .se-weight { color: var(--accent); font-weight: 700; }
+.score-explain-mock .se-weight.kev { color: var(--score-crit); }
+.score-explain-mock .se-foot {
+  margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--border);
+  font-size: 10px; color: var(--text-dim);
+}
+
+/* ==== CVE deep-dive modal mock ==== */
+.mock-cve-modal {
+  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  border: 1px solid var(--border); border-left: 2px solid var(--accent);
+  border-radius: 4px; box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 14px rgba(0,229,160,0.10);
+  font-family: 'JetBrains Mono', monospace;
+}
+.mock-cve-modal .title-row {
+  color: var(--accent); font-weight: 700; font-size: 12px; letter-spacing: 1.2px;
+  padding: 16px 22px 12px; border-bottom: 1px solid var(--border); text-shadow: 0 0 6px rgba(0,229,160,0.5);
+  display: flex; align-items: center; gap: 10px; text-transform: uppercase;
+}
+.mock-cve-modal .title-row .right { margin-left: auto; color: var(--score-crit); font-size: 10px; text-shadow: none; }
+.mock-cve-modal .body { padding: 18px 24px 22px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.6; }
+.mock-cve-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 18px; }
+.mock-cve-card { background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 10px 12px; }
+.mock-cve-card .label { font-family: 'JetBrains Mono', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--text-dim); margin-bottom: 6px; }
+.mock-cve-card .value { font-family: 'JetBrains Mono', monospace; font-size: 18px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.3px; }
+.mock-cve-card .sub { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-top: 4px; }
+.mock-cve-card.crit .value { color: var(--score-crit); }
+.mock-cve-card.high .value { color: #ff9940; }
+.mock-cve-section-title {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.9px;
+  text-transform: uppercase; color: var(--accent); margin: 16px 0 6px;
+  padding-bottom: 4px; border-bottom: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.mock-cve-section-title .ai-tag {
+  font-size: 9px; letter-spacing: 1px; background: rgba(255,181,71,0.12);
+  border: 1px solid rgba(255,181,71,0.4); color: var(--accent-amber); padding: 1px 6px; border-radius: 2px;
+}
+.mock-cve-desc { color: var(--text); font-size: 13.5px; line-height: 1.6; }
+.mock-cve-ai-body {
+  font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 13.5px; line-height: 1.65;
+  color: var(--text); white-space: pre-wrap;
+  background: rgba(255,181,71,0.05); border-left: 2px solid var(--accent-amber);
+  padding: 10px 14px; border-radius: 0 3px 3px 0;
+}
+
+/* ==== AI brief modal mock ==== */
+.mock-brief {
+  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  border: 1px solid var(--border); border-left: 2px solid var(--accent);
+  border-radius: 4px; font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 14px rgba(0,229,160,0.10);
+}
+.mock-brief .title-bar {
+  color: var(--accent); font-weight: 700; font-size: 12px; letter-spacing: 1.2px;
+  padding: 16px 22px 12px; border-bottom: 1px solid var(--border); text-shadow: 0 0 6px rgba(0,229,160,0.5);
+  display: flex; align-items: center; gap: 10px; text-transform: uppercase;
+}
+.mock-brief .provider { margin-left: auto; font-size: 10px; color: var(--text-dim); text-shadow: none; }
+.mock-brief .body { padding: 18px 24px; font-family: 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; line-height: 1.65; max-height: 360px; overflow: hidden; position: relative; }
+.mock-brief .body h4 { font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.7px; color: var(--accent); margin: 14px 0 6px; text-transform: uppercase; }
+.mock-brief .body h4:first-child { margin-top: 0; }
+.mock-brief .body p { margin-bottom: 8px; }
+.mock-brief .body::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 60px; background: linear-gradient(180deg, rgba(13,18,28,0) 0%, rgba(13,18,28,0.98) 90%); pointer-events: none; }
+
+/* ==== Per-article explainer mock ==== */
+.mock-reader {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px;
+  padding: 18px 22px; font-family: 'Space Grotesk', system-ui, sans-serif;
+}
+.mock-reader .rd-title { font-size: 17px; font-weight: 600; color: var(--text-bright); margin-bottom: 6px; }
+.mock-reader .rd-meta { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-dim); margin-bottom: 10px; }
+.mock-reader .rd-meta .pill { background: var(--bg); border: 1px solid rgba(255,77,106,0.4); color: var(--score-crit); padding: 1px 6px; border-radius: 2px; margin-left: 6px; font-size: 10px; }
+.mock-reader .rd-body { color: var(--text); font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+.mock-explain {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-left: 2px solid var(--accent-amber);
+  background: rgba(255,181,71,0.05);
+  border-radius: 0 3px 3px 0;
+  font-family: 'IBM Plex Sans', system-ui, sans-serif;
+  font-size: 13.5px; line-height: 1.6; color: var(--text);
+}
+.mock-explain-head {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px;
+  letter-spacing: 0.8px; text-transform: uppercase; color: var(--accent-amber);
+  margin-bottom: 6px; display: flex; justify-content: space-between;
+}
+.mock-explain-head .meta { color: var(--text-dim); font-size: 9px; }
+.mock-reader .rd-actions {
+  margin-top: 14px; display: flex; gap: 6px; flex-wrap: wrap;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+}
+.mock-reader .rd-actions span {
+  background: transparent; border: 1px solid var(--border); color: var(--text-dim);
+  padding: 5px 11px; border-radius: 2px;
+}
+.mock-reader .rd-actions .primary { background: rgba(0,229,160,0.08); border-color: var(--accent); color: var(--accent); }
+.mock-reader .rd-actions .ai { background: rgba(255,181,71,0.08); border-color: rgba(255,181,71,0.4); color: var(--accent-amber); }
+
+/* ==== Webhook alert mock ==== */
+.webhook-mock {
+  background: rgba(13, 18, 28, 0.96); border: 1px solid var(--border); border-radius: 4px;
+  padding: 14px 16px; font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 13px;
+}
+.webhook-mock-app {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.6px; color: var(--text-dim); text-transform: uppercase;
+}
+.webhook-mock-app .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px rgba(0,229,160,0.5); }
+.webhook-mock-bot { display: flex; gap: 10px; align-items: flex-start; }
+.webhook-mock-avatar {
+  width: 36px; height: 36px; background: var(--accent); color: var(--bg); border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 14px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.webhook-mock-content { flex: 1; }
+.webhook-mock-meta { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); margin-bottom: 4px; }
+.webhook-mock-meta strong { color: var(--text-bright); font-weight: 600; margin-right: 6px; }
+.webhook-mock-title { font-weight: 600; color: var(--text-bright); margin-bottom: 4px; }
+.webhook-mock-title .badge { display: inline-block; font-family: 'JetBrains Mono', monospace; font-size: 9px; background: rgba(255,77,106,0.1); border: 1px solid var(--score-crit); color: var(--score-crit); padding: 1px 5px; border-radius: 2px; margin-right: 6px; text-transform: uppercase; }
+.webhook-mock-body { font-size: 12.5px; color: var(--text); margin-bottom: 6px; }
+.webhook-mock-footer { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); }
+.webhook-mock-footer a { color: var(--accent-cyan); }
+
+/* ==== Momentum table mock ==== */
+.mock-momentum {
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px; padding: 16px 18px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.mock-momentum-head { color: var(--accent); font-weight: 700; font-size: 12px; letter-spacing: 1.2px; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 12px; text-transform: uppercase; }
+.mock-momentum table { width: 100%; font-size: 12px; border-collapse: collapse; }
+.mock-momentum th { text-align: left; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; color: var(--text-dim); padding: 8px 6px; border-bottom: 1px solid var(--border); }
+.mock-momentum td { padding: 7px 6px; border-bottom: 1px solid rgba(42,51,64,0.4); vertical-align: middle; }
+.mock-momentum .tag { color: var(--accent-cyan); font-weight: 600; }
+.mock-momentum .name { color: var(--text-dim); font-size: 11px; }
+.mock-momentum .nbr { text-align: right; font-variant-numeric: tabular-nums; color: var(--text); }
+.mock-momentum .delta { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.mock-momentum .delta.up   { color: var(--accent); }
+.mock-momentum .delta.huge { color: var(--accent-amber); text-shadow: 0 0 6px rgba(255,181,71,0.4); }
+
+/* ==== Channels chip strip mock ==== */
+.mock-channels {
+  background: rgba(0,229,160,0.02); border: 1px solid var(--border);
+  border-radius: 3px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 8px 14px;
+}
+.mock-channels .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.8px; color: var(--text-dim); text-transform: uppercase; margin-right: 4px; }
+.mock-channels .chip {
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--accent); background: rgba(0,229,160,0.06); border: 1px solid rgba(0,229,160,0.3);
+  border-radius: 2px; padding: 2px 8px;
+}
+.mock-channels .chip.active { background-color: var(--accent); color: var(--bg); font-weight: 700; }
+.mock-channels .add {
+  font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim);
+  background: transparent; border: 1px dashed var(--border-hi); padding: 2px 8px; border-radius: 2px; margin-left: auto;
+}
+
+/* ==== API tokens mock ==== */
+.mock-tokens {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 4px; padding: 14px 16px;
+  font-family: 'JetBrains Mono', monospace;
+}
+.mock-tokens .row {
+  display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid rgba(42,51,64,0.4);
+}
+.mock-tokens .name { color: var(--text-bright); font-weight: 600; font-size: 12px; }
+.mock-tokens .prefix { color: var(--accent-cyan); font-size: 10px; margin-left: 8px; }
+.mock-tokens .when { display: block; font-size: 10px; color: var(--text-dim); margin-top: 2px; }
+.mock-tokens .rev { background: transparent; border: 1px solid var(--border); color: var(--text-dim); font-size: 9px; padding: 3px 8px; border-radius: 2px; text-transform: uppercase; }
+.mock-curl {
+  margin-top: 14px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 12px 14px;
+  font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--accent-cyan);
+  line-height: 1.7; white-space: pre-wrap; word-break: break-all;
+}
+
+/* ==== Email digest mock ==== */
+.mock-email {
+  background: #ffffff; color: #1a1a1a; border-radius: 3px; padding: 20px 22px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6;
+  border: 1px solid #ddd;
+}
+.mock-email .from { font-size: 12px; color: #777; margin-bottom: 12px; }
+.mock-email .from strong { color: #111; }
+.mock-email .subject { font-size: 18px; font-weight: 600; color: #111; margin-bottom: 14px; }
+.mock-email h4 { color: #00875a; font-size: 12px; text-transform: uppercase; letter-spacing: 0.7px; margin: 14px 0 6px; font-family: 'JetBrains Mono', monospace; }
+.mock-email p { color: #333; font-size: 13.5px; margin-bottom: 8px; }
+.mock-email .picks { border-top: 1px solid #ddd; padding-top: 10px; margin-top: 12px; }
+.mock-email .pick { padding: 6px 0; border-bottom: 1px solid #eee; }
+.mock-email .pick .ix { font-family: 'JetBrains Mono', monospace; font-size: 11px; color: #888; }
+.mock-email .pick a { color: #006fcc; text-decoration: none; font-weight: 600; }
+
+/* ==== Personalization mock ==== */
+.mock-profile {
+  background: var(--bg); border: 1px solid var(--border); border-radius: 3px; padding: 14px 16px;
+  font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text);
+}
+.mock-profile-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-dim); margin-bottom: 6px; }
+.mock-profile-text { color: var(--text-bright); padding: 10px 12px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 3px; line-height: 1.5; }
+.before-after { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+@media (max-width: 700px) { .before-after { grid-template-columns: 1fr; } }
+.before-after .col h5 { font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.6px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 8px; }
+.before-after .col h5.aft { color: var(--accent-amber); }
+.before-after .list { display: flex; flex-direction: column; gap: 4px; }
+.before-after .row {
+  display: grid; grid-template-columns: auto 1fr; gap: 8px; align-items: center;
+  padding: 6px 10px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 2px;
+  font-family: 'Space Grotesk', system-ui, sans-serif; font-size: 12.5px;
+}
+.before-after .row .sc { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; color: var(--accent); min-width: 24px; }
+
+/* ==== Worm temperature mock ==== */
+.worm-temps { display: flex; gap: 20px; align-items: flex-end; }
+.worm-temp-item { text-align: center; }
+.worm-temp-item .worm-svg {
+  width: 80px; height: 60px; margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.worm-temp-item svg { display: block; }
+.worm-temp-item .seg, .worm-temp-item .head { fill: var(--accent); }
+.worm-temp-item.warm .seg, .worm-temp-item.warm .head { fill: var(--accent-amber); }
+.worm-temp-item.hot  .seg, .worm-temp-item.hot  .head  { fill: var(--score-crit); }
+.worm-temp-item .seg.s3 { opacity: 0.35; }
+.worm-temp-item .seg.s2 { opacity: 0.6; }
+.worm-temp-item .seg.s1 { opacity: 0.85; }
+.worm-temp-item .label { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-dim); letter-spacing: 0.4px; text-transform: uppercase; }
+.worm-temp-item .label strong { color: var(--text-bright); }
+
+/* ==== Final CTA ==== */
+.final-cta {
+  margin-top: 60px; padding: 40px 24px; text-align: center;
+  border: 1px solid var(--border); border-left: 2px solid var(--accent-amber);
+  background: rgba(255,181,71,0.04); border-radius: 4px;
+}
+.final-cta h3 { font-size: 22px; color: var(--text-bright); margin-bottom: 10px; font-weight: 600; }
+.final-cta p { color: var(--text-dim); max-width: 540px; margin: 0 auto 18px; font-size: 14px; }
+
+/* "Know a security person?" share section. Goal: word-of-mouth is the
+   only growth channel that matters at this price point. */
+.share-section {
+  margin-top: 36px;
+  padding: 28px 24px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: 4px;
+  background: rgba(86,226,255,0.025);
+}
+.share-section h4 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--accent-cyan);
+  letter-spacing: 1.3px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.share-section p {
+  color: var(--text-dim); font-size: 13px; max-width: 520px;
+  margin: 0 auto 16px;
+}
+.share-row {
+  display: inline-flex; gap: 10px; flex-wrap: wrap; justify-content: center;
+}
+.share-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-card);
+  color: var(--text);
+  text-decoration: none;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  transition: border-color 0.14s, color 0.14s, background 0.14s;
+}
+.share-btn:hover {
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  background: rgba(86,226,255,0.06);
+}
+.share-btn.bsky:hover { border-color: var(--accent); color: var(--accent); background: rgba(0,229,160,0.06); }
+.share-btn.copy:hover { border-color: var(--accent-amber); color: var(--accent-amber); background: rgba(255,181,71,0.06); }
+.share-btn-icon { font-size: 13px; }
+
+footer {
+  margin-top: 50px; padding-top: 22px; border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  color: var(--text-dim); display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px;
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg> oM noM Security Feeds <span class="stage-chip"><span class="stage">larva</span><span class="sep">·</span><span class="label">pro preview</span></span></div>
+  <nav>
+    <a href="/">home</a>
+    <a href="/live">live ticker</a>
+    <a href="/login.html">sign in</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="label" style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-amber);text-transform:uppercase;letter-spacing:1.3px;margin-bottom:10px;">Pro preview</div>
+  <h1>What Pro actually looks like.</h1>
+  <p class="tagline">
+    Every Pro feature rendered with realistic sample data, using the exact CSS the live app uses. No stock screenshots, no stretched marketing claims. This is what you get for $10/mo.
+  </p>
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/login.html">Upgrade to Pro - $10/mo</a>
+    <a class="btn btn-secondary" href="/">Back to home</a>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- 1. AI Daily Brief -->
+  <div class="feature">
+    <div class="label">:: managed AI daily brief ::</div>
+    <h2>A 300-word intel brief, regenerated for you every morning.</h2>
+    <p class="desc">
+      Press <code>I</code> in the reader. The brief covers the last 24h of high-score articles - KEV-listed CVEs first, then supply chain, then APT/threat-actor activity, then anything else worth your time. <strong>No API key setup.</strong> Server pays the Anthropic call so you don't have to.
+    </p>
+    <div class="mock">
+      <div class="mock-brief">
+        <div class="title-bar">
+          <span>:: WORM'S DIGEST // last 24h</span>
+        </div>
+        <div class="body">
+          <h4>Known exploited vulnerabilities (active threat)</h4>
+          <p>CISA added three entries to the KEV catalog in the last 24h with confirmed in-the-wild exploitation. CVE-2026-31431 (F5 NGINX critical path traversal, EPSS 92%) demands immediate patching across web infrastructure. CVE-2026-45498 lacks EPSS data due to recent publication; warrant tracking as additional context emerges. All three demand immediate patching across endpoints and web infrastructure.</p>
+          <h4>Supply chain compromise wave</h4>
+          <p>Three distinct npm incidents signal a coordinated developer-toolchain campaign: 600+ packages poisoned via the Shai-Hulud worm-pattern, a malicious GitHub Action redirecting CI credentials via tag manipulation, and trojanized VS Code extensions targeting CI/CD repositories. Pattern: attackers targeting developer toolchains and package registries.</p>
+          <h4>APT &amp; botnet operations</h4>
+          <p>Webworm APT (China-aligned) deploying EchoCreep and GraphWorm backdoors leveraging Discord and Microsoft Graph API for C2 - blending traditional malware with legitimate cloud services. Concurrent reporting of LummaStealer and Amatera malware via MSHTA legacy exploitation.</p>
+        </div>
+      </div>
+      <div class="mock-caption"><code>I</code> opens the brief · cached deployment-wide for 1 hour so multiple users share the cost</div>
+    </div>
+  </div>
+
+  <!-- 2. Per-article AI explainer -->
+  <div class="feature">
+    <div class="label">:: one-click "explain this" ::</div>
+    <h2>Plain-English summary on any article, on demand.</h2>
+    <p class="desc">
+      Click <code>✨ explain</code> in the reader pane. AI gives you "what it is / who needs to care / what to do today" in three lines. <strong>Cached per article forever</strong> - the first Pro user pays the LLM call, every reader after that gets the cached text instantly.
+    </p>
+    <div class="mock">
+      <div class="mock-reader">
+        <div class="rd-title">[Packet Storm News] Barracuda ESG Spreadsheet::ParseExcel Arbitrary Code Execution https://packetstorm.news/files/221648 #exploit</div>
+        <div class="rd-meta"><code>Bluesky</code> · BLUESKY · 2026-05-20, 4:37:11 p.m. · <span style="background:var(--bg);border:1px solid var(--accent-amber);color:var(--accent-amber);padding:1px 6px;border-radius:2px;margin-left:6px;font-size:10px;">score 33</span></div>
+        <div class="rd-body">Barracuda ESG Spreadsheet::ParseExcel Arbitrary Code Execution https://packetstorm.news/files/221648 #exploit</div>
+        <div style="margin:8px 0 4px;display:flex;gap:4px;flex-wrap:wrap;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(124,77,255,0.15);border:1px solid rgba(124,77,255,0.4);color:#c1abff;padding:2px 7px;border-radius:2px;">rce</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(86,226,255,0.10);border:1px solid rgba(86,226,255,0.35);color:var(--accent-cyan);padding:2px 7px;border-radius:2px;">T1190</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(124,77,255,0.15);border:1px solid rgba(124,77,255,0.4);color:#c1abff;padding:2px 7px;border-radius:2px;">exploit</span>
+        </div>
+        <div class="mock-explain">
+          <div class="mock-explain-head"><span>AI summary</span><span class="meta">fresh</span></div>
+This is a remote code execution vulnerability in Barracuda ESG's spreadsheet parsing functionality. Teams running Barracuda Email Security Gateway should prioritize patching this arbitrary code execution flaw immediately. Check Barracuda's security advisories today for affected versions and available patches.
+        </div>
+        <div class="rd-actions">
+          <span class="primary">open ↗</span>
+          <span>☆ bookmark</span>
+          <span>mark read</span>
+          <span class="ai">✨ explain</span>
+        </div>
+      </div>
+      <div class="mock-caption">real output from a real article in the live feed · ~$0.001 per article, cached forever, every subsequent Pro reader gets it free</div>
+    </div>
+  </div>
+
+  <!-- 3. CVE deep-dive -->
+  <div class="feature">
+    <div class="label">:: CVE deep-dive ::</div>
+    <h2>NVD + EPSS + KEV + AI bullets in one modal.</h2>
+    <p class="desc">
+      Click any CVE chip on any article. The factual data (CVSS, EPSS, KEV status, CWE, NVD description) is free for everyone. The <strong>3-bullet plain-English summary</strong> is Pro-gated and cached per CVE id so every reader after the first gets it instantly.
+    </p>
+    <div class="mock">
+      <div class="mock-cve-modal">
+        <div class="title-row">
+          <span>:: CVE-2026-41091</span>
+          <span class="right">KEV · actively exploited</span>
+        </div>
+        <div class="body">
+          <div class="mock-cve-cards">
+            <div class="mock-cve-card high"><div class="label">CVSS v3</div><div class="value">7.8</div><div class="sub">HIGH</div></div>
+            <div class="mock-cve-card"><div class="label">EPSS</div><div class="value" style="font-size:13px;color:var(--text-dim);">no data</div></div>
+            <div class="mock-cve-card crit"><div class="label">CISA KEV</div><div class="value" style="font-size:14px;">ACTIVELY EXPLOITED</div><div class="sub">in the wild per CISA</div></div>
+            <div class="mock-cve-card"><div class="label">Weakness</div><div class="value" style="font-size:13px;color:var(--accent-cyan);">CWE-59</div></div>
+          </div>
+          <div class="mock-cve-section-title">NVD description</div>
+          <div class="mock-cve-desc">Improper link resolution before file access ('link following') in Microsoft Defender allows an authorized attacker to elevate privileges locally.</div>
+          <div class="mock-cve-section-title"><span>Plain-English summary</span><span class="ai-tag">AI · PRO</span></div>
+          <div class="mock-cve-ai-body">- Microsoft Defender contains a symlink-following vulnerability (CWE-59) that allows local privilege escalation.
+- Windows systems running Defender where an authorized local user can create symlinks in monitored paths. Active exploitation confirmed by CISA.
+- Apply Microsoft's latest Defender security intelligence update and engine patches immediately. Check Windows Update for Defender definition rollouts. Monitor file system for suspicious symlink creation in scanned directories.</div>
+        </div>
+      </div>
+      <div class="mock-caption">factual data free for everyone · AI bullet locked to Pro, $0.001 first read, free forever after</div>
+    </div>
+  </div>
+
+  <!-- 4. Score-explainer -->
+  <div class="feature">
+    <div class="label">:: free for everyone ::</div>
+    <h2>See exactly why the worm scored an article what it did.</h2>
+    <p class="desc">
+      Click any score chip. Get the per-category weight breakdown: which keywords matched, which categories fired, whether the KEV escalation kicked in. <strong>Demystifies the scoring</strong> instead of leaving a magic number sitting there.
+    </p>
+    <div class="mock">
+      <div class="mock-score-row">
+        <span class="cursor">&gt;</span>
+        <span class="score-chip">100</span>
+        <span class="title">CISA added seven actively exploited vulnerabilities to the KEV catalog...</span>
+        <span class="age">8h ago</span>
+      </div>
+      <div class="score-explain-mock">
+        <div class="se-title">SCORING BREAKDOWN</div>
+        <div class="se-total">100</div>
+        <div class="se-row">
+          <div class="se-cat">CISA KEV catalog match<span class="matched">kev:CVE-2026-41091, kev:CVE-2026-45498</span></div>
+          <div class="se-weight kev">↑ 100</div>
+        </div>
+        <div class="se-row">
+          <div class="se-cat">Active exploitation in the wild<span class="matched">matched: actively exploited</span></div>
+          <div class="se-weight">+16</div>
+        </div>
+        <div class="se-row">
+          <div class="se-cat">Detection engineering + threat hunting<span class="matched">matched: ioc</span></div>
+          <div class="se-weight">+6</div>
+        </div>
+        <div class="se-row">
+          <div class="se-cat">Vulnerability management + privesc<span class="matched">matched: vulnerability, exploit</span></div>
+          <div class="se-weight">+5</div>
+        </div>
+        <div class="se-foot">categories ship in the binary. open Config (c) → Filtering tab for the full rule set.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. KEV webhook alerts -->
+  <div class="feature">
+    <div class="label">:: webhook alerts ::</div>
+    <h2>Slack, Discord, or any HTTPS webhook. Fires within a minute.</h2>
+    <p class="desc">
+      Wire any of four trigger kinds: <strong>every KEV catalog addition</strong>, a keyword match, a specific CVE pattern, or a tag match. The worker scans new articles, dedups per (rule, article) pair so the same article can't fire the same rule twice, and POSTs to the URL you configure.
+    </p>
+    <div class="mock" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div class="webhook-mock">
+        <div class="webhook-mock-app"><span class="dot"></span> Slack · #security-alerts</div>
+        <div class="webhook-mock-bot">
+          <div class="webhook-mock-avatar">oM</div>
+          <div class="webhook-mock-content">
+            <div class="webhook-mock-meta"><strong>oM noM bot</strong> 2 min ago</div>
+            <div class="webhook-mock-title"><span class="badge">KEV</span>CVE-2026-31431 added to CISA KEV</div>
+            <div class="webhook-mock-body">Critical path-traversal in F5 NGINX. EPSS 92%, confirmed in-the-wild exploitation. Three blog write-ups already published.</div>
+            <div class="webhook-mock-footer"><a href="#">https://nvd.nist.gov/vuln/detail/CVE-2026-31431</a></div>
+          </div>
+        </div>
+      </div>
+      <div class="webhook-mock">
+        <div class="webhook-mock-app"><span class="dot"></span> Slack · #security-alerts</div>
+        <div class="webhook-mock-bot">
+          <div class="webhook-mock-avatar">oM</div>
+          <div class="webhook-mock-content">
+            <div class="webhook-mock-meta"><strong>oM noM bot</strong> 14 min ago</div>
+            <div class="webhook-mock-title"><span class="badge">Saved alert</span>"MSHTA" keyword matched</div>
+            <div class="webhook-mock-body">3 new items mention MSHTA in the last hour - LummaStealer + Amatera campaigns.</div>
+            <div class="webhook-mock-footer"><a href="#">https://omnomfeeds.com/app?search=MSHTA</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="mock-caption" style="margin-top:8px;">SSRF-guarded · loopback/private IPs rejected · 60s polling cadence</div>
+  </div>
+
+  <!-- 6. Channels -->
+  <div class="feature">
+    <div class="label">:: saved searches ::</div>
+    <h2>Channels: name your favorite filters, click to apply.</h2>
+    <p class="desc">
+      Save any search query as a named channel. The chip strip shows above the article list when you have at least one channel; click to apply, click again to clear. <strong>Power-user shortcut</strong> for the queries you reuse 50 times a week.
+    </p>
+    <div class="mock">
+      <div class="mock-channels">
+        <span class="label">channels:</span>
+        <span class="chip">macOS malware</span>
+        <span class="chip active">DLL hijacking</span>
+        <span class="chip">my-stack</span>
+        <span class="chip">CVE-2026</span>
+        <span class="chip">supply chain</span>
+        <span class="add">+ save current search</span>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">stored per-user · syncs across devices via your account</div>
+    </div>
+  </div>
+
+  <!-- 7. AI personalization -->
+  <div class="feature">
+    <div class="label">:: "what about me?" ::</div>
+    <h2>Re-rank the feed by relevance to YOUR stack and threat model.</h2>
+    <p class="desc">
+      Write 1-2 sentences about what you run / what you care about. Click <code>✨ Personalize my feed</code> and the AI re-sorts the visible articles so the things YOU should care about float to the top, on top of the keyword scoring. <strong>One input field, no manual tagging.</strong>
+    </p>
+    <div class="mock">
+      <div class="mock-profile">
+        <div class="mock-profile-label">your profile</div>
+        <div class="mock-profile-text">I run a 50-person fintech, Linux + nginx + Postgres + Kubernetes, my team owns SIEM. I care about identity, supply chain, and anything affecting our crown jewels (PII + payments). We use GitHub Actions and Cloudflare.</div>
+      </div>
+      <div class="before-after">
+        <div class="col">
+          <h5>before personalize</h5>
+          <div class="list">
+            <div class="row"><span class="sc">82</span>Mobile RCE chain in older iOS WebKit</div>
+            <div class="row"><span class="sc">78</span>Operation Lemonade APT - Korean nuclear research</div>
+            <div class="row"><span class="sc">71</span>Cisco IOS XE bug, embedded routers</div>
+            <div class="row"><span class="sc">68</span>nginx mod_security path traversal proof-of-concept</div>
+            <div class="row"><span class="sc">62</span>GitHub Actions tag-redirect supply chain attack</div>
+          </div>
+        </div>
+        <div class="col">
+          <h5 class="aft">after personalize</h5>
+          <div class="list">
+            <div class="row"><span class="sc">68</span>nginx mod_security path traversal proof-of-concept</div>
+            <div class="row"><span class="sc">62</span>GitHub Actions tag-redirect supply chain attack</div>
+            <div class="row"><span class="sc">82</span>Mobile RCE chain in older iOS WebKit</div>
+            <div class="row"><span class="sc">71</span>Cisco IOS XE bug, embedded routers</div>
+            <div class="row"><span class="sc">78</span>Operation Lemonade APT - Korean nuclear research</div>
+          </div>
+        </div>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">notice nginx + GitHub Actions float up · iOS + nuclear sink down · profile stored on your account</div>
+    </div>
+  </div>
+
+  <!-- 8. Momentum -->
+  <div class="feature">
+    <div class="label">:: free for everyone ::</div>
+    <h2>Momentum: what's heating up this week, not last.</h2>
+    <p class="desc">
+      Press <code>H</code>. See which MITRE techniques, threat keywords, and tags are accelerating week-over-week. <strong>∞ means brand new this week</strong> (no baseline last week); positive percentages mean climbing fast.
+    </p>
+    <div class="mock">
+      <div class="mock-momentum">
+        <div class="mock-momentum-head">:: what's heating up :: last 7 days vs prior 7 days</div>
+        <table>
+          <thead><tr><th>tag</th><th></th><th class="nbr">this week</th><th class="nbr">prior week</th><th class="delta">delta</th></tr></thead>
+          <tbody>
+            <tr><td><span class="tag">T1059</span></td><td><span class="name">Command and Scripting Interpreter</span></td><td class="nbr">1437</td><td class="nbr">320</td><td class="delta huge">+349%</td></tr>
+            <tr><td><span class="tag">supply-chain</span></td><td></td><td class="nbr">412</td><td class="nbr">98</td><td class="delta huge">+320%</td></tr>
+            <tr><td><span class="tag">T1486</span></td><td><span class="name">Data Encrypted for Impact</span></td><td class="nbr">580</td><td class="nbr">140</td><td class="delta huge">+314%</td></tr>
+            <tr><td><span class="tag">mshta</span></td><td></td><td class="nbr">88</td><td class="nbr">0</td><td class="delta huge">∞ (new)</td></tr>
+            <tr><td><span class="tag">T1190</span></td><td><span class="name">Exploit Public-Facing Application</span></td><td class="nbr">1073</td><td class="nbr">441</td><td class="delta up">+143%</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">aggregated client-side from already-fetched data · no LLM call needed</div>
+    </div>
+  </div>
+
+  <!-- 9. REST API -->
+  <div class="feature">
+    <div class="label">:: REST API access ::</div>
+    <h2>Mint bearer tokens, pipe the feed into your own tools.</h2>
+    <p class="desc">
+      Generate as many tokens as you want, label them per use ("SIEM ingest", "CI pipeline", "mac-laptop"). Bearer-authenticate any call your browser session can make. <strong>Revoke instantly from the Config (c) modal.</strong>
+    </p>
+    <div class="mock">
+      <div class="mock-tokens">
+        <div class="row">
+          <div>
+            <span class="name">siem-ingest</span><span class="prefix">aBcDeFgH...</span>
+            <span class="when">created 2 days ago · last used 11m ago</span>
+          </div>
+          <span class="rev">revoke</span>
+        </div>
+        <div class="row">
+          <div>
+            <span class="name">ci-pipeline</span><span class="prefix">xY7zPq4M...</span>
+            <span class="when">created 9 days ago · last used 4h ago</span>
+          </div>
+          <span class="rev">revoke</span>
+        </div>
+        <div class="row" style="border-bottom:none;">
+          <div>
+            <span class="name">mac-laptop</span><span class="prefix">JfWp9Rk1...</span>
+            <span class="when">created 3 weeks ago · never used</span>
+          </div>
+          <span class="rev">revoke</span>
+        </div>
+      </div>
+      <div class="mock-curl">$ curl -H "Authorization: Bearer $TOKEN" \
+    'https://omnomfeeds.com/api/articles?min_score=20&amp;limit=50'</div>
+      <div class="mock-caption" style="margin-top:8px;">bearer auth resolves to the same User context as your cookie session · admin endpoints stay cookie-only</div>
+    </div>
+  </div>
+
+  <!-- 10. Email digest -->
+  <div class="feature">
+    <div class="label">:: email digest ::</div>
+    <h2>The AI brief in your inbox, daily or weekly.</h2>
+    <p class="desc">
+      Same content as the in-app brief; delivered via Resend on a schedule you pick. For mornings when you don't want to open the app first thing.
+    </p>
+    <div class="mock">
+      <div class="mock-email">
+        <div class="from"><strong>oM noM Security Feeds &lt;noreply@omnomfeeds.com&gt;</strong><br>to you@example.com</div>
+        <div class="subject">[oM noM] daily security digest - 2026-05-20</div>
+        <h4>:: KNOWN EXPLOITED VULNERABILITIES (ACTIVE THREAT)</h4>
+        <p>CISA added three entries to KEV in the last 24h with confirmed in-the-wild exploitation. CVE-2026-31431 (F5 NGINX path traversal, EPSS 92%) demands immediate patching across web infrastructure...</p>
+        <h4>:: SUPPLY CHAIN COMPROMISE WAVE</h4>
+        <p>Three distinct npm incidents signal a coordinated developer-toolchain campaign...</p>
+        <div class="picks">
+          <h4>:: top picks ::</h4>
+          <div class="pick"><span class="ix">1 · score 100 · Bluesky</span><br><a href="#">CISA added seven actively exploited vulnerabilities to the KEV catalog</a></div>
+          <div class="pick"><span class="ix">2 · score 88 · SANS ISC</span><br><a href="#">F5 NGINX critical path traversal CVE-2026-31431 deep technical write-up</a></div>
+          <div class="pick"><span class="ix">3 · score 82 · The Record</span><br><a href="#">Shai-Hulud npm worm: 600+ packages compromised in coordinated supply chain attack</a></div>
+        </div>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">off / daily (~7am UTC) / weekly · turn it off in one click any time</div>
+    </div>
+  </div>
+
+  <!-- 11. Worm feed temperature -->
+  <div class="feature">
+    <div class="label">:: free for everyone ::</div>
+    <h2>The worm reacts to the day's threat density.</h2>
+    <p class="desc">
+      The brand mark in the status bar shifts color + animation speed based on KEV count in the loaded feed. Calm green = nothing exploited today. Amber wiggle = 2-4 active KEVs. Red, faster animation = 5+ active KEVs, time to actually read the brief.
+    </p>
+    <div class="mock">
+      <div class="worm-temps">
+        <div class="worm-temp-item">
+          <div class="worm-svg">
+            <svg viewBox="0 0 28 24" width="80" height="60">
+              <circle cx="4"  cy="14" r="2.4" class="seg s3"/>
+              <circle cx="8"  cy="13" r="3.0" class="seg s2"/>
+              <circle cx="13" cy="12" r="3.6" class="seg s1"/>
+              <circle cx="19" cy="11" r="4.4" class="head"/>
+              <circle cx="20" cy="9.4" r="1.1" fill="#0a0e14"/>
+            </svg>
+          </div>
+          <div class="label"><strong>calm</strong><br>0-1 KEV</div>
+        </div>
+        <div class="worm-temp-item warm">
+          <div class="worm-svg">
+            <svg viewBox="0 0 28 24" width="80" height="60">
+              <circle cx="4"  cy="14" r="2.4" class="seg s3"/>
+              <circle cx="8"  cy="13" r="3.0" class="seg s2"/>
+              <circle cx="13" cy="12" r="3.6" class="seg s1"/>
+              <circle cx="19" cy="11" r="4.4" class="head"/>
+              <circle cx="20" cy="9.4" r="1.1" fill="#0a0e14"/>
+            </svg>
+          </div>
+          <div class="label"><strong>watching</strong><br>2-4 KEV</div>
+        </div>
+        <div class="worm-temp-item hot">
+          <div class="worm-svg">
+            <svg viewBox="0 0 28 24" width="80" height="60">
+              <circle cx="4"  cy="14" r="2.4" class="seg s3"/>
+              <circle cx="8"  cy="13" r="3.0" class="seg s2"/>
+              <circle cx="13" cy="12" r="3.6" class="seg s1"/>
+              <circle cx="19" cy="11" r="4.4" class="head"/>
+              <circle cx="20" cy="9.4" r="1.1" fill="#0a0e14"/>
+            </svg>
+          </div>
+          <div class="label"><strong>hot</strong><br>5+ KEV</div>
+        </div>
+      </div>
+      <div class="mock-caption" style="margin-top:14px;">visible the moment the article list loads · no clicks, no menus, just glance</div>
+    </div>
+  </div>
+
+  <!-- 12. Asset profile / yours-pill -->
+  <div class="feature">
+    <div class="label">:: pro ::</div>
+    <h2>Highlight CVEs hitting tech you actually run.</h2>
+    <p class="desc">
+      Paste a comma-separated list of the tools / vendors / products on your stack. Articles that mention any keyword sprout an inline <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ffb547;background:rgba(255,181,71,0.12);border:1px solid rgba(255,181,71,0.5);padding:1px 6px;border-radius:2px;letter-spacing:0.5px;">🎯 chrome</span> pill next to the title, plus a subtle amber edge on the row. <strong>No AI cost; word-boundary match on title + summary + tags.</strong>
+    </p>
+    <div class="mock">
+      <div class="mock-profile">
+        <div class="mock-profile-label">your stack</div>
+        <div class="mock-profile-text" style="font-family:'JetBrains Mono',monospace;font-size:13px;">nginx, postgres, node, chrome, kubernetes, fortinet, okta</div>
+      </div>
+      <div style="margin-top:14px;border:1px solid var(--border);border-radius:3px;background:rgba(20,25,31,0.6);overflow:hidden;">
+        <div style="padding:9px 14px;border-bottom:1px solid var(--border);box-shadow:inset 2px 0 0 #ffb547;display:flex;align-items:center;gap:10px;">
+          <span class="mono" style="color:var(--text-dim);font-size:10px;width:30px;">895</span>
+          <span class="mono" style="color:var(--accent);font-weight:700;font-size:12px;background:rgba(0,229,160,0.15);border:1px solid var(--accent);padding:2px 5px;border-radius:2px;">22</span>
+          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ffb547;background:rgba(255,181,71,0.12);border:1px solid rgba(255,181,71,0.5);padding:1px 6px;border-radius:2px;letter-spacing:0.5px;">🎯 chrome</span>
+          <span style="color:var(--text-bright);font-size:13px;">Use after free in WebRTC in Google Chrome on Linux prior to 148.0.7778.179</span>
+          <span style="margin-left:auto;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:11px;">Bluesky · 4h</span>
+        </div>
+        <div style="padding:9px 14px;border-bottom:1px solid var(--border);box-shadow:inset 2px 0 0 #ffb547;display:flex;align-items:center;gap:10px;">
+          <span class="mono" style="color:var(--text-dim);font-size:10px;width:30px;">896</span>
+          <span class="mono" style="color:var(--accent);font-weight:700;font-size:12px;background:rgba(0,229,160,0.15);border:1px solid var(--accent);padding:2px 5px;border-radius:2px;">22</span>
+          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ffb547;background:rgba(255,181,71,0.12);border:1px solid rgba(255,181,71,0.5);padding:1px 6px;border-radius:2px;letter-spacing:0.5px;">🎯 chrome</span>
+          <span style="color:var(--text-bright);font-size:13px;">Heap buffer overflow in Chromecast in Chrome on Android, Linux, ChromeOS</span>
+          <span style="margin-left:auto;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:11px;">Bluesky · 4h</span>
+        </div>
+        <div style="padding:9px 14px;border-bottom:1px solid var(--border);box-shadow:inset 2px 0 0 #ffb547;display:flex;align-items:center;gap:10px;">
+          <span class="mono" style="color:var(--text-dim);font-size:10px;width:30px;">901</span>
+          <span class="mono" style="color:var(--accent-cyan);font-weight:700;font-size:12px;background:rgba(86,226,255,0.12);border:1px solid var(--accent-cyan);padding:2px 5px;border-radius:2px;">19</span>
+          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ffb547;background:rgba(255,181,71,0.12);border:1px solid rgba(255,181,71,0.5);padding:1px 6px;border-radius:2px;letter-spacing:0.5px;">🎯 nginx</span>
+          <span style="color:var(--text-bright);font-size:13px;">18-year-old vulnerability in NGINX leads to remote code execution</span>
+          <span style="margin-left:auto;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:11px;">HackMag · 7h</span>
+        </div>
+        <div style="padding:9px 14px;display:flex;align-items:center;gap:10px;opacity:0.7;">
+          <span class="mono" style="color:var(--text-dim);font-size:10px;width:30px;">902</span>
+          <span class="mono" style="color:var(--text-dim);font-weight:700;font-size:12px;background:rgba(255,255,255,0.04);border:1px solid var(--border);padding:2px 5px;border-radius:2px;">14</span>
+          <span style="color:var(--text-dim);font-size:13px;">The incident response mistake 73% of leaders make | TechTarget</span>
+          <span style="margin-left:auto;color:var(--accent-cyan);font-family:'JetBrains Mono',monospace;font-size:11px;">Bluesky · 5h</span>
+        </div>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">amber edge + 🎯 pill = "this is your problem" · plain rows = "still security news, just not yours"</div>
+    </div>
+  </div>
+
+  <!-- 13. CVE deep-dive modal (real production capture - CVE-2026-20182) -->
+  <div class="feature">
+    <div class="label">:: pro ::</div>
+    <h2>Every CVE modal: NVD + EPSS + KEV + OTX + AI summary in one view.</h2>
+    <p class="desc">
+      Click any CVE chip in an article's tagline and the full deep-dive opens. Five enrichment cards across the top: <strong>CVSS v3</strong>, <strong>EPSS</strong> (exploitation likelihood + percentile), <strong>CISA KEV</strong> (actively-exploited flag), <strong>CWE</strong> weakness class, and <strong>AlienVault OTX pulses</strong> (community threat-intel reports tagging the CVE, with last-7d freshness counter). Below: full NVD description and a Pro AI-generated 3-bullet plain-English summary. <strong>Source consensus</strong> (which curated sources have posted about this CVE in the last 30d) also renders here when data is available.
+    </p>
+    <div class="mock">
+      <div class="mock-cve">
+        <!-- Modal header with KEV flag like the real modal -->
+        <div style="display:flex;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:14px;">
+          <span style="font-family:'JetBrains Mono',monospace;color:var(--accent);font-size:13px;letter-spacing:1.3px;font-weight:700;">:: CVE-2026-20182</span>
+          <span style="font-family:'JetBrains Mono',monospace;color:#ff4d6a;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;font-weight:700;">KEV · actively exploited</span>
+        </div>
+        <!-- 4-card top row -->
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:10px;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-left:2px solid #ff4d6a;border-radius:3px;padding:11px;text-align:center;">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:9px;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:5px;">CVSS v3</div>
+            <div style="color:#ff4d6a;font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;">10.0</div>
+            <div style="color:var(--text-dim);font-size:10px;font-family:'JetBrains Mono',monospace;letter-spacing:0.5px;">CRITICAL</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:11px;text-align:center;">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:9px;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:5px;">EPSS</div>
+            <div style="color:var(--text-bright);font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;">23.7%</div>
+            <div style="color:var(--text-dim);font-size:10px;">96th percentile</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-left:2px solid #ff4d6a;border-radius:3px;padding:11px;text-align:center;">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:9px;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:5px;">CISA KEV</div>
+            <div style="color:#ff4d6a;font-size:13px;font-family:'JetBrains Mono',monospace;font-weight:700;padding-top:2px;line-height:1.2;">ACTIVELY<br>EXPLOITED</div>
+            <div style="color:var(--text-dim);font-size:9px;margin-top:2px;">in the wild per CISA</div>
+          </div>
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:11px;text-align:center;">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:9px;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:5px;">WEAKNESS</div>
+            <div style="color:var(--accent-cyan);font-size:14px;font-family:'JetBrains Mono',monospace;font-weight:700;padding-top:10px;">CWE-287</div>
+          </div>
+        </div>
+        <!-- 5th card on its own row (OTX pulses) -->
+        <div style="display:grid;grid-template-columns:repeat(4, 1fr);gap:10px;margin-bottom:18px;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:11px;text-align:center;">
+            <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:9px;letter-spacing:0.6px;text-transform:uppercase;margin-bottom:5px;">OTX PULSES</div>
+            <div style="color:var(--text-bright);font-family:'JetBrains Mono',monospace;font-size:22px;font-weight:700;">14</div>
+            <div style="color:var(--text-dim);font-size:10px;">0 new in last 7d</div>
+          </div>
+          <div style="grid-column:span 3;"></div>
+        </div>
+        <!-- NVD description -->
+        <div style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;margin:0 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px;">NVD description</div>
+        <div style="color:var(--text);font-size:13px;line-height:1.55;margin-bottom:18px;">
+          May 2026: This security advisory provides the details and fix information for a vulnerability that was discovered and fixed after the was disclosed in February 2026. This new advisory is for a new vulnerability in the control connection handshaking. The section of this advisory includes Show Control Connections guidance to help with system checks.&nbsp; A vulnerability in the peering authentication in Cisco Catalyst SD-WAN Controller, formerly SD-WAN vSmart, and Cisco Catalyst SD-WAN Manager, formerly SD-WAN vManage, could allow an unauthenticated, remote attacker to bypass authentication...
+        </div>
+        <!-- AI Plain-English summary -->
+        <div style="font-family:'JetBrains Mono',monospace;color:var(--accent-cyan);font-size:10px;letter-spacing:1.1px;text-transform:uppercase;margin:0 0 6px;border-bottom:1px solid var(--border);padding-bottom:4px;display:flex;justify-content:space-between;align-items:baseline;">
+          <span>Plain-English summary</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--accent-amber);border:1px solid var(--accent-amber);padding:1px 5px;border-radius:2px;letter-spacing:0.5px;">AI · PRO</span>
+        </div>
+        <div style="background:rgba(86,226,255,0.04);border-left:2px solid var(--accent-cyan);padding:14px 18px;color:var(--text);font-size:12.5px;line-height:1.6;border-radius:0 3px 3px 0;">
+          <p style="margin:0 0 14px 0;">- Cisco Catalyst SD-WAN Controller and Manager contain an authentication bypass vulnerability in peering authentication during control connection handshaking.</p>
+          <p style="margin:0 0 14px 0;">- Deployments running SD-WAN vSmart or vManage components exposed to untrusted networks where unauthenticated remote attackers can reach the control plane interfaces.</p>
+          <p style="margin:0;">- Patch immediately - this is actively exploited in the wild. Consult Cisco security advisory for specific version fixes. Monitor for unexpected peering connections and failed authentication attempts in control logs.</p>
+        </div>
+        <!-- bottom action row -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px;">
+          <span style="display:inline-flex;align-items:center;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);">NVD ↗</span>
+          <span style="display:inline-flex;align-items:center;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);">CVE.org ↗</span>
+          <span style="display:inline-flex;align-items:center;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);">Exploit-DB ↗</span>
+          <span style="display:inline-flex;align-items:center;padding:6px 10px;background:var(--bg);border:1px solid var(--border);border-radius:2px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text);">Filter feed by CVE-2026-20182</span>
+        </div>
+      </div>
+      <div class="mock-caption" style="margin-top:14px;">real capture of the production modal · CVE chip on any article opens it · ESC to close</div>
+    </div>
+  </div>
+
+  <!-- 13b. Quick CVE popover (inline) -->
+  <div class="feature">
+    <div class="label">:: free for everyone ::</div>
+    <h2>Click a CVE in the tagline for a fast inline preview.</h2>
+    <p class="desc">
+      Don't want to open the full modal? Click any CVE chip in an article's tag row and you get a compact popover with CVSS / EPSS / KEV / CWE plus the NVD description and four jump-points. <strong>Free tier gets this</strong>. Pro adds the deep-dive modal with OTX + Source consensus + AI summary one click further.
+    </p>
+    <div class="mock" style="display:flex;justify-content:center;">
+      <div style="max-width:380px;background:var(--bg-card);border:1px solid var(--border);border-radius:4px;padding:12px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+        <!-- tag row at top of popover -->
+        <div style="display:flex;gap:6px;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border);">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ff4d6a;background:rgba(255,77,106,0.18);border:1px solid #ff4d6a;border-radius:2px;padding:2px 6px;">kev:CVE-2026-20182</span>
+          <span style="display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;color:#ffb547;background:rgba(255,181,71,0.12);border:1px solid rgba(255,181,71,0.5);padding:1px 6px;border-radius:2px;">🎯 nginx</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;color:var(--text-dim);font-size:11px;margin-bottom:8px;">
+          CVE :: <span style="color:var(--text-bright);font-weight:700;">CVE-2026-20182</span> &nbsp;<span style="color:var(--text-dim);">2026</span>
+        </div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#ff4d6a;font-weight:700;margin-bottom:8px;">● ACTIVE KEV</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.8;margin-bottom:10px;">
+          <span style="color:var(--accent-cyan);">CVSS v3</span> <span style="color:#ff4d6a;font-weight:700;">10.0 CRITICAL</span><br>
+          <span style="color:var(--accent-cyan);">EPSS</span> <span style="color:var(--text-bright);font-weight:700;">23.7%</span> <span style="color:var(--text-dim);">(96th pct)</span><br>
+          <span style="color:var(--accent-cyan);">CWE-287</span>
+        </div>
+        <div style="color:var(--text);font-size:11.5px;line-height:1.55;margin-bottom:12px;">
+          A vulnerability in the peering authentication in Cisco Catalyst SD-WAN Controller could allow an unauthenticated, remote attacker to bypass authentication...
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-amber);padding:4px 8px;border-radius:2px;background:rgba(255,181,71,0.06);">Deep-dive (CVSS + EPSS + AI summary) →</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);padding:4px 8px;border-radius:2px;">Open in NVD →</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);padding:4px 8px;border-radius:2px;">Open in CVE.org →</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);padding:4px 8px;border-radius:2px;">Search Exploit-DB →</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text);padding:4px 8px;border-radius:2px;">Filter feed by CVE-2026-20182</span>
+        </div>
+      </div>
+    </div>
+    <div class="mock-caption" style="margin-top:14px;">inline popover · free for everyone · click "Deep-dive" to open the full Pro modal with AI summary</div>
+  </div>
+
+  <!-- 14. Hottest CVEs leaderboard -->
+  <div class="feature">
+    <div class="label">:: free for everyone ::</div>
+    <h2>Public ticker of what everyone's reading right now.</h2>
+    <p class="desc">
+      <a href="/live" style="color:var(--accent-cyan);">/live</a> shows the top CVEs by mention count across every source in the last 72 hours. No login. KEV-flagged CVEs highlight red; click any chip to jump straight into the in-app filter with that CVE pre-applied.
+    </p>
+    <div class="mock">
+      <div style="margin-bottom:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--accent-cyan);text-transform:uppercase;letter-spacing:0.8px;display:flex;gap:8px;align-items:baseline;">
+        <span style="color:#ff4d6a;text-shadow:0 0 6px rgba(255,77,106,0.5);">🔥</span>
+        <span>HOTTEST CVES - LAST 72H</span>
+        <span style="color:var(--text-dim);font-size:10px;text-transform:none;letter-spacing:0.2px;">by mention count across all sources</span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:6px;">
+        <a style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-left:2px solid var(--accent-cyan);border-radius:3px;text-decoration:none;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:18px;">#1</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-bright);font-weight:600;flex:1;">CVE-2026-42945</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);font-weight:700;background:rgba(86,226,255,0.08);padding:2px 6px;border-radius:2px;">18×</span>
+        </a>
+        <a style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-left:2px solid #ff4d6a;border-radius:3px;text-decoration:none;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:18px;">#2</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-bright);font-weight:600;flex:1;">CVE-2024-3094</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:8px;letter-spacing:0.6px;color:#ff4d6a;border:1px solid #ff4d6a;border-radius:2px;padding:1px 4px;background:rgba(255,77,106,0.08);text-transform:uppercase;">KEV</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);font-weight:700;background:rgba(86,226,255,0.08);padding:2px 6px;border-radius:2px;">14×</span>
+        </a>
+        <a style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-left:2px solid var(--accent-cyan);border-radius:3px;text-decoration:none;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:18px;">#3</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-bright);font-weight:600;flex:1;">CVE-2026-46333</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);font-weight:700;background:rgba(86,226,255,0.08);padding:2px 6px;border-radius:2px;">9×</span>
+        </a>
+        <a style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg-card);border:1px solid var(--border);border-left:2px solid var(--accent-cyan);border-radius:3px;text-decoration:none;">
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);min-width:18px;">#4</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--text-bright);font-weight:600;flex:1;">CVE-2026-31635</span>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent-cyan);font-weight:700;background:rgba(86,226,255,0.08);padding:2px 6px;border-radius:2px;">7×</span>
+        </a>
+      </div>
+      <div class="mock-caption" style="margin-top:8px;">free, no account · auto-refreshes every 60s · the public "is anything actually hot" gauge</div>
+    </div>
+  </div>
+
+  <!-- Final CTA -->
+  <div class="final-cta">
+    <h3>That's the whole list.</h3>
+    <p>
+      $10/mo, founder pricing locked in for the life of your subscription, cancel anytime. The site is a side project; the price exists to cover the server bill, the Anthropic API calls, and keep the worm fed. Honest framing, real product.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="/login.html">Sign in to upgrade</a>
+      <a class="btn btn-secondary" href="/live">See the live ticker first</a>
+    </div>
+  </div>
+
+  <div class="share-section">
+    <h4>:: know a security person? ::</h4>
+    <p>
+      Word of mouth is the only thing that actually moves the needle on a $10/mo solo project. If this looks useful, send it to someone who reads CISA KEV before breakfast.
+    </p>
+    <div class="share-row">
+      <a class="share-btn bsky" id="shareBsky" target="_blank" rel="noopener"><span class="share-btn-icon">🦋</span> share on Bluesky</a>
+      <a class="share-btn" id="shareTwitter" target="_blank" rel="noopener"><span class="share-btn-icon">𝕏</span> share on X</a>
+      <a class="share-btn" id="shareMastodon" target="_blank" rel="noopener"><span class="share-btn-icon">🐘</span> share on Mastodon</a>
+      <a class="share-btn copy" href="#" onclick="event.preventDefault(); copyShareLink(this); return false;"><span class="share-btn-icon">⎘</span> copy link</a>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const url = 'https://omnomfeeds.com/';
+    const text = "A worm that eats your security feeds. 50+ curated sources, MITRE ATT&CK + CISA KEV scoring, AI brief, KEV webhook alerts, $10/mo. Solo dev side project.";
+    document.getElementById('shareBsky').href     = 'https://bsky.app/intent/compose?text=' + encodeURIComponent(text + ' ' + url);
+    document.getElementById('shareTwitter').href  = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(url);
+    // Mastodon: we don't know which instance, prompt for one.
+    document.getElementById('shareMastodon').addEventListener('click', function(e) {
+      e.preventDefault();
+      const inst = prompt('Your Mastodon instance? (e.g. infosec.exchange)');
+      if (!inst) return;
+      const clean = inst.replace(/^https?:\/\//, '').replace(/\/$/, '');
+      window.open('https://' + clean + '/share?text=' + encodeURIComponent(text + ' ' + url), '_blank');
+    });
+  })();
+  function copyShareLink(el) {
+    navigator.clipboard.writeText('https://omnomfeeds.com/').then(function() {
+      const orig = el.innerHTML;
+      el.innerHTML = '<span class="share-btn-icon">✓</span> copied';
+      setTimeout(function() { el.innerHTML = orig; }, 1400);
+    });
+  }
+  </script>
+
+  <footer>
+    <span><a href="/">← back to home</a></span>
+    <span><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a> · <a href="https://github.com/RMS2D/omnomfeeds">github</a></span>
+  </footer>
+
+</div>
+
+</body>
+</html>

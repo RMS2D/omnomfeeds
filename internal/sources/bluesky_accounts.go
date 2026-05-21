@@ -20,20 +20,23 @@ import (
 const badHandleSkip = 24 * time.Hour
 
 type BlueskyAccountsSource struct {
-	handles []string
-	auth    *BlueskySource
-	client  *http.Client
+	// handlesFn is called fresh at every Fetch so newly-subscribed handles
+	// (added via the per-user UI between polls) are picked up without a
+	// restart. The static-list form is gone.
+	handlesFn func() []string
+	auth      *BlueskySource
+	client    *http.Client
 
-	badMu      sync.Mutex
-	badUntil   map[string]time.Time
+	badMu    sync.Mutex
+	badUntil map[string]time.Time
 }
 
-func NewBlueskyAccounts(handles []string, auth *BlueskySource) *BlueskyAccountsSource {
+func NewBlueskyAccounts(handlesFn func() []string, auth *BlueskySource) *BlueskyAccountsSource {
 	return &BlueskyAccountsSource{
-		handles:  handles,
-		auth:     auth,
-		client:   &http.Client{Timeout: 15 * time.Second},
-		badUntil: make(map[string]time.Time),
+		handlesFn: handlesFn,
+		auth:      auth,
+		client:    &http.Client{Timeout: 15 * time.Second},
+		badUntil:  make(map[string]time.Time),
 	}
 }
 
@@ -90,7 +93,8 @@ func (b *BlueskyAccountsSource) Fetch(ctx context.Context) ([]models.Article, er
 	seen := make(map[string]bool)
 	var articles []models.Article
 
-	for _, handle := range b.handles {
+	handles := b.handlesFn()
+	for _, handle := range handles {
 		if b.isBad(handle) {
 			continue
 		}

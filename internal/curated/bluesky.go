@@ -9,6 +9,21 @@ type BlueskyHandle struct {
 	Description string `json:"description,omitempty"`
 }
 
+// BlueskyHandles returns just the handle strings, lowercased and stripped
+// of any "@" prefix. Used by the fetcher + per-user view filter so the
+// curated list is on by default for every hosted user.
+func BlueskyHandles() []string {
+	out := make([]string, 0, len(Bluesky))
+	for _, h := range Bluesky {
+		s := h.Handle
+		if len(s) > 0 && s[0] == '@' {
+			s = s[1:]
+		}
+		out = append(out, s)
+	}
+	return out
+}
+
 var Bluesky = []BlueskyHandle{
 	// --- Vulnerability research ---
 	{Handle: "taviso.bsky.social", Name: "Tavis Ormandy", Category: "Vulnerability Research", Description: "Project Zero veteran, prolific bug finder"},

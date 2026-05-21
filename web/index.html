@@ -6442,7 +6442,7 @@ function renderCveDeepDive(id, d) {
         ? date.toLocaleDateString(undefined, {year:'numeric', month:'short', day:'numeric'})
         : '';
       html += `
-        <a class="cve-timeline-row tint-${tint}" href="${esc(ev.url)}" target="_blank" rel="noopener">
+        <a class="cve-timeline-row tint-${tint}" href="${safeHref(ev.url)}" target="_blank" rel="noopener">
           <span class="tl-icon">${icon}</span>
           <span class="tl-date">${esc(dateStr)}</span>
           <span class="tl-body">
@@ -7038,7 +7038,7 @@ function updatePreview() {
     ${tags ? `<div class="rd-tags">${tags}</div>` : ''}
     <div id="articleExplainSlot">${articleExplanationHTML(a.id)}</div>
     <div class="rd-actions">
-      <a class="primary" href="${esc(a.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(a.id)}', true)">open ↗</a>
+      <a class="primary" href="${safeHref(a.url)}" target="_blank" rel="noopener" onclick="markRead('${esc(a.id)}', true)">open ↗</a>
       <button type="button" onclick="toggleBookmark()">${bookmarked ? '★ bookmarked' : '☆ bookmark'}</button>
       <button type="button" onclick="markRead('${esc(a.id)}', ${!a.read})">${a.read ? 'mark unread' : 'mark read'}</button>
       <button type="button" class="ai-explain-btn" title="AI plain-English summary (Pro)" onclick="explainCurrentArticle()">✨ explain</button>
@@ -8389,6 +8389,20 @@ function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
+}
+
+// safeHref returns an HTML-escaped URL safe to embed in href=, or "#"
+// when the URL has a non-http(s) scheme. Storage rejects javascript: /
+// data: / file: URLs at ingest, but render-time guards are the second
+// layer of defence in case anything ever flows around storage.Upsert
+// (Pro custom-feed work, future user-supplied article URLs, etc.).
+function safeHref(raw) {
+  if (!raw) return '#';
+  try {
+    const u = new URL(raw, window.location.origin);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '#';
+    return esc(raw);
+  } catch (e) { return '#'; }
 }
 
 function toast(msg) {

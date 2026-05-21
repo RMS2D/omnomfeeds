@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"regexp"
 	"sort"
 	"strings"
@@ -14,6 +15,28 @@ import (
 
 	_ "modernc.org/sqlite"
 )
+
+// isSafeArticleURL rejects URLs that aren't http(s). Belt-and-braces
+// against XSS via javascript:/data:/file: schemes in RSS link tags. The
+// rendered output already escapes HTML special chars, but `javascript:`
+// contains none of those and survives escaping intact.
+func isSafeArticleURL(raw string) bool {
+	if raw == "" {
+		return false
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return false
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return false
+	}
+	if u.Host == "" {
+		return false
+	}
+	return true
+}
 
 type Store struct {
 	db *sql.DB
@@ -340,6 +363,16 @@ func (s *Store) migrateUserTables() error {
 }
 
 func (s *Store) Upsert(a models.Article) error {
+	// Reject URLs that aren't http(s). RSS feeds are untrusted; an item
+	// with `<link>javascript:alert(...)</link>` would store a payload that
+	// renders as a clickable XSS in the reader and on the public /cve and
+	// /trending pages. Validate at the storage boundary so EVERY source
+	// path (RSS, Bluesky, Reddit, Mastodon, GitHub, MalwareBazaar) is
+	// covered with one check. Empty / unparseable / wrong-scheme URLs are
+	// dropped silently - we lose the article but never plant XSS.
+	if !isSafeArticleURL(a.URL) {
+		return nil
+	}
 	normURL := dedup.NormalizeURL(a.URL)
 	tagsJSON, _ := json.Marshal(a.Tags)
 

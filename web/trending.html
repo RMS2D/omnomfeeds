@@ -537,7 +537,18 @@ document.querySelectorAll('.window-btn').forEach(b => {
 });
 
 function esc(s) {
-  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// safeHref returns an HTML-escaped URL safe for href=, or "#" if the
+// scheme is anything other than http/https. Storage rejects bad URLs at
+// ingest but this is the render-time defence-in-depth.
+function safeHref(raw) {
+  if (!raw) return '#';
+  try {
+    const u = new URL(raw, window.location.origin);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '#';
+    return esc(raw);
+  } catch (e) { return '#'; }
 }
 function timeAgo(iso) {
   if (!iso) return '';
@@ -619,7 +630,7 @@ async function loadTrending(showLoading) {
       '</td>' +
       '<td class="mentions">' + row.mentions + '<span class="label">across sources</span></td>' +
       '<td class="latest">' +
-        '<a href="' + esc(latestURL) + '" target="_blank" rel="noopener"><span class="ti">' + latestTitle + '</span></a>' +
+        '<a href="' + safeHref(latestURL) + '" target="_blank" rel="noopener"><span class="ti">' + latestTitle + '</span></a>' +
         '<span class="src">' + latestSrc + '</span><span class="ago">' + ago + '</span>' +
       '</td>' +
       '</tr>';

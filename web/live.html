@@ -288,6 +288,7 @@ footer {
 
 <script>
 function esc(s){return String(s==null?'':s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;');}
+function safeHref(raw){if(!raw)return '#';try{const u=new URL(raw,window.location.origin);if(u.protocol!=='https:'&&u.protocol!=='http:')return '#';return esc(raw);}catch(e){return '#';}}
 function timeAgo(iso) {
   if (!iso) return '';
   const d = new Date(iso);
@@ -316,7 +317,7 @@ function render(list) {
     const hasKEV = (a.tags || []).some(t => String(t).toLowerCase().startsWith('kev:'));
     const kev = hasKEV ? '<span class="kev">KEV</span>' : '';
     return `
-      <a class="row ${band}" href="${esc(a.url)}" target="_blank" rel="noopener">
+      <a class="row ${band}" href="${safeHref(a.url)}" target="_blank" rel="noopener">
         <span class="score ${band}">${String(score).padStart(2,'0')}</span>
         <span class="src">${esc(a.source)}</span>
         <span class="title">${kev}${esc(a.title)}</span>

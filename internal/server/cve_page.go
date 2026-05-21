@@ -6,6 +6,7 @@ import (
 	"html"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 	"sync"
@@ -15,6 +16,27 @@ import (
 	"github.com/RMS2D/omnomfeeds/internal/models"
 	"github.com/RMS2D/omnomfeeds/internal/storage"
 )
+
+// safeHref returns an HTML-escaped URL safe to inline into an href
+// attribute, or "#" if the URL has a non-http(s) scheme. Belt-and-braces
+// against javascript:/data:/file: payloads that survive html.EscapeString
+// because they contain no HTML special characters. The storage layer
+// rejects these at ingest, but cve_page.go renders content from
+// multiple paths so it gets its own guard.
+func safeHref(raw string) string {
+	if raw == "" {
+		return "#"
+	}
+	u, err := url.Parse(raw)
+	if err != nil {
+		return "#"
+	}
+	scheme := strings.ToLower(u.Scheme)
+	if scheme != "http" && scheme != "https" {
+		return "#"
+	}
+	return html.EscapeString(raw)
+}
 
 // cvePageCache stores rendered HTML per CVE ID. The page combines NVD,
 // EPSS, KEV, OTX, source consensus, timeline, and the article list. The
@@ -373,7 +395,7 @@ func (s *Server) renderCVEPageHTML(
 		}
 		for _, a := range articles[:max] {
 			b.WriteString(`<li><a href="`)
-			b.WriteString(html.EscapeString(a.URL))
+			b.WriteString(safeHref(a.URL))
 			b.WriteString(`" target="_blank" rel="noopener"><span class="ti">`)
 			title := a.Title
 			if len(title) > 130 {

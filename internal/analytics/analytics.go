@@ -168,8 +168,11 @@ type Summary struct {
 	TopCVEs       []TopRef               `json:"top_cves"`
 	TopActors     []TopRef               `json:"top_actors"`
 	TopMalware    []TopRef               `json:"top_malware"`
+	TopPaths      []TopRef               `json:"top_paths"`       // page_view breakdown by path
 	AttackExports []DayCount             `json:"attack_exports_daily"`
 	DailyVolume   []DayCount             `json:"daily_volume"`
+	Hourly        []HourCount            `json:"hourly_24"`       // last 7d, bucketed by UTC hour
+	SinceLaunch   SinceLaunchTotals      `json:"since_launch"`    // raw totals so sparse windows still tell a story
 }
 
 type ActiveCounts struct {
@@ -194,6 +197,18 @@ type TopRef struct {
 type DayCount struct {
 	Date  string `json:"date"`
 	Count int    `json:"count"`
+}
+
+type HourCount struct {
+	Hour  int `json:"hour"`  // 0-23 UTC
+	Count int `json:"count"`
+}
+
+type SinceLaunchTotals struct {
+	Events     int64 `json:"events"`
+	Sessions   int64 `json:"sessions"`
+	SignedIn   int64 `json:"signed_in"`
+	FirstEvent int64 `json:"first_event_unix"` // 0 if no events yet
 }
 
 // BuildSummary computes everything the dashboard needs in one place. Caller
@@ -228,7 +243,107 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 	if err := a.fillAttackExports(s, days); err != nil {
 		return nil, err
 	}
+	if err := a.fillTopPaths(s, days); err != nil {
+		return nil, err
+	}
+	if err := a.fillHourly(s); err != nil {
+		return nil, err
+	}
+	if err := a.fillSinceLaunch(s); err != nil {
+		return nil, err
+	}
 	return s, nil
+}
+
+// fillTopPaths breaks down page_view events by the path stashed in ref.
+// Useful operator signal for "where do visitors actually go" - which is
+// often more interesting than which articles get clicked.
+func (a *Analytics) fillTopPaths(s *Summary, days int) error {
+	since := fmt.Sprintf("-%d days", days)
+	rows, err := a.db.Query(`
+		SELECT ref, COUNT(*) FROM events
+		WHERE event = ?
+		  AND ts >= datetime('now', ?)
+		  AND ref IS NOT NULL AND ref != ''
+		GROUP BY ref ORDER BY COUNT(*) DESC LIMIT 15
+	`, EvPageView, since)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var ref string
+		var n int
+		if err := rows.Scan(&ref, &n); err != nil {
+			return err
+		}
+		s.TopPaths = append(s.TopPaths, TopRef{Ref: ref, Label: ref, Count: n})
+	}
+	return rows.Err()
+}
+
+// fillHourly returns a 24-bucket histogram of event counts grouped by
+// UTC hour of day, over the last 7 days. With only a day or two of data
+// it still tells you when your users hit; with more data the shape
+// stabilises into a daily rhythm.
+func (a *Analytics) fillHourly(s *Summary) error {
+	buckets := make(map[int]int, 24)
+	rows, err := a.db.Query(`
+		SELECT CAST(strftime('%H', ts) AS INTEGER) AS hr, COUNT(*)
+		FROM events
+		WHERE ts >= datetime('now', '-7 days')
+		GROUP BY hr
+	`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var hr, n int
+		if err := rows.Scan(&hr, &n); err != nil {
+			return err
+		}
+		buckets[hr] = n
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	s.Hourly = make([]HourCount, 24)
+	for h := 0; h < 24; h++ {
+		s.Hourly[h] = HourCount{Hour: h, Count: buckets[h]}
+	}
+	return nil
+}
+
+// fillSinceLaunch pulls raw totals across the entire events table so the
+// dashboard can show "all time" stats alongside windowed ones. Means a
+// 30-day-window screenshot still conveys total scale.
+func (a *Analytics) fillSinceLaunch(s *Summary) error {
+	var firstTS sql.NullString
+	if err := a.db.QueryRow(`
+		SELECT
+		  (SELECT COUNT(*) FROM events),
+		  (SELECT COUNT(DISTINCT session) FROM events WHERE session IS NOT NULL),
+		  (SELECT COUNT(DISTINCT user_id) FROM events WHERE user_id IS NOT NULL),
+		  (SELECT MIN(ts) FROM events)
+	`).Scan(&s.SinceLaunch.Events, &s.SinceLaunch.Sessions, &s.SinceLaunch.SignedIn, &firstTS); err != nil {
+		return err
+	}
+	if firstTS.Valid && firstTS.String != "" {
+		// SQLite returns the default DATETIME format here.
+		layouts := []string{
+			"2006-01-02 15:04:05",
+			"2006-01-02 15:04:05.999999999",
+			time.RFC3339,
+		}
+		for _, l := range layouts {
+			if t, err := time.Parse(l, firstTS.String); err == nil {
+				s.SinceLaunch.FirstEvent = t.Unix()
+				break
+			}
+		}
+	}
+	return nil
 }
 
 func (a *Analytics) fillActive(s *Summary) error {

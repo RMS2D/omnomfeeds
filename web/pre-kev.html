@@ -3,21 +3,17 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Trending CVEs - oM noM Security Feeds</title>
-<meta name="description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social. KEV status, EPSS percentile, and source breakdown for each.">
+<title>Pre-KEV Watch - oM noM Security Feeds</title>
+<meta name="description" content="CVEs trending across multiple security sources but not yet on the CISA KEV catalog. Early-warning view ahead of formal listing. EPSS percentile + latest mention for each.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate" type="application/rss+xml" title="oM noM Security Feeds - High signal" href="/feed.xml">
 
-<!-- OG / social preview -->
-<meta property="og:title" content="Trending CVEs - oM noM Security Feeds">
-<meta property="og:description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social. KEV + EPSS for each.">
+<meta property="og:title" content="Pre-KEV Watch - oM noM Security Feeds">
+<meta property="og:description" content="CVEs trending across security sources before CISA adds them to the KEV catalog. Early-warning view with EPSS scores and latest mentions.">
 <meta property="og:type" content="website">
-<meta property="og:url" content="https://omnomfeeds.com/trending">
+<meta property="og:url" content="https://omnomfeeds.com/pre-kev">
 <meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
 <meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="Trending CVEs - oM noM Security Feeds">
-<meta name="twitter:description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social.">
-<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,6 +34,7 @@
   --accent-cyan: #56e2ff;
   --accent-amber: #ffb547;
   --score-crit: #ff4d6a;
+  --kev-amber: #ffb547;
 }
 html, body {
   background: var(--bg);
@@ -72,11 +69,11 @@ code, .mono { font-family: 'JetBrains Mono', monospace; }
   gap: 10px;
 }
 .brand .worm-sprite {
-  width: 32px; height: 25px; flex-shrink: 0; vertical-align: middle;
+  width: 32px; height: 25px; flex-shrink: 0;
   animation: worm-bob 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+  filter: drop-shadow(0 0 5px rgba(255,181,71,0.4));
 }
-.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
+.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--kev-amber); }
 .brand .worm-sprite .seg.s3 { opacity: 0.35; }
 .brand .worm-sprite .seg.s2 { opacity: 0.6; }
 .brand .worm-sprite .seg.s1 { opacity: 0.85; }
@@ -93,9 +90,9 @@ code, .mono { font-family: 'JetBrains Mono', monospace; }
   font-size: 9px;
   letter-spacing: 1.4px;
   text-transform: uppercase;
-  background: rgba(0,229,160,0.12);
-  border: 1px solid var(--accent);
-  color: var(--accent);
+  background: rgba(255,181,71,0.12);
+  border: 1px solid var(--kev-amber);
+  color: var(--kev-amber);
   padding: 1px 6px;
   border-radius: 2px;
   margin-left: 6px;
@@ -117,15 +114,13 @@ nav.top-nav a:hover { color: var(--accent-cyan); }
   padding: 32px 24px 80px;
 }
 
-.hero {
-  margin-bottom: 26px;
-}
+.hero { margin-bottom: 26px; }
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 1.6px;
   text-transform: uppercase;
-  color: var(--accent-cyan);
+  color: var(--kev-amber);
   margin-bottom: 10px;
 }
 .eyebrow .pulse {
@@ -133,14 +128,14 @@ nav.top-nav a:hover { color: var(--accent-cyan); }
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--kev-amber);
   margin-right: 8px;
   vertical-align: middle;
-  animation: live-pulse 1.8s ease-in-out infinite;
+  animation: kev-pulse 1.8s ease-in-out infinite;
 }
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.55); }
-  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(0,229,160,0); }
+@keyframes kev-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,181,71,0.6); }
+  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(255,181,71,0); }
 }
 h1 {
   font-size: 36px;
@@ -153,15 +148,38 @@ h1 {
 .lead {
   font-size: 16px;
   color: var(--text-dim);
-  max-width: 720px;
+  max-width: 740px;
 }
+.lead strong { color: var(--text); }
+
+.what {
+  background: linear-gradient(180deg, rgba(255,181,71,0.04), rgba(255,181,71,0.01));
+  border: 1px solid rgba(255,181,71,0.22);
+  border-left: 2px solid var(--kev-amber);
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin: 22px 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+}
+.what h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--kev-amber);
+  margin-bottom: 6px;
+}
+.what .row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
+.what .row > div { flex: 1; min-width: 240px; }
+.what .row strong { color: var(--text-bright); }
 
 .controls {
   display: flex;
   flex-wrap: wrap;
   gap: 14px;
   align-items: center;
-  margin: 22px 0 18px;
+  margin: 18px 0;
   padding: 12px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -176,14 +194,14 @@ h1 {
   letter-spacing: 1px;
   margin-right: 4px;
 }
-.window-group {
+.btn-group {
   display: flex;
   gap: 0;
   border: 1px solid var(--border);
   border-radius: 3px;
   overflow: hidden;
 }
-.window-btn {
+.btn-group button {
   background: transparent;
   border: none;
   border-right: 1px solid var(--border);
@@ -194,11 +212,11 @@ h1 {
   font-size: 11px;
   letter-spacing: inherit;
 }
-.window-btn:last-child { border-right: none; }
-.window-btn:hover { color: var(--text); background: rgba(86,226,255,0.05); }
-.window-btn.active {
-  background: rgba(0,229,160,0.12);
-  color: var(--accent);
+.btn-group button:last-child { border-right: none; }
+.btn-group button:hover { color: var(--text); background: rgba(255,181,71,0.05); }
+.btn-group button.active {
+  background: rgba(255,181,71,0.12);
+  color: var(--kev-amber);
   font-weight: 600;
 }
 .meta {
@@ -208,7 +226,7 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 1px;
 }
-.meta .refresh-btn {
+.refresh-btn {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
@@ -221,7 +239,7 @@ h1 {
   letter-spacing: inherit;
   text-transform: inherit;
 }
-.meta .refresh-btn:hover { color: var(--accent); border-color: var(--accent); }
+.refresh-btn:hover { color: var(--kev-amber); border-color: var(--kev-amber); }
 
 .tbl-wrap {
   background: var(--bg-card);
@@ -229,10 +247,7 @@ h1 {
   border-radius: 4px;
   overflow: hidden;
 }
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
+table { width: 100%; border-collapse: collapse; }
 th {
   text-align: left;
   font-family: 'JetBrains Mono', monospace;
@@ -250,7 +265,7 @@ td {
   border-bottom: 1px solid var(--bg-row);
   vertical-align: middle;
 }
-tr:hover td { background: rgba(86,226,255,0.025); }
+tr:hover td { background: rgba(255,181,71,0.025); }
 tr:last-child td { border-bottom: none; }
 td.rank {
   font-family: 'JetBrains Mono', monospace;
@@ -269,7 +284,7 @@ td.rank .num {
   color: var(--text);
 }
 td.rank.top-1 .num { background: rgba(255,77,106,0.12); border-color: var(--score-crit); color: var(--score-crit); }
-td.rank.top-2 .num { background: rgba(255,181,71,0.12); border-color: var(--accent-amber); color: var(--accent-amber); }
+td.rank.top-2 .num { background: rgba(255,181,71,0.12); border-color: var(--kev-amber); color: var(--kev-amber); }
 td.rank.top-3 .num { background: rgba(0,229,160,0.12); border-color: var(--accent); color: var(--accent); }
 td.cve {
   font-family: 'JetBrains Mono', monospace;
@@ -279,12 +294,6 @@ td.cve {
 }
 td.cve a { color: var(--accent-cyan); }
 td.cve a:hover { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,229,160,0.3); }
-.chips {
-  display: inline-flex;
-  gap: 6px;
-  margin-left: 8px;
-  vertical-align: middle;
-}
 .chip {
   display: inline-block;
   font-family: 'JetBrains Mono', monospace;
@@ -292,28 +301,30 @@ td.cve a:hover { color: var(--accent); text-decoration: underline; text-decorati
   letter-spacing: 0.8px;
   text-transform: uppercase;
   padding: 2px 6px;
+  margin-left: 8px;
   border-radius: 2px;
   font-weight: 600;
-}
-.chip.kev {
-  background: rgba(255,77,106,0.15);
-  border: 1px solid var(--score-crit);
-  color: var(--score-crit);
 }
 .chip.epss {
   background: rgba(255,181,71,0.10);
   border: 1px solid rgba(255,181,71,0.50);
-  color: var(--accent-amber);
+  color: var(--kev-amber);
+  vertical-align: middle;
 }
-td.mentions {
+.chip.epss.hot {
+  background: rgba(255,77,106,0.10);
+  border-color: var(--score-crit);
+  color: var(--score-crit);
+}
+td.sources {
   font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
-  color: var(--accent);
+  color: var(--kev-amber);
   font-weight: 600;
   text-align: right;
   width: 96px;
 }
-td.mentions .label {
+td.sources .label {
   display: block;
   font-size: 9px;
   color: var(--text-dim);
@@ -331,7 +342,7 @@ td.latest .ti {
   color: var(--text);
   display: block;
   margin-bottom: 2px;
-  max-width: 540px;
+  max-width: 480px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -349,6 +360,11 @@ td.latest .ago {
   margin-left: 6px;
 }
 td.latest .ago::before { content: "· "; }
+td.latest .no-mention {
+  color: var(--text-dim);
+  font-style: italic;
+  font-size: 12px;
+}
 
 .empty {
   padding: 60px 20px;
@@ -390,9 +406,8 @@ td.latest .ago::before { content: "· "; }
   gap: 16px;
   flex-wrap: wrap;
 }
-.cta-strip .cs-msg { color: var(--text); font-size: 14px; line-height: 1.5; }
+.cta-strip .cs-msg { color: var(--text); font-size: 14px; }
 .cta-strip .cs-msg strong { color: var(--text-bright); }
-.cta-strip .cs-actions { display: flex; gap: 10px; align-items: center; }
 .cta-strip a.btn {
   display: inline-flex;
   align-items: center;
@@ -403,18 +418,17 @@ td.latest .ago::before { content: "· "; }
   padding: 8px 16px;
   border-radius: 3px;
   font-weight: 600;
-  transition: all 0.12s;
 }
 .cta-strip a.btn-primary {
   background: var(--accent);
   color: var(--bg);
 }
-.cta-strip a.btn-primary:hover { background: var(--accent-cyan); }
 .cta-strip a.btn-secondary {
   border: 1px solid var(--border);
   color: var(--text);
 }
 .cta-strip a.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.cta-strip a.btn-primary:hover { background: var(--accent-cyan); }
 
 footer {
   margin-top: 48px;
@@ -440,10 +454,10 @@ footer a:hover { color: var(--accent-cyan); }
   td { padding: 10px 8px; font-size: 12px; }
   td.rank { width: 44px; }
   td.rank .num { padding: 3px 6px; }
-  td.mentions { width: 70px; font-size: 13px; }
+  td.sources { width: 70px; font-size: 13px; }
   td.cve { font-size: 12px; }
   td.latest { font-size: 11px; }
-  td.latest .ti { max-width: 220px; }
+  td.latest .ti { max-width: 200px; }
   .controls { font-size: 10px; }
 }
 </style>
@@ -454,12 +468,13 @@ footer a:hover { color: var(--accent-cyan); }
   <div class="brand">
     <svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
     oM noM Security Feeds
-    <span class="tag">trending</span>
+    <span class="tag">pre-kev</span>
   </div>
   <nav class="top-nav">
     <a href="/">about</a>
-    <a href="/pre-kev">pre-kev</a>
-    <a href="/live">live ticker</a>
+    <a href="/trending">trending</a>
+    <a href="/live">live</a>
+    <a href="/api">api</a>
     <a href="/app">reader</a>
     <a href="/pro">pro</a>
   </nav>
@@ -468,21 +483,36 @@ footer a:hover { color: var(--accent-cyan); }
 <div class="wrap">
 
   <div class="hero">
-    <div class="eyebrow"><span class="pulse"></span>:: live leaderboard ::</div>
-    <h1>Trending CVEs</h1>
-    <p class="lead">The CVE-IDs being talked about most across security news, vendor PSIRTs, threat intel research, and the security-side of Bluesky and Mastodon. Updated every 15 minutes. KEV status and EPSS percentile inline.</p>
+    <div class="eyebrow"><span class="pulse"></span>:: early warning ::</div>
+    <h1>Pre-KEV Watch</h1>
+    <p class="lead">CVEs heating up across <strong>multiple security sources</strong> but <strong>not yet on the CISA Known Exploited Vulnerabilities catalog</strong>. The list KEV is about to pull from. Sorted by source count then EPSS percentile; latest mention attached so you can read the original context.</p>
+  </div>
+
+  <div class="what">
+    <h2>:: what this is ::</h2>
+    <div class="row">
+      <div><strong>Pre-KEV</strong> is our own bucket. A CVE lands here when at least <strong>N distinct curated sources</strong> mention it inside the lookback window AND CISA hasn't formally added it to KEV yet. By the time KEV adds something, you've usually been in incident response for days. This list is the lead time.</div>
+      <div>We aggregate ~80 RSS feeds, vendor PSIRTs, security-side Bluesky &amp; Mastodon, GitHub Advisories. A single source posting about a CVE doesn't trigger Pre-KEV - we need <strong>cross-source consensus</strong>. False positives get filtered by the source-count threshold.</div>
+    </div>
   </div>
 
   <div class="controls">
     <span class="label">Window:</span>
-    <div class="window-group" id="windowGroup">
-      <button class="window-btn"       data-hours="24">24h</button>
-      <button class="window-btn active" data-hours="72">72h</button>
-      <button class="window-btn"       data-hours="168">7d</button>
-      <button class="window-btn"       data-hours="336">14d</button>
+    <div class="btn-group" id="windowGroup">
+      <button             data-hours="24">24h</button>
+      <button class="active" data-hours="72">72h</button>
+      <button             data-hours="168">7d</button>
+      <button             data-hours="336">14d</button>
+    </div>
+    <span class="label" style="margin-left:14px;">Min sources:</span>
+    <div class="btn-group" id="minGroup">
+      <button             data-min="2">2</button>
+      <button class="active" data-min="3">3</button>
+      <button             data-min="4">4</button>
+      <button             data-min="5">5+</button>
     </div>
     <span class="meta" id="genMeta">loading...</span>
-    <button class="refresh-btn" onclick="loadTrending(true)" title="force a refresh now">refresh</button>
+    <button class="refresh-btn" onclick="loadPreKEV(true)" title="force a refresh now">refresh</button>
   </div>
 
   <div class="tbl-wrap">
@@ -491,22 +521,22 @@ footer a:hover { color: var(--accent-cyan); }
         <tr>
           <th style="width:56px;">#</th>
           <th>CVE</th>
-          <th style="width:96px;text-align:right;">Mentions</th>
+          <th style="width:96px;text-align:right;">Sources</th>
           <th>Latest mention</th>
         </tr>
       </thead>
       <tbody id="rows">
-        <tr><td colspan="4" class="loading">querying the feed<span class="dots"></span></td></tr>
+        <tr><td colspan="4" class="loading">scanning sources<span class="dots"></span></td></tr>
       </tbody>
     </table>
   </div>
 
   <div class="cta-strip">
     <div class="cs-msg">
-      Want this list in your inbox each morning, plus webhook alerts for KEV pops? <strong>Pro is $10/mo.</strong>
+      Want webhook alerts when a CVE crosses the Pre-KEV threshold, or KEV adds something you care about? <strong>Pro is $10/mo.</strong>
     </div>
-    <div class="cs-actions">
-      <a class="btn btn-secondary" href="/app">Open reader</a>
+    <div>
+      <a class="btn btn-secondary" href="/trending" style="margin-right:6px;">All trending CVEs</a>
       <a class="btn btn-primary" href="/pro">See Pro →</a>
     </div>
   </div>
@@ -514,10 +544,10 @@ footer a:hover { color: var(--accent-cyan); }
   <footer>
     <span>oM noM Security Feeds · MIT licensed · self-host or hosted</span>
     <span>
+      <a href="/api">API</a> ·
       <a href="/feed.xml">RSS</a> ·
       <a href="https://github.com/RMS2D/omnomfeeds">GitHub</a> ·
-      <a href="/privacy">Privacy</a> ·
-      <a href="/terms">Terms</a>
+      <a href="/privacy">Privacy</a>
     </span>
   </footer>
 
@@ -525,16 +555,22 @@ footer a:hover { color: var(--accent-cyan); }
 
 <script>
 let CURRENT_HOURS = 72;
+let CURRENT_MIN = 3;
 let lastFetchAt = 0;
 
-document.querySelectorAll('.window-btn').forEach(b => {
-  b.addEventListener('click', () => {
-    document.querySelectorAll('.window-btn').forEach(x => x.classList.remove('active'));
-    b.classList.add('active');
-    CURRENT_HOURS = parseInt(b.dataset.hours, 10) || 72;
-    loadTrending(true);
+function wireButtons(groupId, onSet) {
+  const group = document.getElementById(groupId);
+  group.querySelectorAll('button').forEach(b => {
+    b.addEventListener('click', () => {
+      group.querySelectorAll('button').forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      onSet(b);
+      loadPreKEV(true);
+    });
   });
-});
+}
+wireButtons('windowGroup', b => CURRENT_HOURS = parseInt(b.dataset.hours, 10) || 72);
+wireButtons('minGroup',    b => CURRENT_MIN   = parseInt(b.dataset.min,   10) || 3);
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -544,10 +580,10 @@ function timeAgo(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
   const sec = Math.floor((Date.now() - d.getTime()) / 1000);
-  if (sec < 0)      return 'soon';
-  if (sec < 60)     return 'just now';
-  if (sec < 3600)   return Math.floor(sec / 60) + 'm ago';
-  if (sec < 86400)  return Math.floor(sec / 3600) + 'h ago';
+  if (sec < 0)     return 'soon';
+  if (sec < 60)    return 'just now';
+  if (sec < 3600)  return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec / 3600) + 'h ago';
   return Math.floor(sec / 86400) + 'd ago';
 }
 function fmtPercentile(p) {
@@ -558,8 +594,7 @@ function fmtPercentile(p) {
   return pct.toFixed(1) + '%';
 }
 
-async function loadTrending(showLoading) {
-  // Throttle hand-clicks: if we already fired in the last 2s, skip.
+async function loadPreKEV(showLoading) {
   const now = Date.now();
   if (!showLoading && now - lastFetchAt < 1500) return;
   lastFetchAt = now;
@@ -567,13 +602,13 @@ async function loadTrending(showLoading) {
   const tbody = document.getElementById('rows');
   const meta = document.getElementById('genMeta');
   if (showLoading) {
-    tbody.innerHTML = '<tr><td colspan="4" class="loading">querying the feed<span class="dots"></span></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">scanning sources<span class="dots"></span></td></tr>';
   }
   meta.textContent = 'loading...';
 
   let r;
   try {
-    r = await fetch('/api/cves/hottest?hours=' + CURRENT_HOURS + '&limit=50', { credentials: 'same-origin' });
+    r = await fetch('/api/cves/pre-kev?hours=' + CURRENT_HOURS + '&min=' + CURRENT_MIN, { credentials: 'same-origin' });
   } catch (e) {
     tbody.innerHTML = '<tr><td colspan="4" class="empty">fetch failed - try refresh in a moment</td></tr>';
     meta.textContent = 'fetch failed';
@@ -589,50 +624,50 @@ async function loadTrending(showLoading) {
   const rows = data.rows || [];
 
   if (!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="4" class="empty">no CVE mentions in this window yet. try a longer one.</td></tr>';
-    meta.textContent = 'no data';
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">no CVEs crossed the threshold in this window. quieter than usual.</td></tr>';
+    meta.textContent = data.window_hours + 'h · ' + data.min_sources + '+ src · 0 rows';
     return;
   }
 
   tbody.innerHTML = rows.map((row, i) => {
     const rank = i + 1;
     const rankClass = rank === 1 ? 'top-1' : rank === 2 ? 'top-2' : rank === 3 ? 'top-3' : '';
-    const chips = [];
-    if (row.kev) chips.push('<span class="chip kev" title="In the CISA KEV catalog. Actively exploited.">KEV</span>');
     const epssPct = fmtPercentile(row.epss_percentile);
-    if (epssPct) chips.push('<span class="chip epss" title="EPSS exploit prediction percentile (0-100%)">EPSS ' + esc(epssPct) + '</span>');
+    const epssChip = epssPct
+      ? '<span class="chip epss' + (row.epss_percentile >= 0.5 ? ' hot' : '') + '" title="EPSS exploit prediction percentile">EPSS ' + esc(epssPct) + '</span>'
+      : '';
 
     const latestTitle = esc(row.latest_title || '');
     const latestSrc   = esc(row.latest_source || '');
     const latestURL   = row.latest_url || '#';
     const ago = timeAgo(row.latest_at);
 
-    // CVE-ID links to the in-app modal (which is the deepest enrichment
-    // view we offer); the latest-mention title links to the source's
-    // original article so credit flows back to publishers.
+    let latestCell;
+    if (latestTitle) {
+      latestCell = '<a href="' + esc(latestURL) + '" target="_blank" rel="noopener"><span class="ti">' + latestTitle + '</span></a>' +
+                   '<span class="src">' + latestSrc + '</span><span class="ago">' + ago + '</span>';
+    } else {
+      latestCell = '<span class="no-mention">no recent article tagged with this CVE in our index</span>';
+    }
+
     return '' +
       '<tr>' +
       '<td class="rank ' + rankClass + '"><span class="num">' + rank + '</span></td>' +
       '<td class="cve">' +
         '<a href="/app?cve=' + encodeURIComponent(row.cve) + '" title="Open in reader (CVE modal)">' + esc(row.cve) + '</a>' +
-        '<span class="chips">' + chips.join('') + '</span>' +
+        epssChip +
       '</td>' +
-      '<td class="mentions">' + row.mentions + '<span class="label">across sources</span></td>' +
-      '<td class="latest">' +
-        '<a href="' + esc(latestURL) + '" target="_blank" rel="noopener"><span class="ti">' + latestTitle + '</span></a>' +
-        '<span class="src">' + latestSrc + '</span><span class="ago">' + ago + '</span>' +
-      '</td>' +
+      '<td class="sources">' + row.distinct_sources + '<span class="label">curated</span></td>' +
+      '<td class="latest">' + latestCell + '</td>' +
       '</tr>';
   }).join('');
 
   const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  meta.textContent = data.window_hours + 'h window · ' + rows.length + ' rows · updated ' + stamp;
+  meta.textContent = data.window_hours + 'h · ' + data.min_sources + '+ src · ' + rows.length + ' rows · ' + stamp;
 }
 
-loadTrending(true);
-// Refresh every 60s. Cheap on the server (15-min server cache on the
-// hottest-CVEs endpoint).
-setInterval(() => loadTrending(false), 60000);
+loadPreKEV(true);
+setInterval(() => loadPreKEV(false), 60000);
 </script>
 </body>
 </html>

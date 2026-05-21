@@ -309,6 +309,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 			case r.URL.Path == "/api":
 				s.emit(w, r, analytics.EvPageView, "/api", nil)
 				serveEmbeddedFile(w, r, webFS, "api-docs.html")
+			case r.URL.Path == "/pre-kev":
+				s.emit(w, r, analytics.EvPageView, "/pre-kev", nil)
+				serveEmbeddedFile(w, r, webFS, "pre-kev.html")
 			case r.URL.Path == "/robots.txt":
 				serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
 			case r.URL.Path == "/sitemap.xml":
@@ -343,6 +346,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		})
 		mux.HandleFunc("/api", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFile(w, r, webFS, "api-docs.html")
+		})
+		mux.HandleFunc("/pre-kev", func(w http.ResponseWriter, r *http.Request) {
+			serveEmbeddedFile(w, r, webFS, "pre-kev.html")
 		})
 		mux.HandleFunc("/robots.txt", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFileAs(w, r, webFS, "robots.txt", "text/plain; charset=utf-8")
@@ -1347,11 +1353,29 @@ func (s *Server) handlePatchBriefs(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// preKEVCache holds the enriched pre-KEV payload keyed by (hours, min).
+// Same pattern as hottestCVECache - the underlying queries are cheap on
+// their own but the EPSS batch + per-CVE latest-mention lookups add up,
+// and the page polls every 60s.
+type preKEVCacheEntry struct {
+	payload []byte
+	expiry  time.Time
+}
+
+var (
+	preKEVCacheMu sync.Mutex
+	preKEVCache   = map[string]preKEVCacheEntry{}
+)
+
+const preKEVCacheTTL = 5 * time.Minute
+
 // handlePreKEV returns the CVEs that have crossed the "multiple curated
 // sources are talking about this in the last 72h" threshold AND aren't
-// already on the CISA KEV list. The list is sorted by distinct-source
-// count desc, then alphabetical. Optional ?hours= and ?min= override.
-// Public; same data the per-article prekev:* tag pulls from.
+// already on the CISA KEV list. Each row carries the distinct-source
+// count, EPSS overlay where known, and the latest article that mentioned
+// it (title + source + url + relative time). Sorted by source count
+// desc, EPSS percentile desc, then CVE id asc. Optional ?hours= and
+// ?min= override the defaults. Public, 5-min server cache.
 func (s *Server) handlePreKEV(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	hours, _ := strconv.Atoi(q.Get("hours"))
@@ -1362,35 +1386,108 @@ func (s *Server) handlePreKEV(w http.ResponseWriter, r *http.Request) {
 	if minSrc <= 0 {
 		minSrc = 3
 	}
+
+	cacheKey := fmt.Sprintf("%d|%d", hours, minSrc)
+	preKEVCacheMu.Lock()
+	if e, ok := preKEVCache[cacheKey]; ok && time.Now().Before(e.expiry) {
+		body := e.payload
+		preKEVCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=60")
+		w.Write(body)
+		return
+	}
+	preKEVCacheMu.Unlock()
+
 	raw, err := s.store.PreKEVCandidates(hours, minSrc)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
 		return
 	}
 	type row struct {
-		CVE     string `json:"cve"`
-		Sources int    `json:"distinct_sources"`
+		CVE            string  `json:"cve"`
+		Sources        int     `json:"distinct_sources"`
+		EPSSScore      float64 `json:"epss_score,omitempty"`
+		EPSSPercentile float64 `json:"epss_percentile,omitempty"`
+		LatestTitle    string  `json:"latest_title,omitempty"`
+		LatestSource   string  `json:"latest_source,omitempty"`
+		LatestURL      string  `json:"latest_url,omitempty"`
+		LatestAt       string  `json:"latest_at,omitempty"`
 	}
-	out := make([]row, 0, len(raw))
-	for cve, n := range raw {
+
+	cves := make([]string, 0, len(raw))
+	for cve := range raw {
 		if s.scorer != nil && s.scorer.IsKEV(cve) {
 			continue
 		}
-		out = append(out, row{CVE: cve, Sources: n})
+		cves = append(cves, cve)
 	}
-	// Sort: source count desc, then CVE id asc (stable, predictable).
+
+	// Pull the hottest list across the same window once; it carries
+	// latest_title/url/source/at for every CVE that fired. The map gives
+	// us O(1) lookup without N+1 queries against articles.
+	latest := map[string]struct {
+		Title, URL, Source string
+		At                 time.Time
+	}{}
+	if hot, err := s.store.HottestCVEs(hours, 5000); err == nil {
+		for _, h := range hot {
+			latest[h.CVE] = struct {
+				Title, URL, Source string
+				At                 time.Time
+			}{Title: h.LatestTitle, URL: h.LatestURL, Source: h.LatestSource, At: h.LatestAt}
+		}
+	}
+
+	// EPSS overlay in one batched query (was N round-trips).
+	var epssMap map[string]cve.EPSSScore
+	if s.enrich != nil && s.enrich.EPSS != nil {
+		epssMap = s.enrich.EPSS.GetMany(cves)
+	}
+
+	out := make([]row, 0, len(cves))
+	for _, c := range cves {
+		r := row{CVE: c, Sources: raw[c]}
+		if e, ok := epssMap[strings.ToUpper(strings.TrimSpace(c))]; ok {
+			r.EPSSScore = e.Score
+			r.EPSSPercentile = e.Percentile
+		}
+		if l, ok := latest[c]; ok {
+			r.LatestTitle = l.Title
+			r.LatestURL = l.URL
+			r.LatestSource = l.Source
+			if !l.At.IsZero() {
+				r.LatestAt = l.At.UTC().Format(time.RFC3339)
+			}
+		}
+		out = append(out, r)
+	}
+	// Sort: source count desc, EPSS percentile desc (higher = more likely
+	// to be exploited), then CVE id asc as the stable tiebreaker.
 	sort.Slice(out, func(i, j int) bool {
 		if out[i].Sources != out[j].Sources {
 			return out[i].Sources > out[j].Sources
 		}
+		if out[i].EPSSPercentile != out[j].EPSSPercentile {
+			return out[i].EPSSPercentile > out[j].EPSSPercentile
+		}
 		return out[i].CVE < out[j].CVE
 	})
-	writeJSON(w, 200, map[string]any{
-		"window_hours":  hours,
-		"min_sources":   minSrc,
-		"rows":          out,
-		"total":         len(out),
+
+	payload, _ := json.Marshal(map[string]any{
+		"window_hours": hours,
+		"min_sources":  minSrc,
+		"rows":         out,
+		"total":        len(out),
 	})
+
+	preKEVCacheMu.Lock()
+	preKEVCache[cacheKey] = preKEVCacheEntry{payload: payload, expiry: time.Now().Add(preKEVCacheTTL)}
+	preKEVCacheMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	w.Write(payload)
 }
 
 // handleHealthz answers liveness probes from uptime monitors. Returns

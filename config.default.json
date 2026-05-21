@@ -50,7 +50,7 @@
     { "name": "Wiz Research",           "url": "https://www.wiz.io/blog/rss" },
 
     { "name": "Palo Alto PSIRT",        "url": "https://security.paloaltonetworks.com/rss.xml", "fast": true },
-    { "name": "Fortinet PSIRT",         "url": "https://www.fortiguard.com/rss/ir.xml", "fast": true },
+    { "name": "Fortinet PSIRT",         "url": "https://filestore.fortinet.com/fortiguard/rss/ir.xml", "fast": true },
     { "name": "AWS Security Bulletins", "url": "https://aws.amazon.com/security/security-bulletins/feed/" },
 
     { "name": "Sophos Security Advisories", "url": "https://www.sophos.com/en-us/security-advisories/feed" },

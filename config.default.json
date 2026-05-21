@@ -56,6 +56,8 @@
     { "name": "Sophos Security Advisories", "url": "https://www.sophos.com/en-us/security-advisories/feed" },
     { "name": "Google Security",        "url": "https://security.googleblog.com/feeds/posts/default" },
     { "name": "GitHub Security Lab",    "url": "https://github.blog/security/feed/" },
+    { "name": "MSRC Update Guide",      "url": "https://api.msrc.microsoft.com/update-guide/rss" },
+    { "name": "Mandiant Threat Intel",  "url": "https://www.mandiant.com/resources/blog/rss.xml" },
 
     { "name": "Ubuntu Security Notices","url": "https://ubuntu.com/security/notices/rss.xml", "fast": true },
     { "name": "Debian DSA",             "url": "https://www.debian.org/security/dsa.rdf", "fast": true },

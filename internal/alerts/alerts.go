@@ -54,11 +54,92 @@ type Worker struct {
 func New(store *storage.Store, siteBase string) *Worker {
 	return &Worker{
 		store:           store,
-		httpc:           &http.Client{Timeout: 5 * time.Second},
+		httpc:           newSSRFGuardedClient(),
 		interval:        60 * time.Second,
 		lookbackOverlap: 10 * time.Minute,
 		siteBase:        strings.TrimRight(siteBase, "/"),
 	}
+}
+
+// newSSRFGuardedClient builds an http.Client whose dialer rejects any
+// post-resolution IP that's loopback, private, link-local, multicast,
+// or unspecified. Doing the check at socket-open time eliminates the
+// DNS-rebinding window between a pre-flight LookupIP and the actual
+// dial inside http.Client.Do. CheckRedirect re-applies the validation
+// on every Location header so a 30x to an internal address can't slip
+// through. Connection pooling is intentionally minimal because each
+// webhook target is unique - reuse offers no benefit and the dial-time
+// check needs to run on every request.
+func newSSRFGuardedClient() *http.Client {
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(addr)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+			if err != nil {
+				return nil, err
+			}
+			// Reject the entire dial if ANY resolved IP is on the
+			// blocklist. Catches multi-A records where one entry is a
+			// public decoy and another is internal.
+			for _, ip := range ips {
+				if isForbiddenIP(ip) {
+					return nil, fmt.Errorf("webhook dial blocked: %s resolves to disallowed address %s", host, ip.String())
+				}
+			}
+			// Pick the first resolved IP and connect to it directly so
+			// the dial uses the IP we validated, not whatever the dialer
+			// re-resolves. This closes the rebinding window between
+			// LookupIP and the underlying Dial.
+			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
+		},
+		MaxIdleConns:    4,
+		IdleConnTimeout: 30 * time.Second,
+	}
+	return &http.Client{
+		Timeout:   5 * time.Second,
+		Transport: transport,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			// On every redirect, re-validate the destination URL host
+			// against the blocklist. http.Client.Do does its own
+			// resolution for the redirect target which would otherwise
+			// skip our DialContext guard.
+			if len(via) >= 5 {
+				return errors.New("too many redirects")
+			}
+			host := req.URL.Hostname()
+			if host == "" {
+				return errors.New("redirect URL missing host")
+			}
+			ips, err := net.DefaultResolver.LookupIP(req.Context(), "ip", host)
+			if err != nil {
+				// DNS failure on redirect = fail closed.
+				return fmt.Errorf("redirect blocked: dns lookup for %s failed: %w", host, err)
+			}
+			for _, ip := range ips {
+				if isForbiddenIP(ip) {
+					return fmt.Errorf("redirect blocked: %s resolves to %s", host, ip.String())
+				}
+			}
+			return nil
+		},
+	}
+}
+
+// isForbiddenIP returns true for any address class a webhook should
+// never reach: loopback, private RFC1918, link-local (including
+// cloud-metadata 169.254.169.254), multicast, unspecified. Pull-out so
+// the dial-time guard and the redirect guard agree on the policy.
+func isForbiddenIP(ip net.IP) bool {
+	return ip.IsLoopback() ||
+		ip.IsPrivate() ||
+		ip.IsLinkLocalUnicast() ||
+		ip.IsLinkLocalMulticast() ||
+		ip.IsMulticast() ||
+		ip.IsUnspecified()
 }
 
 // Run blocks until ctx is cancelled, ticking once per interval. Should be
@@ -203,10 +284,17 @@ func (w *Worker) send(ctx context.Context, r *storage.AlertRule, a *models.Artic
 	return nil
 }
 
-// validateWebhookURL rejects schemes other than https and any host that
-// resolves to a loopback, private, link-local, or multicast address.
-// First-line SSRF defense; not the only one, but it keeps the obvious
-// "POST to http://169.254.169.254/" out.
+// validateWebhookURL is the friendly pre-flight check the rule-creation
+// UI calls when a user saves a webhook URL. It catches typos and
+// obviously-bad inputs (non-https, IP literals in private ranges) so
+// the user sees a clean error instead of a hidden failure at fire time.
+//
+// The REAL SSRF defense is the dial-time guard in newSSRFGuardedClient
+// (see DialContext + CheckRedirect). That's what protects against DNS
+// rebinding, multi-A-record bypass, and redirect-to-internal: this
+// pre-flight is purely UX and is intentionally allowed to be lenient
+// on DNS failures (some webhook services use short-TTL or geo-pinned
+// DNS that resolves fine from the actual request path but fails here).
 func validateWebhookURL(raw string) error {
 	if raw == "" {
 		return errors.New("webhook URL required")
@@ -222,18 +310,11 @@ func validateWebhookURL(raw string) error {
 	if host == "" {
 		return errors.New("webhook URL missing host")
 	}
-	ips, err := net.LookupIP(host)
-	if err != nil {
-		// If DNS fails we still send; some webhook services use
-		// short-TTL or geo-pinned DNS that fails on the host but works
-		// from the live request path. Letting it through is fine.
-		return nil
-	}
-	for _, ip := range ips {
-		if ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() ||
-			ip.IsLinkLocalMulticast() || ip.IsMulticast() || ip.IsUnspecified() {
-			return fmt.Errorf("webhook URL resolves to disallowed address %s", ip.String())
-		}
+	// If the user typed an IP literal directly, check it. We don't do
+	// LookupIP here because DNS failures shouldn't block a save and the
+	// dial-time guard owns the live check.
+	if ip := net.ParseIP(host); ip != nil && isForbiddenIP(ip) {
+		return fmt.Errorf("webhook URL points at disallowed address %s", ip.String())
 	}
 	return nil
 }

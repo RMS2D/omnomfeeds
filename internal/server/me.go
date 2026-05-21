@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -150,6 +151,14 @@ func (s *Server) handleMeRead(w http.ResponseWriter, r *http.Request) {
 //   POST {"action":"add","handle":"x.bsky.social"}        -> add one
 //   POST {"action":"remove","handle":"x.bsky.social"}     -> remove one
 //   POST {"action":"add_bulk","handles":["a","b","c"]}    -> batch add
+//
+// Free-tier intentional: curating your own researcher list is the
+// fastest path to value for a new signup. Pro is reserved for features
+// with ongoing per-user infrastructure cost (custom webhook alerts,
+// digest email, AI personalisation). Storage is capped per user (see
+// userBskyAccountsCap) so we can't be DoS'd by a runaway script.
+const userBskyAccountsCap = 100
+
 func (s *Server) handleMeBskyAccounts(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromContext(r.Context())
 	if u == nil {
@@ -175,11 +184,21 @@ func (s *Server) handleMeBskyAccounts(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "bad json", http.StatusBadRequest)
 			return
 		}
+		// Pre-count existing handles once; add / add_bulk both enforce
+		// the per-user cap to keep an abuser from accumulating an
+		// arbitrarily large watched list.
+		existing, _ := s.store.ListUserBskyAccounts(u.ID)
+		used := len(existing)
+
 		switch body.Action {
 		case "add":
 			h := normalizeHandle(body.Handle)
 			if h == "" {
 				http.Error(w, "handle required", http.StatusBadRequest)
+				return
+			}
+			if used >= userBskyAccountsCap {
+				http.Error(w, fmt.Sprintf("watched-account cap reached (%d). remove one before adding another.", userBskyAccountsCap), http.StatusForbidden)
 				return
 			}
 			if err := s.store.AddUserBskyAccount(u.ID, h); err != nil {
@@ -206,6 +225,20 @@ func (s *Server) handleMeBskyAccounts(w http.ResponseWriter, r *http.Request) {
 				if h := normalizeHandle(raw); h != "" {
 					cleaned = append(cleaned, h)
 				}
+			}
+			// Trim the bulk request to fit under the cap. We could 403,
+			// but the friendlier UX is to accept up to the cap and tell
+			// the caller how many we kept.
+			if used+len(cleaned) > userBskyAccountsCap {
+				room := userBskyAccountsCap - used
+				if room < 0 {
+					room = 0
+				}
+				if room == 0 {
+					http.Error(w, fmt.Sprintf("watched-account cap reached (%d). remove some before adding more.", userBskyAccountsCap), http.StatusForbidden)
+					return
+				}
+				cleaned = cleaned[:room]
 			}
 			if _, err := s.store.AddBulkUserBskyAccounts(u.ID, cleaned); err != nil {
 				http.Error(w, "bulk add failed", http.StatusInternalServerError)

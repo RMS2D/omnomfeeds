@@ -1394,6 +1394,70 @@ func (s *Store) Purge(olderThan time.Duration) (int64, error) {
 	return res.RowsAffected()
 }
 
+// CleanupReport summarises what one daily cleanup tick deleted so the
+// caller can log it.
+type CleanupReport struct {
+	Sessions     int64
+	MagicLinks   int64
+	AlertFires   int64
+	Articles     int64
+	Events       int64
+	NVD          int64
+	OTX          int64
+	WALCheckpoint string // result of PRAGMA wal_checkpoint
+}
+
+// DailyCleanup runs the full retention pass: expire sessions, prune
+// magic-link tokens, drop old alert-fire dedup rows, purge read
+// articles older than 90 days, drop analytics events older than 180
+// days, drop NVD + OTX cache rows older than 90 days, and run a WAL
+// checkpoint so the journal file doesn't grow unbounded. Every step is
+// independent - one failing doesn't abort the others. Returns the row
+// counts so main.go can log a single summary line per tick.
+func (s *Store) DailyCleanup() CleanupReport {
+	var r CleanupReport
+	r.Sessions, _ = s.CleanupExpiredSessions()
+	r.MagicLinks, _ = s.CleanupExpiredMagicLinks()
+	r.AlertFires, _ = s.CleanupOldAlertFires()
+
+	// Articles: 90 day retention on READ articles only. Unread stays
+	// forever (product decision - users may want to see unread items
+	// they missed). Same Purge() that was defined but never called.
+	if n, err := s.Purge(90 * 24 * time.Hour); err == nil {
+		r.Articles = n
+	}
+
+	// Analytics events: 180 days. Past that the dashboard's longest
+	// window (90 days) doesn't reach them and they're just disk weight.
+	eventsCutoff := time.Now().Add(-180 * 24 * time.Hour)
+	if res, err := s.db.Exec(`DELETE FROM events WHERE ts < ?`, eventsCutoff); err == nil {
+		r.Events, _ = res.RowsAffected()
+	}
+
+	// NVD cache: 90 day TTL. CVE metadata can change (CVSS, KEV add,
+	// description fixes) so stale entries shouldn't serve forever.
+	nvdCutoff := time.Now().Add(-90 * 24 * time.Hour)
+	if res, err := s.db.Exec(`DELETE FROM cve_details WHERE fetched_at < ?`, nvdCutoff); err == nil {
+		r.NVD, _ = res.RowsAffected()
+	}
+
+	// OTX cache: same 90-day TTL.
+	if res, err := s.db.Exec(`DELETE FROM cve_otx WHERE fetched_at < ?`, nvdCutoff); err == nil {
+		r.OTX, _ = res.RowsAffected()
+	}
+
+	// PRAGMA wal_checkpoint(PASSIVE) is non-blocking and merges the WAL
+	// file back into the main database. Without periodic checkpoints
+	// the WAL grows whenever writers outrun the auto-checkpoint
+	// (default: 1000 pages). PASSIVE means we don't wait for readers
+	// to release - safer in a single-writer + many-readers app.
+	var busy, log_, checkpointed int
+	if err := s.db.QueryRow(`PRAGMA wal_checkpoint(PASSIVE)`).Scan(&busy, &log_, &checkpointed); err == nil {
+		r.WALCheckpoint = fmt.Sprintf("busy=%d log=%d checkpointed=%d", busy, log_, checkpointed)
+	}
+	return r
+}
+
 func scanArticles(rows *sql.Rows) ([]models.Article, error) {
 	var articles []models.Article
 	for rows.Next() {

@@ -228,6 +228,33 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Background sweeper for the in-memory caches added for /cve/<id>,
+	// /trending, /pre-kev, and "while you were gone". Every cache had a
+	// read-time TTL check but never removed expired entries; without the
+	// sweeper cvePageCache could grow toward NVD's ~240k CVE space.
+	srv.StartCacheSweeper(ctx)
+
+	// Daily DB cleanup: expired sessions, magic-link tokens, alert-fire
+	// dedup rows, read articles >90d, analytics events >180d, NVD/OTX
+	// cache >90d, then a WAL checkpoint to keep the journal bounded.
+	// First tick at +5min so the box has time to settle after restart;
+	// subsequent ticks at 24h intervals.
+	go func() {
+		t := time.NewTimer(5 * time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				r := db.DailyCleanup()
+				log.Printf("[cleanup] sessions=%d magic=%d alert_fires=%d articles=%d events=%d nvd=%d otx=%d wal=%s",
+					r.Sessions, r.MagicLinks, r.AlertFires, r.Articles, r.Events, r.NVD, r.OTX, r.WALCheckpoint)
+				t.Reset(24 * time.Hour)
+			}
+		}
+	}()
+
 	// Pro webhook-alert worker. Only spun up in hosted mode; in self-host
 	// nobody can save alert rules so the goroutine would have nothing to do.
 	if cfg.Hosted.Enabled {

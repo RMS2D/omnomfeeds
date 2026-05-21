@@ -528,7 +528,34 @@ footer {
     </div>
   </div>
 
-  <!-- 2. Per-article AI explainer -->
+  <!-- 2. While You Were Gone brief (personalised) -->
+  <div class="feature">
+    <div class="label">:: while you were gone ::</div>
+    <h2>An AI intel brief tailored to <em>your</em> gap. Pick up where you left off.</h2>
+    <p class="desc">
+      The shared daily brief covers the last 24h for everyone. <strong>This one</strong> covers the gap between your last visit and now - whether that's 6 hours or 6 days. Same 5 sections (KEV exploitation, supply chain, malware, vuln research, identity threats) plus a prioritised <strong>TODO TODAY</strong> punch-list so you don't have to write your own. Press <code>W</code> to call it up anytime, or it auto-shows once a day after a 24h+ absence.
+    </p>
+    <div class="mock">
+      <div class="mock-brief">
+        <div class="title-bar">
+          <span>:: WHILE YOU WERE GONE // since 14d ago</span>
+        </div>
+        <div class="body">
+          <h4>Actively exploited vulnerabilities (KEV-listed)</h4>
+          <p>Two Microsoft Defender CVEs now confirmed in-the-wild exploitation: CVE-2026-41091 (Elevation of Privilege) and a second unnamed privilege escalation issue. CISA has added seven known exploited vulnerabilities to its catalog, with Defender flaws among them. Patching Windows Defender should be treated as critical priority across all managed endpoints.</p>
+          <h4>Supply chain campaigns accelerating</h4>
+          <p>The AntV ecosystem sustained a major compromise via a hijacked maintainer account, with 300+ malicious npm packages deployed. This same campaign (Mini Shai-Hulud) has now spread to PyPI with Microsoft's durabletask package compromised, spreading across multiple language ecosystems in coordinated fashion.</p>
+          <h4>Malware &amp; backdoor activity</h4>
+          <p>ValleyRAT is spreading via compromised Microsoft Teams downloads, delivering backdoor and RAT capabilities. Showboat, a new Linux backdoor, is actively installing on telecom infrastructure in the Middle East. Ghost CMS sites are being targeted with FakeCaptcha pages and malware delivery.</p>
+          <h4>TODO today</h4>
+          <p>1. Patch Chrome and Windows Defender immediately; scan for exploitation telemetry.<br>2. Inventory SonicWall VPN deployments and verify credential compromise status.<br>3. Audit npm and PyPI package origins in your supply chain; check for Mini Shai-Hulud artifacts.<br>4. Review token rotation policies and MFA implementation across identity platforms.<br>5. Scan for ValleyRAT indicators in Teams client logs and network traffic.</p>
+        </div>
+      </div>
+      <div class="mock-caption">real output from a real 14-day gap · <code>W</code> opens it on demand · cached per-user for 6h so reopens are free</div>
+    </div>
+  </div>
+
+  <!-- 3. Per-article AI explainer -->
   <div class="feature">
     <div class="label">:: one-click "explain this" ::</div>
     <h2>Plain-English summary on any article, on demand.</h2>

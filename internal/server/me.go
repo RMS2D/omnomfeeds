@@ -851,9 +851,14 @@ func (s *Server) handleMeWhatsNew(w http.ResponseWriter, r *http.Request) {
 	dismiss, _ := s.store.GetWhatsNewDismiss(u.ID)
 	now := time.Now()
 
+	// ?force=1 lets the user manually re-open the brief from the command
+	// palette even if they've dismissed it inside the quiet window. The
+	// AI summary is identical; we just bypass the auto-hide gate.
+	force := r.URL.Query().Get("force") == "1"
+
 	// Inside the quiet window? Don't show a banner. The frontend treats
 	// this response as "no banner, move on."
-	if !dismiss.IsZero() && now.Sub(dismiss) < whatsNewQuietWindow {
+	if !force && !dismiss.IsZero() && now.Sub(dismiss) < whatsNewQuietWindow {
 		writeJSON(w, 200, map[string]any{
 			"dismissed":    true,
 			"dismissed_at": dismiss.UTC().Format(time.RFC3339),

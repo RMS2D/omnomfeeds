@@ -5367,6 +5367,7 @@ function buildCommandList() {
     { label: 'AI intel brief (last 24h)', key: 'I', action: () => openDigest(false) },
     { label: 'Momentum (week-over-week movers)', key: 'H', action: () => openMomentum() },
     { label: 'AI intel brief :: force refresh', action: () => openDigest(true) },
+    { label: 'While you were gone :: personal intel brief', key: 'W', action: () => loadWhatsNew({ force: true }) },
     { label: 'Undo last filter change', key: 'U', action: () => undoLastFilter() },
     { label: 'Toggle preview pane', key: 'SPC', action: () => { previewOpen = !previewOpen; updatePreview(); } },
     { label: 'Toggle unread-only filter', key: 'u', action: () => filterAction(() => { unreadOnly = !unreadOnly; }) },
@@ -8611,6 +8612,7 @@ function openHelp() {
         <tr><td class="key">D</td><td>IOC decoder (paste hash / CVE / IP / URL / domain)</td></tr>
         <tr><td class="key">v</td><td>sources distribution visualization</td></tr>
         <tr><td class="key">I</td><td>AI intel brief :: what happened in the last 24h (BYOK)</td></tr>
+        <tr><td class="key">W</td><td>"while you were gone" :: AI brief since YOUR last visit (Pro)</td></tr>
         <tr><td class="key">U</td><td>undo last filter change</td></tr>
         <tr><td class="key">?</td><td>this overlay (ESC / q to close)</td></tr>
       </table>
@@ -8729,6 +8731,7 @@ document.addEventListener('keydown', (e) => {
   // AI digest (BYOK)
   if (e.key === 'I') { openDigest(false); e.preventDefault(); return; }
   if (e.key === 'H') { openMomentum();   e.preventDefault(); return; }
+  if (e.key === 'W') { loadWhatsNew({ force: true }); e.preventDefault(); return; }
 
   // Filter undo
   if (e.key === 'U') { undoLastFilter(); e.preventDefault(); return; }
@@ -9460,13 +9463,32 @@ function saveCfgPatchToggles() {
   if (s) s.textContent = on.length ? 'saved · briefs enabled: ' + on.join(', ') : 'all calendar briefs disabled';
 }
 
-async function loadWhatsNew() {
-  if (!meState || !meState.is_pro) return;
+async function loadWhatsNew(opts) {
+  opts = opts || {};
+  const forced = !!opts.force;
+  if (!meState) {
+    if (forced) toast('Sign in to see the daily intel brief.');
+    return;
+  }
+  if (!meState.is_pro) {
+    if (forced) toast('Daily intel brief is a Pro feature.');
+    return;
+  }
   try {
-    const r = await fetch('/api/me/whats-new', { credentials: 'same-origin' });
-    if (!r.ok) return;
+    const url = '/api/me/whats-new' + (forced ? '?force=1' : '');
+    const r = await fetch(url, { credentials: 'same-origin' });
+    if (!r.ok) {
+      if (forced) toast('Intel brief unavailable (HTTP ' + r.status + ').');
+      return;
+    }
     const d = await r.json();
-    if (d.dismissed || d.empty || !d.summary) return;
+    // Auto-load: bail on the quiet states the server reports.
+    // Forced: only bail when there's genuinely nothing to show.
+    if (!forced && (d.dismissed || d.empty || !d.summary)) return;
+    if (forced && (d.empty || !d.summary)) {
+      toast('No scored activity in the lookback window yet - brief will be ready after more articles ingest.');
+      return;
+    }
     const banner = document.getElementById('whatsNewBanner');
     const body   = document.getElementById('whatsNewBody');
     const sub    = document.getElementById('whatsNewSub');
@@ -9480,7 +9502,10 @@ async function loadWhatsNew() {
       : Math.round(hoursAgo / 24) + 'd ago';
     sub.textContent = 'since ' + sinceDate.toLocaleDateString() + ' · ' + (d.article_count || 0) + ' scored articles · ' + window;
     banner.hidden = false;
-  } catch (e) { /* silent - banner is non-essential */ }
+    if (forced) banner.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (e) {
+    if (forced) toast('Intel brief fetch failed.');
+  }
 }
 async function dismissWhatsNew() {
   const banner = document.getElementById('whatsNewBanner');

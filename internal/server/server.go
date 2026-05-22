@@ -1483,11 +1483,11 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	// version + hosted_mode intentionally omitted to keep healthz a pure
+	// liveness probe and avoid fingerprinting via an unauth endpoint.
 	writeJSON(w, 200, map[string]any{
-		"status":      "ok",
-		"version":     serverVersion,
-		"uptime_s":    int(time.Since(serverStarted).Seconds()),
-		"hosted_mode": s.cfg.Hosted.Enabled,
+		"status":   "ok",
+		"uptime_s": int(time.Since(serverStarted).Seconds()),
 	})
 }
 

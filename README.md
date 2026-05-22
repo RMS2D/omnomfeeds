@@ -118,6 +118,21 @@ Pin a specific version with `SECFEED_VERSION=v0.2.0` before piping; override ins
 
 Grab the archive for your platform from [Releases](https://github.com/RMS2D/omnomfeeds/releases), extract, run.
 
+### Verify a release
+
+Every release ships a `checksums.txt` plus cosign-keyless signatures (`.sig` + `.pem`) bound to the GitHub Actions workflow that built it. To verify:
+
+```
+cosign verify-blob \
+  --certificate checksums.txt.pem \
+  --signature checksums.txt.sig \
+  --certificate-identity-regexp '^https://github.com/RMS2D/omnomfeeds/.github/workflows/release.yml@' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+  checksums.txt
+```
+
+Then `sha256sum -c checksums.txt` against the downloaded archive.
+
 ### From source
 
 ```

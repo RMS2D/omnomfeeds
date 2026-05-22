@@ -46,6 +46,21 @@ checksum:
   name_template: "checksums.txt"
   algorithm: sha256
 
+# Cosign keyless signing via the GitHub OIDC token. Verifies provenance back to
+# the workflow that produced the artefact; no key material to manage.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+    output: true
+
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
 

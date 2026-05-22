@@ -584,6 +584,10 @@ func (s *Server) handleAdminAlertSendTest(w http.ResponseWriter, r *http.Request
 		writeJSON(w, 400, map[string]string{"error": "target: webhook URL required"})
 		return
 	}
+	if !strings.HasPrefix(body.Target, "https://") {
+		writeJSON(w, 400, map[string]string{"error": "target: must be https://"})
+		return
+	}
 	if body.Channel == "" {
 		body.Channel = "generic"
 	}
@@ -2102,7 +2106,7 @@ func (s *Server) handleConfigBazaar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body config.BazaarConfig
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024)).Decode(&body); err != nil {
 		writeJSON(w, 400, map[string]string{"error": "invalid json"})
 		return
 	}
@@ -2119,7 +2123,7 @@ func (s *Server) handleConfigGitHub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body config.GitHubConfig
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 8*1024)).Decode(&body); err != nil {
 		writeJSON(w, 400, map[string]string{"error": "invalid json"})
 		return
 	}

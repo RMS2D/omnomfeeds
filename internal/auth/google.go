@@ -72,7 +72,6 @@ func (h *Handler) handleGoogleStart(w http.ResponseWriter, r *http.Request) {
 	q.Set("code_challenge_method", "S256")
 	q.Set("access_type", "online")
 	q.Set("prompt", "select_account")
-	q.Set("include_granted_scopes", "true")
 
 	http.Redirect(w, r, googleAuthEndpoint+"?"+q.Encode(), http.StatusSeeOther)
 }

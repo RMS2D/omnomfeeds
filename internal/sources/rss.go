@@ -242,7 +242,7 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 		}
 
 		articles = append(articles, models.Article{
-			Title:       item.Title,
+			Title:       stripHTML(item.Title),
 			URL:         item.Link,
 			Source:      r.name,
 			SourceType:  "rss",

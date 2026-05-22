@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -215,6 +216,11 @@ func (h *Handler) onCheckoutCompleted(r *http.Request, obj json.RawMessage) erro
 	}
 	if s.Mode != "subscription" || s.ClientReferenceID == "" || s.CustomerID == "" {
 		return nil
+	}
+	// Confirm the user row still exists before writing pro state; a deleted user
+	// hitting a stale checkout link would otherwise silently no-op the UPDATE.
+	if u, err := h.store.GetUserByID(s.ClientReferenceID); err != nil || u == nil {
+		return fmt.Errorf("checkout.completed: unknown user %q", s.ClientReferenceID)
 	}
 	if err := h.store.SetStripeCustomer(s.ClientReferenceID, s.CustomerID, s.SubscriptionID); err != nil {
 		return err

@@ -10,12 +10,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
 )
 
 const nvdAPIBase = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+
+// cveIDStrict guards URL construction; callers higher in the stack should
+// validate first, this is defence-in-depth.
+var cveIDStrict = regexp.MustCompile(`^CVE-\d{4}-\d{4,7}$`)
 
 // ErrNotFound: NVD has no record for the CVE (404, or 200 with empty array).
 // Callers use errors.Is to return 404 instead of 502.
@@ -84,8 +89,8 @@ func (n *NVDClient) EnsureTable() error {
 // Get returns the cached CVE detail, fetching from NVD on miss.
 func (n *NVDClient) Get(ctx context.Context, cveID string) (*CVEDetail, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
-	if cveID == "" {
-		return nil, fmt.Errorf("empty CVE ID")
+	if !cveIDStrict.MatchString(cveID) {
+		return nil, fmt.Errorf("invalid CVE ID")
 	}
 	if d := n.readCache(cveID); d != nil {
 		d.Cached = true

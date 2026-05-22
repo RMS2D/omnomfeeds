@@ -62,8 +62,8 @@ func (o *OTXClient) EnsureTable() error {
 // HTTP timeout is generous because OTX runs 4-5s from some datacenters.
 func (o *OTXClient) Get(ctx context.Context, cveID string) (*OTXData, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
-	if cveID == "" {
-		return nil, fmt.Errorf("empty CVE ID")
+	if !cveIDStrict.MatchString(cveID) {
+		return nil, fmt.Errorf("invalid CVE ID")
 	}
 	if d := o.readCache(cveID); d != nil {
 		return d, nil

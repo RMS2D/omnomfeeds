@@ -28,7 +28,9 @@ import (
 	"github.com/RMS2D/omnomfeeds/internal/tui"
 )
 
-//go:embed web
+// Explicit allowlist so a stray secret in web/ can't sneak into the binary.
+//
+//go:embed web/*.html web/*.svg web/*.png web/*.txt web/*.xml
 var webFS embed.FS
 
 //go:embed config.default.json

@@ -25,6 +25,7 @@ import (
 	"github.com/RMS2D/omnomfeeds/internal/server"
 	"github.com/RMS2D/omnomfeeds/internal/sources"
 	"github.com/RMS2D/omnomfeeds/internal/storage"
+	"github.com/RMS2D/omnomfeeds/internal/tui"
 )
 
 //go:embed web
@@ -37,6 +38,15 @@ var defaultConfigBytes []byte
 var version = "dev"
 
 func main() {
+	// Subcommand dispatch lives at the top so the TUI doesn't pay the
+	// cost of spinning up the full feed-fetcher / scoring / server stack.
+	// `secfeed tui` only needs the config path + a read-mostly SQLite
+	// handle; everything else is the daemon's job and runs separately.
+	if len(os.Args) > 1 && os.Args[1] == "tui" {
+		runTUI()
+		return
+	}
+
 	cfgPath := resolveConfigPath()
 	if err := ensureConfigExists(cfgPath); err != nil {
 		log.Fatalf("config init: %v", err)
@@ -366,6 +376,80 @@ func main() {
 func resolveConfigPath() string {
 	if len(os.Args) > 1 && os.Args[1] != "" {
 		return os.Args[1]
+	}
+	if v := os.Getenv("SECFEED_CONFIG"); v != "" {
+		return v
+	}
+	dir, err := os.UserConfigDir()
+	if err == nil && dir != "" {
+		return filepath.Join(dir, "secfeed", "config.json")
+	}
+	return "config.json"
+}
+
+// runTUI loads the same config + opens the same SQLite DB the server
+// would, then hands off to internal/tui. SQLite WAL handles concurrent
+// reads + the occasional TUI write (mark-read, bookmark) cleanly, so
+// running this alongside a `secfeed serve` instance is fine.
+//
+// We also spin up NVD + EPSS clients pointed at the same DB so the
+// CVE popover can show CVSS / CWE / EPSS percentile inline. Both
+// clients cache against SQLite so first lookups go to the network
+// but subsequent are instant.
+func runTUI() {
+	cfgPath := resolveTUIConfigPath()
+	if err := ensureConfigExists(cfgPath); err != nil {
+		log.Fatalf("config init: %v", err)
+	}
+	cfg, err := config.Load(cfgPath)
+	if err != nil {
+		log.Fatalf("config: %v", err)
+	}
+	if cfg.DBPath != "" && !filepath.IsAbs(cfg.DBPath) {
+		cfg.DBPath = filepath.Join(filepath.Dir(cfgPath), cfg.DBPath)
+	}
+	db, err := storage.New(cfg.DBPath)
+	if err != nil {
+		log.Fatalf("storage: %v", err)
+	}
+	defer db.Close()
+
+	// NVD: use NVD_API_KEY env var if present (raises the rate limit
+	// from 5/30s to 50/30s). Without a key the default-throttled
+	// client still works, just slower on cold lookups.
+	nvd := cve.NewNVDClient(db.DB(), os.Getenv("NVD_API_KEY"))
+	epss := cve.NewEPSSClient(db.DB())
+
+	// AI summarizer (BYOK). Anthropic takes precedence if both keys
+	// are set since Haiku is cheaper + faster than gpt-4o-mini. If
+	// neither key is set, the AI brief modal renders a BYOK hint.
+	var summarizer ai.Summarizer
+	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
+		summarizer = ai.NewAnthropicClient(key, "", "")
+	} else if key := os.Getenv("OPENAI_API_KEY"); key != "" {
+		summarizer = ai.NewOpenAIClient(key, "", "")
+	}
+
+	// Scorer: a fresh one is fine (it's stateless aside from the KEV
+	// catalog, which it loads lazily). The TUI uses this for the
+	// score-explainer modal (`e` key).
+	scorer := scoring.New()
+	scorer.UpdateKEV()
+
+	if err := tui.Run(db, nvd, epss, summarizer, scorer); err != nil {
+		log.Fatalf("tui: %v", err)
+	}
+}
+
+// resolveTUIConfigPath is a tiny variant of resolveConfigPath that
+// ignores the "tui" subcommand token at os.Args[1] and looks at
+// os.Args[2] for an optional positional config path
+// (`secfeed tui /path/to/config.json`). Otherwise it uses the same
+// env-var + OS-config-dir fallback as the server mode, so the TUI
+// reads the same SQLite the daemon writes to by default.
+func resolveTUIConfigPath() string {
+	if len(os.Args) > 2 && os.Args[2] != "" {
+		return os.Args[2]
 	}
 	if v := os.Getenv("SECFEED_CONFIG"); v != "" {
 		return v

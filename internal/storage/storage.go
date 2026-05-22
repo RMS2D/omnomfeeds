@@ -117,6 +117,19 @@ func (s *Store) migrate() error {
 		s.db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_norm_url ON articles(normalized_url)")
 		s.db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_dup ON articles(duplicate_of)")
 	}
+
+	// Self-host bookmark table. Distinct from user_bookmarks (which
+	// is multi-user, hosted-mode only). One row per bookmarked
+	// article; presence = bookmarked. The TUI uses this; the
+	// web reader uses localStorage for anonymous + user_bookmarks
+	// for signed-in.
+	_, _ = s.db.Exec(`
+		CREATE TABLE IF NOT EXISTS bookmarks (
+			article_id    INTEGER PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
+			bookmarked_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);
+	`)
+
 	return s.migrateUserTables()
 }
 
@@ -1383,6 +1396,67 @@ func (s *Store) Sources() ([]string, error) {
 		sources = append(sources, src)
 	}
 	return sources, nil
+}
+
+// ToggleBookmark flips the bookmark state for a single article.
+// Returns the new bookmark state ("true" if now bookmarked, false if
+// removed). Used by the TUI's `b` keybind.
+func (s *Store) ToggleBookmark(id int64) (bool, error) {
+	// Check current state, flip it. Two queries instead of one
+	// INSERT-OR-DELETE because SQLite has no UPSERT-DELETE shorthand.
+	var exists int
+	row := s.db.QueryRow("SELECT 1 FROM bookmarks WHERE article_id = ?", id)
+	if err := row.Scan(&exists); err == nil && exists == 1 {
+		_, err := s.db.Exec("DELETE FROM bookmarks WHERE article_id = ?", id)
+		return false, err
+	}
+	_, err := s.db.Exec("INSERT INTO bookmarks (article_id) VALUES (?)", id)
+	return true, err
+}
+
+// BookmarkIDs returns every article_id with an active bookmark row.
+// Caller can build a set for O(1) lookup during list rendering. The
+// table is small (anyone bookmarking >10k articles can pay for that
+// query) so we don't paginate.
+func (s *Store) BookmarkIDs() (map[int64]bool, error) {
+	rows, err := s.db.Query("SELECT article_id FROM bookmarks")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := map[int64]bool{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err == nil {
+			out[id] = true
+		}
+	}
+	return out, rows.Err()
+}
+
+// BookmarkedArticles returns every article currently bookmarked, in
+// most-recently-bookmarked order. Used by the TUI's `B` keybind
+// (filter to bookmarked-only) and by the future MITRE Navigator
+// export for "everything I bookmarked tagged initial-access".
+func (s *Store) BookmarkedArticles(limit int) ([]models.Article, error) {
+	if limit <= 0 {
+		limit = 500
+	}
+	rows, err := s.db.Query(`
+		SELECT a.id, a.title, a.url, a.source, a.source_type, a.summary,
+		       a.score, a.tags, a.published_at, a.fetched_at, a.read,
+		       a.duplicate_of
+		  FROM articles a
+		  JOIN bookmarks b ON b.article_id = a.id
+		 WHERE a.duplicate_of IS NULL
+		 ORDER BY b.bookmarked_at DESC
+		 LIMIT ?
+	`, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	return scanArticles(rows)
 }
 
 func (s *Store) Purge(olderThan time.Duration) (int64, error) {

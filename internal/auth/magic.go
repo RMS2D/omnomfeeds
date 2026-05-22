@@ -14,6 +14,8 @@ import (
 const (
 	magicLinkTTL         = 15 * time.Minute
 	magicLinkRateWindow  = 60 * time.Second // min interval between requests per email
+	magicLinkIPWindow    = 60 * time.Second // window for per-IP cap
+	magicLinkIPCap       = 5                // max distinct requests per IP per window (looser to allow NAT)
 	magicLinkMaxEmailLen = 254              // RFC 5321
 )
 
@@ -44,10 +46,15 @@ func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Rate-limit: at most one magic link per email per minute. Silently drop
-	// requests that exceed it; still return 202 to keep the response shape
-	// uniform.
+	// Rate-limit per email (1/min) and per IP fingerprint (5/min).
+	// Silently drop both cases so probes can't distinguish.
+	ipH := hashIP(remoteIP(r))
 	if n, _ := h.store.RecentMagicLinksForEmail(email, magicLinkRateWindow); n > 0 {
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"ok":true}`))
+		return
+	}
+	if n, _ := h.store.RecentMagicLinksForIP(ipH, magicLinkIPWindow); n >= magicLinkIPCap {
 		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte(`{"ok":true}`))
 		return
@@ -61,7 +68,6 @@ func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ipH := hashIP(remoteIP(r))
 	if err := h.store.CreateMagicLink(tokenHash, email, r.UserAgent(), magicLinkTTL, ipH); err != nil {
 		log.Printf("[auth] magic: store link: %v", err)
 		http.Error(w, "internal error", http.StatusInternalServerError)

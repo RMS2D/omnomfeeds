@@ -1129,3 +1129,17 @@ func (s *Store) RecentMagicLinksForEmail(email string, since time.Duration) (int
 	).Scan(&n)
 	return n, err
 }
+
+// RecentMagicLinksForIP counts tokens issued from an IP fingerprint in the
+// last N seconds. Looser cap than per-email since legitimate NAT users share.
+func (s *Store) RecentMagicLinksForIP(ipHash []byte, since time.Duration) (int, error) {
+	if len(ipHash) == 0 {
+		return 0, nil
+	}
+	var n int
+	err := s.db.QueryRow(
+		`SELECT COUNT(*) FROM magic_link_tokens WHERE ip_hash = ? AND created_at > ?`,
+		ipHash, time.Now().Add(-since),
+	).Scan(&n)
+	return n, err
+}

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -1936,6 +1937,15 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	d, err := s.enrich.NVD.Get(ctx, id)
 	if err != nil {
+		// 404 when NVD has no record, 502 only for genuine upstream
+		// failures (timeout, network, malformed response). HN pokers hit
+		// /api/cve/<random> as recon - returning 502 made the backend
+		// look like it was crashing when "CVE doesn't exist" is the
+		// actual answer.
+		if errors.Is(err, cve.ErrNotFound) {
+			writeJSON(w, 404, map[string]string{"error": "CVE not found in NVD", "id": id})
+			return
+		}
 		writeJSON(w, 502, map[string]string{"error": err.Error(), "id": id})
 		return
 	}
@@ -2109,6 +2119,11 @@ func (s *Server) handleCVEExplain(w http.ResponseWriter, r *http.Request, id str
 	defer cancel()
 	d, err := s.enrich.NVD.Get(ctx, id)
 	if err != nil {
+		// Same 404-vs-502 split as the plain /api/cve/{id} handler.
+		if errors.Is(err, cve.ErrNotFound) {
+			writeJSON(w, 404, map[string]string{"error": "CVE not found in NVD, cannot generate explainer", "id": id})
+			return
+		}
 		writeJSON(w, 502, map[string]string{"error": "nvd lookup failed: " + err.Error(), "id": id})
 		return
 	}

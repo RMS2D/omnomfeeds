@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -15,6 +16,14 @@ import (
 )
 
 const nvdAPIBase = "https://services.nvd.nist.gov/rest/json/cves/2.0"
+
+// ErrNotFound is returned by NVDClient.Get when the upstream NVD API
+// reports no record for the requested CVE (either HTTP 404 or 200 with
+// an empty vulnerabilities array). Callers use errors.Is to map this to
+// a 404 response instead of a generic 502 — important because hitting
+// /api/cve/<random-id> is a common HN poke and a 502 makes the backend
+// look like it's crashing when it's just "CVE doesn't exist."
+var ErrNotFound = errors.New("cve not found")
 
 // CVEDetail is the per-CVE payload secfeed returns to the frontend.
 // EPSS fields are populated in the server handler via the EPSS join.
@@ -155,7 +164,7 @@ func (n *NVDClient) fetchFromNVD(ctx context.Context, cveID string) (*CVEDetail,
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == 404 {
-		return nil, fmt.Errorf("not found")
+		return nil, ErrNotFound
 	}
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("nvd: status %d", resp.StatusCode)
@@ -203,7 +212,7 @@ func (n *NVDClient) fetchFromNVD(ctx context.Context, cveID string) (*CVEDetail,
 		return nil, err
 	}
 	if len(doc.Vulnerabilities) == 0 {
-		return nil, fmt.Errorf("cve not found in nvd response")
+		return nil, ErrNotFound
 	}
 	cve := doc.Vulnerabilities[0].CVE
 	d := &CVEDetail{

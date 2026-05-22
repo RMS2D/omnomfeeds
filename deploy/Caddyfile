@@ -24,6 +24,12 @@ omnomfeeds.com {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "interest-cohort=()"
+        # Strip the proxy chain Via header Caddy adds by default. CF's
+        # public-facing response already hides the origin via "Server:
+        # cloudflare"; leaving "Via: 1.1 Caddy" intact would tell anyone
+        # poking the response which reverse proxy we run and invite a
+        # version-CVE scan. No functional impact.
+        -Via
         # CSP. Defense-in-depth against any XSS that slipped past
         # safeHref() / escapeHTML(). Constraints driven by the actual
         # surface:

@@ -296,7 +296,7 @@ tr:last-child td { border-bottom: none; }
   <nav class="top-nav">
     <a href="/admin">&laquo; admin home</a>
     <a href="/app">app</a>
-    <a href="/auth/logout">logout</a>
+    <a href="#" onclick="event.preventDefault(); fetch('/auth/logout',{method:'POST',credentials:'same-origin'}).then(()=>location.href='/')">logout</a>
   </nav>
 </div>
 

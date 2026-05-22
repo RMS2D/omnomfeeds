@@ -106,17 +106,19 @@ func (h *Handler) Mount(mux *http.ServeMux) {
 
 // Google OAuth handlers live in google.go. Magic-link handlers in magic.go.
 
-// handleLogout revokes the current session in the DB and clears the cookie.
+// handleLogout revokes the current session and clears the cookie. POST-only so
+// a third-party page with an <a href="/auth/logout"> link can't log users out.
 func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
 	if _, sum, ok := tokenFromRequest(r); ok {
 		_ = h.store.RevokeSession(sum)
 	}
 	clearSessionCookie(w)
-	if r.Method == http.MethodPost {
-		w.WriteHeader(http.StatusNoContent)
-		return
-	}
-	http.Redirect(w, r, "/", http.StatusSeeOther)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Middleware resolves session via cookie then bearer; stamps user

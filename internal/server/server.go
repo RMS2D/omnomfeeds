@@ -716,7 +716,7 @@ func (s *Server) handleArticles(w http.ResponseWriter, r *http.Request) {
 		if u != nil {
 			filter.UserID = u.ID
 		}
-		if !u.IsPro() {
+		if u == nil || !u.IsPro() {
 			thirtyDaysAgo := time.Now().Add(-30 * 24 * time.Hour)
 			if filter.Since.IsZero() || filter.Since.Before(thirtyDaysAgo) {
 				filter.Since = thirtyDaysAgo

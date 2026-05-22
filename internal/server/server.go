@@ -376,9 +376,13 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	if s.auth != nil {
 		handler = s.auth.Middleware(handler)
 	}
+	// ReadHeaderTimeout blocks Slowloris without affecting SSE writes.
+	// IdleTimeout reaps idle keep-alives so HN traffic spikes don't pile up fds.
 	s.http = &http.Server{
-		Addr:    fmt.Sprintf(":%d", cfg.Port),
-		Handler: cors(handler),
+		Addr:              fmt.Sprintf(":%d", cfg.Port),
+		Handler:           cors(handler),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
 	return s
 }

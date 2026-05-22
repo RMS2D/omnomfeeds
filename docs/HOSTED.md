@@ -250,9 +250,8 @@ bookmark, settings, and alert state on top of the shared fetched corpus.
 
 ## Hosting
 
-- Single droplet on DigitalOcean (currently `ubuntu-s-1vcpu-1gb-nyc1` at
-  reserved IP `168.144.12.49`). Caddy reverse-proxies to the Go binary on
-  `localhost:8080`.
+- Single droplet on DigitalOcean (`ubuntu-s-1vcpu-1gb-nyc1` with a reserved
+  IP). Caddy reverse-proxies to the Go binary on `localhost:8080`.
 - Postgres co-located on the box for v1. Move to a managed db only if
   resource pressure shows up.
 - Stripe customer portal handles cancellations + invoice access; we never

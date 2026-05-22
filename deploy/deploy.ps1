@@ -12,7 +12,7 @@
 # is NOT what systemd executes, so restarts were silent no-ops.
 
 param(
-    [string]$Server  = $(if ($env:OMNOMFEEDS_HOST) { $env:OMNOMFEEDS_HOST } else { 'root@168.144.12.49' }),
+    [string]$Server  = $(if ($env:OMNOMFEEDS_HOST) { $env:OMNOMFEEDS_HOST } else { throw 'set OMNOMFEEDS_HOST=user@host or pass -Server user@host' }),
     [string]$KeyPath = "$env:USERPROFILE\.ssh\id_ed25519",
     [switch]$SkipBuild
 )

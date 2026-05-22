@@ -176,48 +176,14 @@ body[data-worm-mood="frenzy"] header .brand .worm-logo .glint { fill: var(--acce
   25%      { transform: translateX(1.5px) rotate(-3deg); }
   75%      { transform: translateX(-1.5px) rotate(3deg); }
 }
-/* Top-right CTA cluster: status chip + the bright FREE LIVE FEED pill,
-   grouped so the eye reads them as a single "status + call to action"
-   unit instead of two free-floating things. */
+/* Top-right CTA cluster: the TRENDING CVES + PRE-KEV WATCH live pills.
+   Grouped so the eye reads them as a single live-data block. */
 .top-cta-cluster {
   display: inline-flex;
   align-items: center;
   gap: 10px;
 }
 
-/* Combined status chip: replaces the separate BETA pill + mood badge.
-   One inline pill that reads "larva · feeding" - stage on the left
-   (replaces beta, ties into the worm/larva theme), worm mood on the
-   right, colour shifts with the mood. Quieter than two pills jammed
-   side-by-side. */
-.status-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  text-transform: lowercase;
-  padding: 2px 7px;
-  border-radius: 2px;
-  background: rgba(255,255,255,0.025);
-  border: 1px solid var(--border);
-  vertical-align: middle;
-  transition: border-color 0.2s, background 0.2s;
-}
-.status-chip .stage  { color: var(--text-dim); }
-.status-chip .sep    { color: var(--border); }
-.status-chip .mood   { color: var(--accent); }
-body[data-worm-mood="hibernating"] .status-chip { border-color: rgba(90,138,114,0.32); }
-body[data-worm-mood="hibernating"] .status-chip .mood { color: #7da695; }
-body[data-worm-mood="frenzy"] .status-chip {
-  border-color: rgba(255,181,71,0.5);
-  background: rgba(255,181,71,0.06);
-}
-body[data-worm-mood="frenzy"] .status-chip .mood {
-  color: var(--accent-amber);
-  text-shadow: 0 0 4px rgba(255,181,71,0.4);
-}
 /* Two-tier nav layout.
    - Primary nav (features, pricing) uses the body sans-serif at a
      brighter colour - these are the "marketing surface" anchors the
@@ -1199,7 +1165,6 @@ footer a:hover { color: var(--accent-cyan); }
       </span>
     </div>
     <div class="top-cta-cluster">
-      <span class="status-chip" id="statusChip" title="stage · worm mood (polled from KEV velocity)"><span class="stage">larva</span><span class="sep">·</span><span class="mood" id="wormMoodBadge">. . .</span></span>
       <a href="/trending" class="live-link" title="Top CVEs by mention count across our sources"><span class="live-dot"></span>TRENDING CVES</a>
       <a href="/pre-kev" class="live-link" style="border-color:rgba(255,181,71,0.5);color:#ffb547;" title="CVEs heating up before CISA adds them to KEV"><span class="live-dot" style="background:#ffb547;"></span>PRE-KEV WATCH</a>
       <a href="/live" class="live-link"><span class="live-dot"></span>FREE LIVE FEED</a>
@@ -1709,24 +1674,19 @@ footer a:hover { color: var(--accent-cyan); }
 
 <script>
 // Worm mood poller. Hits /api/worm/mood every 5 minutes, applies the
-// label as a body data-attr so CSS retints the worm sprites + the small
-// mood badge in the header. Hover the badge for the underlying KEV count.
+// label as a body data-attr so CSS retints the worm sprites + the
+// honest-mark watermark with KEV velocity.
 (function() {
-  const MOOD_LABELS = {
-    hibernating: 'hibernating',
-    eating:      'feeding',
-    frenzy:      'FEEDING FRENZY',
-  };
   async function tick() {
     try {
       const r = await fetch('/api/worm/mood');
       if (!r.ok) return;
       const m = await r.json();
+      // Set the body attribute so the worm logo + honest-mark watermark
+      // can shift colour with KEV velocity. The status chip that used to
+      // surface this textually was removed; logo + watermark are subtle
+      // enough to keep without explicit labelling.
       document.body.setAttribute('data-worm-mood', m.label || 'eating');
-      const badge = document.getElementById('wormMoodBadge');
-      const chip  = document.getElementById('statusChip');
-      if (badge) badge.textContent = MOOD_LABELS[m.label] || '. . .';
-      if (chip)  chip.title = 'larva stage · worm mood: ' + m.label + ' (' + m.kev_24h + ' KEV mention(s) in last 24h)';
     } catch (e) { /* swallow - mood badge is decorative */ }
   }
   tick();

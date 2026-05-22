@@ -1,14 +1,22 @@
-# Caddy config for omnomfeeds.com.
+# Caddy config for omnomfeeds.com - production reference.
 #
-# Phase 1 (current): static landing page served from /var/www/omnomfeeds.
-# Phase 2 (after hosted mode lands): swap the file_server stanza for a
-# reverse_proxy to localhost:8080 where the Go binary listens.
+# Caddy terminates TLS (Let's Encrypt) and reverse-proxies to the Go
+# binary on localhost:8080. Cloudflare proxies traffic to this box
+# from its edge, so the client's real IP arrives via the standard
+# X-Forwarded-For header that CF populates.
+#
+# DO NOT add `header_up X-Forwarded-For {remote_host}` to the
+# reverse_proxy block. CF already populates X-Forwarded-For with the
+# real client IP; overriding it overwrites the real IP with the CF
+# edge IP, which breaks per-IP rate limiting in the Go binary. Caddy's
+# default behavior is to APPEND remote_host to the incoming chain, so
+# leaving it out means the leftmost token in X-Forwarded-For is the
+# real client IP (which the Go binary's clientIP() reads).
+#
+# Mirrors /etc/caddy/Caddyfile on the production droplet.
 
 omnomfeeds.com {
-    encode gzip
-
-    root * /var/www/omnomfeeds
-    file_server
+    encode gzip zstd
 
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
@@ -18,9 +26,12 @@ omnomfeeds.com {
         Permissions-Policy "interest-cohort=()"
         -Server
     }
+
+    reverse_proxy localhost:8080 {
+        header_up X-Forwarded-Proto https
+    }
 }
 
-# www redirects to apex.
 www.omnomfeeds.com {
     redir https://omnomfeeds.com{uri} permanent
 }

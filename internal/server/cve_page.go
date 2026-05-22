@@ -17,12 +17,8 @@ import (
 	"github.com/RMS2D/omnomfeeds/internal/storage"
 )
 
-// safeHref returns an HTML-escaped URL safe to inline into an href
-// attribute, or "#" if the URL has a non-http(s) scheme. Belt-and-braces
-// against javascript:/data:/file: payloads that survive html.EscapeString
-// because they contain no HTML special characters. The storage layer
-// rejects these at ingest, but cve_page.go renders content from
-// multiple paths so it gets its own guard.
+// safeHref escapes a URL for href, returning "#" for non-http(s) schemes.
+// Belt-and-braces against javascript:/data:/file: that escape html.EscapeString.
 func safeHref(raw string) string {
 	if raw == "" {
 		return "#"
@@ -38,11 +34,8 @@ func safeHref(raw string) string {
 	return html.EscapeString(raw)
 }
 
-// cvePageCache stores rendered HTML per CVE ID. The page combines NVD,
-// EPSS, KEV, OTX, source consensus, timeline, and the article list. The
-// build cost is dominated by the NVD round-trip (cold ~200ms, cached
-// instant) plus our own article scan; we cache for 30 minutes so a
-// trending CVE doesn't repeatedly hit NVD as it gets shared.
+// cvePageCache: 30min cache for rendered CVE pages.
+// Build is dominated by the cold NVD round-trip (~200ms).
 type cvePageCacheEntry struct {
 	body   []byte
 	expiry time.Time
@@ -111,11 +104,8 @@ func (s *Server) handleCVEPage(w http.ResponseWriter, r *http.Request, webFS fs.
 	w.Write(body)
 }
 
-// renderCVEPage builds the HTML for one CVE. Returns the body + the
-// HTTP status it should be served with (404 when we have no data at all,
-// 200 otherwise). Fans the 4 expensive fetches out to goroutines (NVD,
-// OTX, and three storage queries) so cold renders are bounded by the
-// slowest single call rather than their sum.
+// renderCVEPage builds one CVE's HTML; returns body + status (404 if no data).
+// Fans NVD/OTX/storage fetches across goroutines so cold cost is the slowest call.
 func (s *Server) renderCVEPage(ctx context.Context, id string) ([]byte, int) {
 	type nvdResult struct {
 		desc, cwe, published, lastMod string
@@ -440,7 +430,7 @@ func (s *Server) renderCVEPageHTML(
 	b.WriteString(`</div>`) // .grid
 
 	// Pro CTA.
-	b.WriteString(`<div class="cta-strip"><div class="cs-msg">Want the AI-generated 3-bullet summary of `)
+	b.WriteString(`<div class="cta-strip"><div class="cs-msg">Want the 3-bullet summary of `)
 	b.WriteString(html.EscapeString(id))
 	b.WriteString(`, plus webhook alerts when KEV is updated? <strong>Pro is $10/mo.</strong></div><div class="cs-actions"><a class="btn btn-secondary" href="/app?cve=`)
 	b.WriteString(html.EscapeString(id))

@@ -1,22 +1,5 @@
-// Package tui is the Bubbletea terminal reader for oM noM Security Feeds.
-//
-// It reads the same SQLite database the HTTP daemon writes to, so running
-// `./secfeed tui` and `./secfeed` (server mode) against the same config
-// gives you two surfaces over one corpus. SQLite WAL handles the
-// concurrent reads + occasional writes (mark-read, bookmarks) cleanly.
-//
-// The TUI is launch-scope minimal:
-//   - Two-pane list + preview, vim-style nav (j/k/g/G/o)
-//   - Read-state + bookmark toggles
-//   - Search (/), filter cycling (1-9 score, s source picker, u unread)
-//   - Inline CVE popover with CVSS / EPSS / KEV / OTX
-//   - Worm-theme lipgloss styling matching the web reader
-//
-// Out of scope for v1 (web reader handles these):
-//   - Config editing (point users to ~/.config/secfeed/config.json)
-//   - Auth / Pro features
-//   - SSE live updates (poll-on-keypress for now)
-//   - MITRE coverage modal, IOC decoder, command palette
+// Package tui is the Bubbletea terminal reader. Reads the same SQLite
+// the HTTP daemon writes to; WAL handles concurrent access.
 package tui
 
 import (
@@ -43,14 +26,8 @@ import (
 	"github.com/RMS2D/omnomfeeds/internal/storage"
 )
 
-// openInBrowser dispatches the URL to the platform-default browser via
-// the OS's own "open" mechanism. Windows uses `cmd /c start`, macOS
-// uses `open`, everything else assumes `xdg-open` (the freedesktop
-// XDG convention - present on every reasonable Linux desktop).
-//
-// Errors are deliberately swallowed: we don't want a failed
-// shell-out to drop the user out of the TUI. The status-bar flash
-// tells them we tried.
+// openInBrowser opens url in the OS default browser. Errors swallowed
+// so a failed shell-out doesn't drop the user out of the TUI.
 func openInBrowser(url string) error {
 	if url == "" {
 		return nil
@@ -58,9 +35,7 @@ func openInBrowser(url string) error {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "windows":
-		// `cmd /c start "" <url>` - the empty quoted string is the
-		// window title, which start interprets before the URL. Without
-		// it, a URL beginning with quotes would be misparsed.
+		// Empty string before url is the window title for `start`.
 		cmd = exec.Command("cmd", "/c", "start", "", url)
 	case "darwin":
 		cmd = exec.Command("open", url)
@@ -70,18 +45,9 @@ func openInBrowser(url string) error {
 	return cmd.Start()
 }
 
-// Run is the TUI entry point. Called from main.go when the user invokes
-// `secfeed tui`. Blocks until the user exits (q, Ctrl-C, Esc).
-//
-// nvd + epss + summarizer are optional - pass nil for any that aren't
-// configured (no API key, no network, etc.) and the TUI degrades
-// gracefully (CVE popover skips CVSS/EPSS, `I` AI brief shows a
-// "BYOK to enable" hint, etc.).
+// Run is the TUI entry point. nvd/epss/summarizer/scorer are optional.
 func Run(store *storage.Store, nvd *cve.NVDClient, epss *cve.EPSSClient, summarizer ai.Summarizer, scorer *scoring.Scorer) error {
-	// East-Asian width condition - the default in go-runewidth tries to
-	// auto-detect via LANG env vars but on Windows that's unreliable. Force
-	// the "narrow east-asian" interpretation since terminals render
-	// full-width characters as 2 cells regardless of locale.
+	// runewidth auto-detect via LANG is unreliable on Windows. Force narrow.
 	runewidth.DefaultCondition.EastAsianWidth = false
 
 	m := initialModel(store)
@@ -96,10 +62,6 @@ func Run(store *storage.Store, nvd *cve.NVDClient, epss *cve.EPSSClient, summari
 	return err
 }
 
-// uiMode tracks which input surface is active. Bubbletea's Update is
-// modal: most key handlers only fire when mode == normalMode, and the
-// search-input + help-overlay + CVE-popover modes capture keys until
-// the user exits them.
 type uiMode int
 
 const (
@@ -107,186 +69,122 @@ const (
 	searchMode
 	helpMode
 	cveMode
-	statsMode        // S - Feast Stats modal
-	sourcePickerMode // s - source picker (selectable list)
-	iocMode          // D - IOC decoder modal
-	mitreMode        // T - MITRE ATT&CK coverage modal
-	vizMode          // v - source viz / feeding tubes
-	aiBriefMode      // I - AI intel brief (BYOK)
-	leaderboardMode  // L - /trending + /pre-kev combined leaderboard
-	patchBriefMode   // P - Patch Tuesday brief reader
-	scoreExplainMode // e - score explainer for the selected article
+	statsMode
+	sourcePickerMode
+	iocMode
+	mitreMode
+	vizMode
+	aiBriefMode
+	leaderboardMode
+	patchBriefMode
+	scoreExplainMode
 )
 
-// cveIDRegex matches the standard CVE-YYYY-NNNN[N+] pattern.
-// Years 1990+ to avoid false-positives on random "CVE-..." text;
-// number 4-7 digits per the spec (NVD assigns 4-7 digit identifiers).
+// 4-7 digit suffix per NVD spec. Years 1990+ to skip false positives.
 var cveIDRegex = regexp.MustCompile(`(?i)CVE-(?:19|20)\d{2}-\d{4,7}`)
 
-// model holds all TUI state. Bubbletea uses the Elm architecture
-// (Model-Update-View) - every keypress / resize / async event flows
-// through Update, which returns a new model + an optional command.
 type model struct {
 	store    *storage.Store
-	nvd      *cve.NVDClient   // optional - nil = no network enrichment
-	epss     *cve.EPSSClient  // optional - nil = no EPSS lookups
-	ai       ai.Summarizer    // optional - nil = no AI features
-	scorer   *scoring.Scorer  // optional - nil = no score explainer
+	nvd      *cve.NVDClient
+	epss     *cve.EPSSClient
+	ai       ai.Summarizer
+	scorer   *scoring.Scorer
 	articles []models.Article
 	selected int
 
-	// Viewport dimensions, updated on tea.WindowSizeMsg. Used to compute
-	// list / preview pane widths and the visible-row window.
 	width  int
 	height int
 
-	// listOffset is the index of the topmost article currently visible
-	// in the list pane. moveSelection keeps the selected article inside
-	// the visible window by adjusting this.
 	listOffset int
+	loadErr    error
 
-	// loadErr is the most-recent load error from storage. Shown in the
-	// status bar so a broken DB connection is visible without a panic.
-	loadErr error
+	minScore   int
+	sourceType string
+	unreadOnly bool
+	showDupes  bool
+	search     string
 
-	// Filter state. All four feed straight into storage.ListFilter on
-	// the next reloadArticles call.
-	minScore   int    // 0 disables; otherwise 10..90 cuts the list
-	sourceType string // "" = all; matches articles.source_type
-	unreadOnly bool   // only articles where Read == false
-	showDupes  bool   // include articles flagged duplicate_of != null
-	search     string // substring filter, applied to title + summary
-
-	// Input mode + the buffer for the search-input bar.
 	mode        uiMode
 	searchInput string
 
-	// CVE-popover state. Populated when the user presses `c` on an
-	// article that contains at least one CVE-ID. Cleared on Esc.
-	cveID         string
-	cveConsensus  []storage.CVEConsensusRow
-	cveTimeline   []storage.CVETimelineEvent
-	cveArticles   []models.Article
-	cveDetail     *cve.CVEDetail // NVD-fetched CVSS/CWE/description; populated async
-	cveEPSS       *cve.EPSSScore // local SQLite read, populated synchronously
-	cveLoading    bool           // true while NVD fetch is in flight
-	cveLoadErr    string         // populated if NVD lookup failed
+	cveID        string
+	cveConsensus []storage.CVEConsensusRow
+	cveTimeline  []storage.CVETimelineEvent
+	cveArticles  []models.Article
+	cveDetail    *cve.CVEDetail
+	cveEPSS      *cve.EPSSScore
+	cveLoading   bool
+	cveLoadErr   string
 
-	// Feast Stats modal cache. Loaded fresh each time `S` is pressed
-	// (cheap query - just one row counts + group-bys).
 	stats *models.Stats
 
-	// Source picker modal: list of all known sources + the cursor
-	// within that list.
-	sourceList     []string
-	sourceCursor   int
-	sourceOffset   int
+	sourceList   []string
+	sourceCursor int
+	sourceOffset int
 
-	// IOC decoder modal: text input + parsed result.
-	iocInput string
-	iocKind  string   // "" / "sha256" / "sha1" / "md5" / "cve" / "ipv4" / "ipv6" / "url" / "domain"
-	iocValue string   // canonicalized form of the input (upper-case CVE etc.)
-	iocPivots []iocPivot // pre-computed pivot URLs for the detected kind
+	iocInput  string
+	iocKind   string
+	iocValue  string
+	iocPivots []iocPivot
 
-	// MITRE coverage modal: technique → article count, plus cursor
-	// for selecting a technique to filter the feed on.
 	mitreEntries []mitreEntry
 	mitreCursor  int
 	mitreOffset  int
 
-	// Source viz / Feeding Tubes modal: ordered list of (source, count)
-	// pairs used to draw a horizontal bar chart.
 	vizEntries []vizEntry
 
-	// Bookmarks. id-set for fast in-render lookup ("is this article
-	// bookmarked?") and a flag for the bookmark-filter mode (`B`).
 	bookmarks         map[int64]bool
 	bookmarksOnly     bool
 	bookmarksLoadedAt time.Time
 
-	// AI brief state. Populated when the user presses `I` or `W` and
-	// the async Summarize call resolves. Body holds the rendered text,
-	// loading + err handle the in-flight / failure cases. label
-	// overrides the default modal title for the W variant; window
-	// is the time-scope used for the digest input query.
 	aiBriefBody    string
 	aiBriefLoading bool
 	aiBriefErr     string
 	aiBriefLabel   string
 	aiBriefWindow  time.Duration
 
-	// Leaderboard state - /trending (hottest CVEs by mention count)
-	// and /pre-kev (CVEs heating up before CISA adds them to KEV).
-	trendingCVEs    []storage.CVEActivity
+	trendingCVEs     []storage.CVEActivity
 	preKEVCandidates []preKEVRow
 
-	// Patch Tuesday briefs cache.
 	patchBriefs []storage.PatchBrief
 
-	// Score-explainer cache for the currently-selected article. Lazy-
-	// rebuilt on each `e` keypress so a moving selection doesn't keep
-	// stale data around.
 	scoreExplain *scoreExplainResult
 
-	// Transient status message shown at the bottom for ~2s after an
-	// action (e.g. "marked read", "opened in browser"). Cleared on next
-	// keypress. Avoids piling toasts up the screen.
 	flash string
 }
 
-// sourceTypeCycle is the rotation `t` cycles through. Empty string
-// means "show every type"; the rest are the source_type strings used
-// by the storage layer.
 var sourceTypeCycle = []string{"", "rss", "bluesky", "mastodon", "reddit", "github", "ioc_feed"}
 
-// iocPivot is one row in the IOC decoder's pivot-link list. label is
-// what the user sees (e.g. "VirusTotal"); url is the pre-built URL
-// the user can copy. We don't open the URL automatically because the
-// IOC decoder is a "tell me where to look" tool, not "open every
-// pivot in 7 browser tabs."
 type iocPivot struct {
 	label string
 	url   string
 }
 
-// mitreEntry is one row in the MITRE ATT&CK coverage modal: a
-// technique ID + how many articles in the corpus reference it.
-// Sorted by count descending for the modal display.
 type mitreEntry struct {
 	techID string
 	count  int
 }
 
-// vizEntry is one row in the source viz / feeding tubes modal: a
-// source name + the number of articles from that source in the
-// current corpus. Sorted by count descending.
 type vizEntry struct {
 	source string
 	count  int
 }
 
-// preKEVRow is one row in the pre-KEV early-warning list. CVE-ID +
-// how many distinct curated sources have mentioned it inside the
-// pre-KEV detection window (default 168 hours).
 type preKEVRow struct {
 	cveID   string
 	sources int
 }
 
-// scoreExplainResult is the keyword-by-category breakdown of why an
-// article scored what it did. Mirrors the per-category match list
-// the web reader's score-explainer popover shows.
 type scoreExplainResult struct {
-	article  models.Article
-	matches  []scoreExplainCategory
-	total    int
+	article models.Article
+	matches []scoreExplainCategory
+	total   int
 }
 
-// scoreExplainCategory is one keyword-category bucket that fired.
 type scoreExplainCategory struct {
-	name    string
-	weight  int
-	hits    []string // matched keywords
+	name   string
+	weight int
+	hits   []string
 }
 
 func initialModel(store *storage.Store) model {
@@ -296,10 +194,6 @@ func initialModel(store *storage.Store) model {
 	return m
 }
 
-// reloadBookmarks refreshes the in-memory bookmark set from storage.
-// Called on startup, after each toggle, and after `B` flips the
-// bookmarks-only filter so any external bookmark inserts (rare but
-// possible if multiple TUIs share a DB) are picked up.
 func (m *model) reloadBookmarks() {
 	if m.store == nil {
 		return
@@ -313,16 +207,8 @@ func (m *model) reloadBookmarks() {
 	m.bookmarksLoadedAt = time.Now()
 }
 
-// reloadArticles re-runs the storage query with the current filter
-// state and resets selection if the previous selection has scrolled
-// out of range. Called on startup and after any filter change, search
-// edit, or destructive action (mark-all-read, force-refresh).
 func (m *model) reloadArticles() {
-	// Bookmark-only filter goes through a dedicated query path because
-	// the regular ListFilter doesn't know about bookmarks (which would
-	// require coupling storage to the self-host bookmark table). The
-	// other filters don't compose with bookmark-only here for v1 -
-	// the assumption is "show me my bookmarks" is its own intent.
+	// Bookmark-only uses its own query; doesn't compose with the other filters.
 	if m.bookmarksOnly {
 		rows, err := m.store.BookmarkedArticles(500)
 		if err != nil {
@@ -368,8 +254,6 @@ func (m *model) reloadArticles() {
 	}
 }
 
-// ----------------- bubbletea required methods --------------------
-
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -382,9 +266,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case cveLoadedMsg:
-		// Discard if the user has navigated away from this CVE since the
-		// fetch started (e.g. dismissed the modal then opened a different
-		// one).
+		// Discard stale results if the user moved on.
 		if msg.cveID != m.cveID {
 			return m, nil
 		}
@@ -406,9 +288,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Modal dispatch first: search and help modes capture every
-		// key until the user exits them, so we never hit the normal-mode
-		// switch below while a modal is up.
+		// Modal dispatch first; modal handlers capture all keys.
 		switch m.mode {
 		case searchMode:
 			return m.updateSearch(msg)
@@ -440,18 +320,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateNormal handles keys when no modal is active. The full
-// in-app keybind table for this surface.
 func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Clear any flash message on the next user keystroke - it
-	// has served its purpose by then.
 	m.flash = ""
 
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	// --- Navigation
 	case "j", "down":
 		m.moveSelection(1)
 	case "k", "up":
@@ -467,7 +342,6 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+u":
 		m.moveSelection(-m.visibleRows() / 2)
 
-	// --- Reading actions
 	case "o", "enter":
 		return m, m.openSelected()
 	case "m":
@@ -492,9 +366,7 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash = "showing all"
 		}
 
-	// --- Filters
 	case "1", "2", "3", "4", "5", "6", "7", "8", "9":
-		// `N` sets minimum score to N0 - same convention as the web reader.
 		m.minScore = int(msg.String()[0]-'0') * 10
 		m.reloadArticles()
 		m.flash = fmt.Sprintf("min score: %d", m.minScore)
@@ -527,23 +399,19 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash = "duplicates hidden"
 		}
 
-	// --- Search
 	case "/":
 		m.mode = searchMode
 		m.searchInput = m.search
 
-	// --- Help
 	case "?":
 		m.mode = helpMode
 
-	// --- CVE popover
 	case "c":
 		cmd := m.openCVEPopover()
 		if cmd != nil {
 			return m, cmd
 		}
 
-	// --- Other modals (parity with web reader)
 	case "S":
 		m.openStats()
 	case "s":
@@ -560,11 +428,7 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			return m, cmd
 		}
 	case "W":
-		// "While you were gone" - same AI brief but scoped to the
-		// last 4 hours. Web reader tracks a precise last-visit
-		// timestamp per-user; TUI v1 uses a fixed window since
-		// there's no auth/user concept here. Good enough for the
-		// "I was just here, catch me up" workflow.
+		// W = same as I but scoped to last 4h.
 		cmd := m.openAIBriefWithLabel(4*time.Hour, "WHILE YOU WERE GONE :: last 4h")
 		if cmd != nil {
 			return m, cmd
@@ -576,15 +440,12 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "e":
 		m.openScoreExplain()
 	case "E":
-		// MITRE ATT&CK Navigator layer export. Writes a JSON file to
-		// the user's home dir; flashes the saved path.
 		if path, err := m.exportATTACKLayer(); err != nil {
 			m.flash = "ATT&CK export failed: " + err.Error()
 		} else {
 			m.flash = "ATT&CK layer saved → " + path
 		}
 
-	// --- Force refresh
 	case "r":
 		m.reloadArticles()
 		m.flash = "reloaded"
@@ -592,9 +453,6 @@ func (m model) updateNormal(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// ----------------- Modal update handlers ----------------------------
-
-// updateStats / updateMITRE / updateViz: read-only modals, any key dismisses.
 func (m model) updateStats(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.mode = normalMode
 	m.stats = nil
@@ -607,7 +465,6 @@ func (m model) updateViz(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateSourcePicker handles j/k nav + Enter to apply + Esc to cancel.
 func (m model) updateSourcePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
@@ -630,18 +487,12 @@ func (m model) updateSourcePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.sourceCursor >= 0 && m.sourceCursor < len(m.sourceList) {
 			m.search = ""
 			m.sourceType = ""
-			// Use the search field as a filter-by-source proxy. The
-			// ListFilter has Source but Source matches by source_type
-			// too in some queries - search-with-LIKE on exact source
-			// name is more predictable.
-			// Actually use the dedicated Source field.
 			m.reloadArticlesWithSource(m.sourceList[m.sourceCursor])
 			m.flash = "source: " + m.sourceList[m.sourceCursor]
 		}
 		m.mode = normalMode
 		m.sourceList = nil
 	case "0":
-		// Clear source filter.
 		m.reloadArticlesWithSource("")
 		m.flash = "source filter cleared"
 		m.mode = normalMode
@@ -650,8 +501,6 @@ func (m model) updateSourcePicker(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateMITRE handles j/k + Enter (filter feed to articles tagged with
-// that technique) + Esc to dismiss.
 func (m model) updateMITRE(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc", "q":
@@ -681,8 +530,6 @@ func (m model) updateMITRE(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateIOC handles the text-input bar of the IOC decoder, plus Enter
-// to lock in the input + show pivots, plus Esc to dismiss.
 func (m model) updateIOC(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
@@ -690,7 +537,6 @@ func (m model) updateIOC(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.iocInput, m.iocKind, m.iocValue = "", "", ""
 		m.iocPivots = nil
 	case "enter":
-		// Re-detect on Enter so the user can edit + re-decode.
 		m.iocKind, m.iocValue, m.iocPivots = detectIOC(m.iocInput)
 	case "backspace", "ctrl+h":
 		if n := len(m.iocInput); n > 0 {
@@ -703,17 +549,12 @@ func (m model) updateIOC(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	default:
 		if len(msg.Runes) > 0 {
 			m.iocInput += string(msg.Runes)
-			// Live-detect: as soon as the user has enough chars to
-			// match a pattern, show the pivots. Cheap regex check.
 			m.iocKind, m.iocValue, m.iocPivots = detectIOC(m.iocInput)
 		}
 	}
 	return m, nil
 }
 
-// reloadArticlesWithSource sets the source filter and reloads. Kept
-// separate from reloadArticles so the source-picker doesn't have to
-// stash state across update cycles.
 func (m *model) reloadArticlesWithSource(src string) {
 	rows, err := m.store.List(storage.ListFilter{
 		MinScore:   m.minScore,
@@ -733,8 +574,6 @@ func (m *model) reloadArticlesWithSource(src string) {
 	m.selected = 0
 	m.listOffset = 0
 }
-
-// ----------------- Modal open functions ------------------------------
 
 func (m *model) openStats() {
 	s, err := m.store.Stats()
@@ -787,20 +626,10 @@ func (m *model) openMITRE() {
 	m.mode = mitreMode
 }
 
-// openAIBrief pops the AI intel brief modal scoped to the last
-// `window` of time. The modal opens immediately with a
-// "synthesizing..." placeholder; the LLM response replaces it
-// via aiBriefLoadedMsg.
-//
-// Returns the tea.Cmd that does the LLM call, or nil if no AI
-// client is wired up (in which case the modal renders a BYOK hint).
 func (m *model) openAIBrief(window time.Duration) tea.Cmd {
 	return m.openAIBriefWithLabel(window, "")
 }
 
-// openAIBriefWithLabel is openAIBrief with an explicit modal title.
-// Used by the "while you were gone" variant which has its own
-// header. Empty label = use the default "WORM'S DIGEST :: last 24h".
 func (m *model) openAIBriefWithLabel(window time.Duration, label string) tea.Cmd {
 	m.aiBriefBody = ""
 	m.aiBriefErr = ""
@@ -832,8 +661,6 @@ func (m *model) openAIBriefWithLabel(window time.Duration, label string) tea.Cmd
 	return fetchAIBrief(m.ai, rows)
 }
 
-// humanizeDuration formats a Duration for the brief-empty-state
-// message ("4h" / "24h" / "30m"). Doesn't need to be precise.
 func humanizeDuration(d time.Duration) string {
 	if d >= time.Hour {
 		return fmt.Sprintf("%dh", int(d.Hours()))
@@ -841,20 +668,15 @@ func humanizeDuration(d time.Duration) string {
 	return fmt.Sprintf("%dm", int(d.Minutes()))
 }
 
-// aiBriefLoadedMsg carries the LLM response (or error) back to the
-// Update loop.
 type aiBriefLoadedMsg struct {
 	body string
 	err  error
 }
 
-// fetchAIBrief wraps the LLM call in a tea.Cmd. 60-second timeout
-// covers slow providers without hanging the TUI forever.
 func fetchAIBrief(client ai.Summarizer, rows []models.Article) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 		defer cancel()
-		// Convert storage articles to the ai package's slim form.
 		items := make([]ai.Article, 0, len(rows))
 		for _, a := range rows {
 			items = append(items, ai.Article{
@@ -870,7 +692,6 @@ func fetchAIBrief(client ai.Summarizer, rows []models.Article) tea.Cmd {
 	}
 }
 
-// updateAIBrief dismisses the brief modal on any key.
 func (m model) updateAIBrief(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.mode = normalMode
 	m.aiBriefBody = ""
@@ -899,21 +720,16 @@ func (m *model) openViz() {
 	m.mode = vizMode
 }
 
-// ----------------- IOC type detection --------------------------------
-
 var (
-	iocCVERegex   = regexp.MustCompile(`(?i)^CVE-(?:19|20)\d{2}-\d{4,7}$`)
-	iocSHA256Reg  = regexp.MustCompile(`(?i)^[0-9a-f]{64}$`)
-	iocSHA1Reg    = regexp.MustCompile(`(?i)^[0-9a-f]{40}$`)
-	iocMD5Reg     = regexp.MustCompile(`(?i)^[0-9a-f]{32}$`)
-	iocIPv4Regex  = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
-	iocURLRegex   = regexp.MustCompile(`^https?://[^\s]+$`)
-	iocDomainReg  = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$`)
+	iocCVERegex  = regexp.MustCompile(`(?i)^CVE-(?:19|20)\d{2}-\d{4,7}$`)
+	iocSHA256Reg = regexp.MustCompile(`(?i)^[0-9a-f]{64}$`)
+	iocSHA1Reg   = regexp.MustCompile(`(?i)^[0-9a-f]{40}$`)
+	iocMD5Reg    = regexp.MustCompile(`(?i)^[0-9a-f]{32}$`)
+	iocIPv4Regex = regexp.MustCompile(`^(\d{1,3}\.){3}\d{1,3}$`)
+	iocURLRegex  = regexp.MustCompile(`^https?://[^\s]+$`)
+	iocDomainReg = regexp.MustCompile(`^([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$`)
 )
 
-// detectIOC classifies a string by its visible shape and returns a
-// canonicalized form plus a list of pivot URLs. Mirrors the web
-// reader's IOC decoder logic so the pivots are the same set.
 func detectIOC(raw string) (kind, value string, pivots []iocPivot) {
 	s := strings.TrimSpace(raw)
 	if s == "" {
@@ -969,10 +785,6 @@ func detectIOC(raw string) (kind, value string, pivots []iocPivot) {
 	return "unknown", s, nil
 }
 
-// updateCVE dismisses the CVE popover. Any keypress closes it.
-// (Future iterations could add j/k to scroll a long consensus list
-// or `o` to open the latest article, but for v1 the popover is
-// purely informational.)
 func (m model) updateCVE(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.mode = normalMode
 	m.cveID = ""
@@ -982,15 +794,7 @@ func (m model) updateCVE(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// openCVEPopover scans the selected article for the first CVE-ID,
-// loads local data (consensus + timeline + articles + EPSS) synchronously,
-// and kicks off an async NVD fetch for CVSS / CWE / description. The
-// modal opens immediately with whatever local data is available; the
-// NVD fields fill in (or fail) seconds later when the async result
-// lands as a cveLoadedMsg.
-//
-// Returns a tea.Cmd for the async NVD fetch, or nil if there's no
-// CVE-ID to look up.
+// openCVEPopover: loads local data synchronously, kicks off async NVD fetch.
 func (m *model) openCVEPopover() tea.Cmd {
 	if m.selected < 0 || m.selected >= len(m.articles) {
 		return nil
@@ -1006,7 +810,6 @@ func (m *model) openCVEPopover() tea.Cmd {
 	m.cveEPSS = nil
 	m.cveLoadErr = ""
 
-	// Local-only data: free, synchronous.
 	if rows, err := m.store.CVEConsensus(cveID, 30); err == nil {
 		m.cveConsensus = rows
 	}
@@ -1016,15 +819,12 @@ func (m *model) openCVEPopover() tea.Cmd {
 	if articles, err := m.store.ArticlesForCVE(cveID, 20); err == nil {
 		m.cveArticles = articles
 	}
-	// EPSS is also local SQLite (fast).
 	if m.epss != nil {
 		m.cveEPSS = m.epss.Get(cveID)
 	}
 
 	m.mode = cveMode
 
-	// Async NVD fetch. Returns a cmd; bubbletea runs it in a goroutine
-	// and feeds the result back through Update via cveLoadedMsg.
 	if m.nvd == nil {
 		return nil
 	}
@@ -1032,18 +832,12 @@ func (m *model) openCVEPopover() tea.Cmd {
 	return fetchCVEDetail(m.nvd, cveID)
 }
 
-// cveLoadedMsg is the async result of a NVD fetch. detail is nil on
-// "not found" or upstream failure; err captures the failure reason
-// for display in the modal footer.
 type cveLoadedMsg struct {
 	cveID  string
 	detail *cve.CVEDetail
 	err    error
 }
 
-// fetchCVEDetail wraps a NVD lookup in a tea.Cmd so it runs off the
-// UI goroutine. 15-second timeout matches the web reader's API
-// handler.
 func fetchCVEDetail(client *cve.NVDClient, cveID string) tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
@@ -1053,13 +847,9 @@ func fetchCVEDetail(client *cve.NVDClient, cveID string) tea.Cmd {
 	}
 }
 
-// firstCVEID returns the first CVE-ID referenced anywhere in the
-// article. Search order: tags (cheap + reliable), title, summary.
-// All matches are upper-cased to match storage's normalized form.
+// firstCVEID scans tags, then title, then summary.
 func firstCVEID(a models.Article) string {
 	for _, t := range a.Tags {
-		// Tags like "cve:CVE-2026-12345" or just "CVE-2026-12345"
-		// both flow through here.
 		if m := cveIDRegex.FindString(strings.ToUpper(t)); m != "" {
 			return strings.ToUpper(m)
 		}
@@ -1073,9 +863,6 @@ func firstCVEID(a models.Article) string {
 	return ""
 }
 
-// updateSearch handles keystrokes while the search-input bar is up.
-// Enter applies the search, Esc cancels, backspace deletes a char,
-// printable chars get appended.
 func (m model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "enter":
@@ -1088,21 +875,16 @@ func (m model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.flash = "search: " + m.search
 		}
 	case "esc":
-		// Cancel - leave m.search at whatever it was before opening.
 		m.mode = normalMode
 		m.searchInput = ""
 	case "backspace", "ctrl+h":
 		if n := len(m.searchInput); n > 0 {
-			// Trim by RUNE so backspace doesn't leave us mid-multibyte.
 			runes := []rune(m.searchInput)
 			m.searchInput = string(runes[:len(runes)-1])
 		}
 	case "ctrl+u":
 		m.searchInput = ""
 	default:
-		// Append printable characters. tea.KeyMsg.Runes is non-empty
-		// for letter / digit / symbol keys; control combos give Runes
-		// empty + a named String() like "ctrl+w".
 		if len(msg.Runes) > 0 {
 			m.searchInput += string(msg.Runes)
 		}
@@ -1110,16 +892,11 @@ func (m model) updateSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// updateHelp dismisses the help overlay on any key.
 func (m model) updateHelp(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	m.mode = normalMode
 	return m, nil
 }
 
-// toggleSelectedBookmark flips bookmark state for the currently-selected
-// article. Updates the in-memory set immediately so the row's ★ icon
-// re-renders on the next View() pass without waiting for a full
-// reloadBookmarks roundtrip.
 func (m *model) toggleSelectedBookmark() {
 	if m.selected < 0 || m.selected >= len(m.articles) {
 		return
@@ -1142,10 +919,6 @@ func (m *model) toggleSelectedBookmark() {
 	}
 }
 
-// markSelectedRead toggles the read state of the currently-selected
-// article. The mark-read direction is one-way at storage level (no
-// "unread" op) so we just update local state if the user re-marks an
-// already-read article.
 func (m *model) markSelectedRead() {
 	if m.selected < 0 || m.selected >= len(m.articles) {
 		return
@@ -1163,19 +936,13 @@ func (m *model) markSelectedRead() {
 	m.flash = "marked read"
 }
 
-// openSelected returns a tea.Cmd that launches the OS's default
-// browser pointed at the selected article URL, then marks the
-// article read. The mark-read happens synchronously before the
-// command runs so the UI feedback is immediate; the browser launch
-// is async because it could otherwise block on a slow shell on
-// some platforms.
+// openSelected marks read synchronously, opens URL via shell cmd in background.
 func (m *model) openSelected() tea.Cmd {
 	if m.selected < 0 || m.selected >= len(m.articles) {
 		return nil
 	}
 	a := &m.articles[m.selected]
 	url := a.URL
-	// Best-effort mark read - bail on failure but don't block opening.
 	if !a.Read {
 		if err := m.store.MarkRead(a.ID); err == nil {
 			a.Read = true
@@ -1188,8 +955,6 @@ func (m *model) openSelected() tea.Cmd {
 	}
 }
 
-// nextSourceType returns the next source-type in the cycle - "" -> "rss"
-// -> "bluesky" -> ... -> "" -> ... wrap.
 func nextSourceType(current string) string {
 	for i, v := range sourceTypeCycle {
 		if v == current {
@@ -1217,9 +982,6 @@ func (m model) View() string {
 		return errorStyle.Render(fmt.Sprintf("storage error: %v\n\npress q to quit", m.loadErr))
 	}
 
-	// Help modal eats the screen until any key is pressed. Render it
-	// instead of the normal two-pane view to avoid laying out a body
-	// we're about to obscure anyway.
 	if m.mode == helpMode {
 		return m.renderHelp()
 	}
@@ -1262,8 +1024,6 @@ func (m model) View() string {
 	}
 
 	listW, previewW := m.paneWidths()
-	// Bottom rows reserved for: 1 header + 1 status + (1 if in search mode for the
-	// input bar). Subtract dynamically so the search bar doesn't overlap the body.
 	bottomReserved := 2
 	if m.mode == searchMode {
 		bottomReserved = 3
@@ -1272,15 +1032,7 @@ func (m model) View() string {
 
 	header := m.renderHeader()
 
-	// Pane bodies: rendered as plain content first, then wrapped in
-	// titled box frames so each side reads as a real labelled panel
-	// (the lazygit / gh-dash convention).
-	//
-	// paneFrame eats 2 rows (top + bottom edge) and 4 cells of width
-	// (left bar + left padding + right padding + right bar). Pass the
-	// pane content the EXACT inner dimensions so it never overflows -
-	// overflow triggers the truncation path which destroys ANSI
-	// styling and was breaking selection rendering.
+	// paneFrame eats 2 rows + 4 cells of width. Pass exact inner dims to avoid overflow.
 	innerListW := listW - 4
 	innerPreviewW := previewW - 4
 	innerH := bodyH - 2
@@ -1298,9 +1050,6 @@ func (m model) View() string {
 	return lipgloss.JoinVertical(lipgloss.Left, header, body, bottom)
 }
 
-// renderHelp paints the keybind cheatsheet as a centred bordered
-// modal. Same flat-tabbed format as `?` in the web reader so users
-// get the same mental model across surfaces.
 func (m model) renderHelp() string {
 	titleText := lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render(":: TUI keybinds ::")
 	dismiss := dimStyle.Render("any key dismisses")
@@ -1341,7 +1090,7 @@ func (m model) renderHelp() string {
 		"  S                 Feast Stats (sources + tags)",
 		"  v                 Feeding Tubes (source distribution chart)",
 		"  s                 source picker (selectable list)",
-		"  I                 AI intel brief :: last 24h (BYOK Anthropic/OpenAI)",
+		"  I                 intel brief :: last 24h (BYOK Anthropic/OpenAI)",
 		"  W                 while you were gone :: last 4h",
 		"  L                 leaderboards :: /trending + /pre-kev",
 		"  P                 Patch Tuesday brief reader",
@@ -1353,9 +1102,6 @@ func (m model) renderHelp() string {
 	}
 
 	modal := modalStyle.Width(innerW + 6).Render(strings.Join(lines, "\n"))
-	// Backdrop: fill the entire screen with the deep-fill colour
-	// behind the modal so the underlying TUI is hidden and the
-	// modal pops against a uniform dark canvas.
 	return lipgloss.Place(
 		m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
@@ -1364,38 +1110,17 @@ func (m model) renderHelp() string {
 	)
 }
 
-// accentText is a tiny helper to bold-accent a label in the help overlay
-// without dragging a per-section style through the call site.
 func accentText(s string) string {
 	return lipgloss.NewStyle().Foreground(accent).Bold(true).Render(s)
 }
 
-// paneFrame wraps `content` in a manually-box-drawn frame with a title
-// label baked into the top edge. lipgloss doesn't natively support
-// titled borders, so we render the top + bottom rows ourselves with
-// unicode box-drawing chars and side bars by padding each content
-// line with "│ ... │".
-//
-// Layout for a width=80 title="FEED" pane:
-//
-//	┌─[ FEED ]─────────────────...──────────────────────────┐
-//	│ <content row 1>                                       │
-//	│ <content row 2>                                       │
-//	│ ...                                                   │
-//	└───────────────────────────────────────────────────────┘
-//
-// `content` is expected to be `height-2` lines already padded to
-// `width-4` cells each (border + space on each side). title is
-// rendered in the accent colour, the title bracket separators in
-// the muted border colour.
+// paneFrame wraps content in a titled box. Content lines must be padded to width-4 cells.
 func paneFrame(title, content string, width, height int, titleStyle lipgloss.Style) string {
 	if width < 8 || height < 3 {
 		return content
 	}
-	// Top edge: ┌─[ TITLE ]──...──┐
 	titleLabel := titleStyle.Render(" " + title + " ")
 	titleLabelW := lipgloss.Width(titleLabel)
-	// "┌─[" (3) + titleLabel + "]" (1) + fill + "┐" (1)
 	headerFill := width - 3 - titleLabelW - 1 - 1
 	if headerFill < 1 {
 		headerFill = 1
@@ -1406,17 +1131,11 @@ func paneFrame(title, content string, width, height int, titleStyle lipgloss.Sty
 	corner := paneBorderStyle.Render("┐")
 	top := bracketL + titleLabel + bracketR + rule + corner
 
-	// Bottom edge: └────────...────┘
 	bottom := paneBorderStyle.Render("└" + strings.Repeat("─", width-2) + "┘")
 
-	// Body rows: each content line gets │ on each side. Pad short
-	// lines to innerW with spaces; if a line is wider than innerW
-	// we leave it alone rather than truncating - truncation strips
-	// ANSI styling and breaks selection rendering, so it's better
-	// to surface a slightly-overflowing right edge as a visible bug
-	// to fix upstream than to silently corrupt the styling.
+	// Don't truncate over-wide lines: ANSI strip breaks styling. Pad short ones only.
 	bar := paneBorderStyle.Render("│")
-	innerW := width - 4 // 2 for left+right bars + 2 for left+right padding
+	innerW := width - 4
 	var bodyLines []string
 	for _, line := range strings.Split(content, "\n") {
 		visW := lipgloss.Width(line)
@@ -1425,7 +1144,6 @@ func paneFrame(title, content string, width, height int, titleStyle lipgloss.Sty
 		}
 		bodyLines = append(bodyLines, bar+" "+line+" "+bar)
 	}
-	// Pad body to (height - 2) rows (top + bottom edges eat 2 rows).
 	for len(bodyLines) < height-2 {
 		bodyLines = append(bodyLines, bar+strings.Repeat(" ", width-2)+bar)
 	}
@@ -1436,48 +1154,7 @@ func paneFrame(title, content string, width, height int, titleStyle lipgloss.Sty
 	return strings.Join(append(append([]string{top}, bodyLines...), bottom), "\n")
 }
 
-// stripANSIWidth is a fallback used only when we have to re-truncate
-// a line that's already styled (i.e. visible width measurement said
-// it was too wide). We can't truncate the original string by runewidth
-// because the ANSI escape codes get split mid-sequence. Best-effort:
-// strip the ANSI codes, truncate the plain text. The colour styling
-// is lost on that line but the layout stays correct.
-//
-// In practice this only fires when something upstream of paneFrame
-// produced a row wider than expected - normal rows should already
-// be width-correct.
-func stripANSIWidth(s string) string {
-	var b strings.Builder
-	b.Grow(len(s))
-	inEscape := false
-	for _, r := range s {
-		if r == 0x1b {
-			inEscape = true
-			continue
-		}
-		if inEscape {
-			if r == 'm' {
-				inEscape = false
-			}
-			continue
-		}
-		b.WriteRune(r)
-	}
-	return b.String()
-}
-
-// renderCVEPopover paints the CVE deep-dive modal that pops when the
-// user presses `c` on an article with a CVE-ID. Layout: a centred
-// rounded-border box, sized to ~80% of the screen, with section
-// headers in the same flat-cyan tracking the web reader uses.
-//
-// When the source article carries a `kev` tag (CISA KEV listed), the
-// modal swaps to a red-border variant and prepends a red "ACTIVELY
-// EXPLOITED" banner row - the strongest visual signal we can deploy
-// in a terminal short of actually flashing the screen.
 func (m model) renderCVEPopover() string {
-	// Compute target modal dimensions. Clamp width so it never
-	// dominates absurdly wide terminals.
 	modalW := m.width * 80 / 100
 	if modalW > 110 {
 		modalW = 110
@@ -1485,12 +1162,8 @@ func (m model) renderCVEPopover() string {
 	if modalW < 60 {
 		modalW = 60
 	}
-	innerW := modalW - 6 // padding 1,2 = 4 char + 2 for the border itself
+	innerW := modalW - 6
 
-	// Detect KEV from the source article's tags so we pick the
-	// right modal frame colour. This is a local lookup - no
-	// network. The scorer adds `kev` to articles referencing
-	// a KEV-listed CVE, so the absence here is a true negative.
 	kev := false
 	var sourceArticle models.Article
 	if m.selected >= 0 && m.selected < len(m.articles) {
@@ -1504,8 +1177,6 @@ func (m model) renderCVEPopover() string {
 		}
 	}
 
-	// Title row + dismiss hint, joined into one line so the modal's
-	// top-most content row reads as a header.
 	titleText := lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render(":: " + m.cveID + " ::")
 	dismiss := dimStyle.Render("any key dismisses")
 	pad := innerW - lipgloss.Width(titleText) - lipgloss.Width(dismiss)
@@ -1514,16 +1185,12 @@ func (m model) renderCVEPopover() string {
 	}
 	header := titleText + strings.Repeat(" ", pad) + dismiss
 
-	// Banner row for KEV-listed CVEs. Red on red, takes the full
-	// inner width - hard to miss without flashing the screen.
 	var kevBanner string
 	if kev {
 		banner := kevPulseBannerStyle.Render(runewidth.FillRight("  ●  ACTIVELY EXPLOITED  -  IN CISA KEV CATALOG  ", innerW))
 		kevBanner = banner
 	}
 
-	// Tag chips from the source article. Skip the cve-* tags since
-	// the CVE-ID is already in the title row.
 	var chipsLine string
 	if len(sourceArticle.Tags) > 0 {
 		var chips []string
@@ -1539,8 +1206,6 @@ func (m model) renderCVEPopover() string {
 		}
 	}
 
-	// --- Build the body lines in order. Each section gets a styled
-	// header line then a block of content lines, separated by a blank.
 	var body []string
 	body = append(body, header)
 	if kevBanner != "" {
@@ -1552,9 +1217,6 @@ func (m model) renderCVEPopover() string {
 		body = append(body, chipsLine)
 	}
 
-	// NVD enrichment block. Loading state while the network fetch
-	// is in flight; populated CVSS / CWE / description / EPSS once
-	// the cveLoadedMsg lands.
 	body = append(body, "")
 	body = append(body, modalSectionStyle.Render("::  NVD + EPSS  ::"))
 	switch {
@@ -1564,7 +1226,6 @@ func (m model) renderCVEPopover() string {
 		body = append(body, lipgloss.NewStyle().Foreground(accentRed).Render("   [!] NVD lookup failed: "+m.cveLoadErr))
 	case m.cveDetail != nil:
 		d := m.cveDetail
-		// CVSS line: score + severity. Colour by severity tier.
 		var cvssLine string
 		if d.CVSSv3Score > 0 {
 			sevColor := accent
@@ -1588,22 +1249,18 @@ func (m model) renderCVEPopover() string {
 			cvssLine = "  " + dimStyle.Render("CVSSv3 unavailable")
 		}
 		body = append(body, cvssLine)
-		// EPSS line.
 		if m.cveEPSS != nil {
 			epssLine := "  " + dimStyle.Render("EPSS   ") +
 				lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render(fmt.Sprintf("%.1f%% pctile", m.cveEPSS.Percentile*100)) +
 				"  " + dimStyle.Render(fmt.Sprintf("score %.4f", m.cveEPSS.Score))
 			body = append(body, epssLine)
 		}
-		// CWE.
 		if d.CWE != "" {
 			body = append(body, "  "+dimStyle.Render("CWE    ")+titleStyle.Render(d.CWE))
 		}
-		// Published / modified.
 		if d.Published != "" {
 			body = append(body, "  "+dimStyle.Render("dates  ")+dimStyle.Render(d.Published+" → "+d.LastModified))
 		}
-		// Description, word-wrapped to fit the modal inner width.
 		if d.Description != "" {
 			body = append(body, "")
 			desc := wordWrap(sanitizeOneLine(d.Description), innerW-2)
@@ -1615,7 +1272,6 @@ func (m model) renderCVEPopover() string {
 		body = append(body, dimStyle.Render("   (no NVD client wired - run with full daemon to enable)"))
 	}
 
-	// Source consensus section.
 	body = append(body, "")
 	body = append(body, modalSectionStyle.Render("::  Source consensus (last 30 days)  ::"))
 	if len(m.cveConsensus) == 0 {
@@ -1633,8 +1289,7 @@ func (m model) renderCVEPopover() string {
 		}
 	}
 
-	// Timeline section (one event per kind: first_mention / advisory /
-	// first_poc / latest).
+	// Timeline: collapse to one event per Kind.
 	if len(m.cveTimeline) > 0 {
 		body = append(body, "")
 		body = append(body, modalSectionStyle.Render("::  Timeline  ::"))
@@ -1651,7 +1306,6 @@ func (m model) renderCVEPopover() string {
 		}
 	}
 
-	// Related-articles section.
 	if len(m.cveArticles) > 0 {
 		body = append(body, "")
 		body = append(body, modalSectionStyle.Render(fmt.Sprintf("::  Articles in corpus (%d)  ::", len(m.cveArticles))))
@@ -1667,22 +1321,18 @@ func (m model) renderCVEPopover() string {
 		}
 	}
 
-	// Hard-cap to fit inside a modal height of ~80% of screen.
-	maxBodyLines := m.height*80/100 - 4 // 4 = top/bottom border + padding
+	maxBodyLines := m.height*80/100 - 4
 	if len(body) > maxBodyLines {
 		body = body[:maxBodyLines-1]
 		body = append(body, dimStyle.Render("   ... (more not shown - terminal too short)"))
 	}
 
-	// Pick the right modal frame colour based on KEV status.
 	frame := modalStyle
 	if kev {
 		frame = modalKEVStyle
 	}
 	modal := frame.Width(modalW).Render(strings.Join(body, "\n"))
 
-	// Centre the modal in the viewport over a dark backdrop fill so
-	// the underlying view is hidden and the modal pops.
 	return lipgloss.Place(
 		m.width, m.height,
 		lipgloss.Center, lipgloss.Center,
@@ -1691,9 +1341,6 @@ func (m model) renderCVEPopover() string {
 	)
 }
 
-// renderSearchBar renders the search-input prompt at the bottom of the
-// screen when the user has pressed `/`. The "_" cursor is a stand-in
-// for a real bubbletea text-input - good enough for v1.
 func (m model) renderSearchBar() string {
 	prompt := accentText("/")
 	caret := "_"
@@ -1701,8 +1348,6 @@ func (m model) renderSearchBar() string {
 	bar = runewidth.FillRight(bar, m.width)
 	return lipgloss.NewStyle().Background(lipgloss.Color("#14191f")).Render(bar)
 }
-
-// ----------------- selection / scrolling --------------------
 
 func (m *model) moveSelection(delta int) {
 	if len(m.articles) == 0 {
@@ -1731,11 +1376,9 @@ func (m *model) ensureSelectedVisible() {
 	}
 }
 
-// visibleRows returns the number of article rows that fit inside the
-// list pane. Subtract: header (1) + status bar (1) + search bar if
-// active (1) + pane frame top+bottom edges (2) = 4 or 5.
 func (m model) visibleRows() int {
-	reserved := 4 // header + status + pane top + pane bottom
+	// header + status + pane top + pane bottom (+ search bar)
+	reserved := 4
 	if m.mode == searchMode {
 		reserved = 5
 	}
@@ -1753,13 +1396,7 @@ func (m model) paneWidths() (listW, previewW int) {
 	return
 }
 
-// ----------------- rendering --------------------
-
 func (m model) renderHeader() string {
-	// Small worm glyph as a brand mark - ●●● = the worm's body
-	// segments. Cheap, recognizable, terminal-safe (BLACK CIRCLE
-	// codepoint U+25CF renders consistently across Windows / mac
-	// / Linux terminals at 1 cell each).
 	worm := lipgloss.NewStyle().Foreground(accent).Render("●●●")
 	title := headerBrandStyle.Render(" om nom nom")
 	tagline := dimStyle.Render(" :: security feeds ")
@@ -1770,8 +1407,6 @@ func (m model) renderHeader() string {
 	if pad < 0 {
 		pad = 0
 	}
-	// Wrap the assembled line in the header background so the bar
-	// reads as a distinct UI strip rather than free-floating text.
 	return headerBarStyle.Render(left + strings.Repeat(" ", pad) + count)
 }
 
@@ -1799,15 +1434,11 @@ func (m model) renderStatus() string {
 		left = dimStyle.Render(" filters: ") + accentText(strings.Join(filters, " · "))
 	}
 
-	// Center / left-of-right: flash message (action ack, error,
-	// etc.). Only one message at a time and it expires on next
-	// keystroke. Cleared by Update.updateNormal entry path.
 	mid := ""
 	if m.flash != "" {
 		mid = "  " + lipgloss.NewStyle().Foreground(accentCyan).Render(m.flash)
 	}
 
-	// Right side: terse keybind hint, always visible.
 	right := dimStyle.Render(" j/k nav   o open   /search   ? help   q quit ")
 
 	used := lipgloss.Width(left) + lipgloss.Width(mid) + lipgloss.Width(right)
@@ -1815,8 +1446,6 @@ func (m model) renderStatus() string {
 	if pad < 0 {
 		pad = 0
 	}
-	// Apply the status-bar background so the strip reads as its own
-	// UI section instead of bleeding into the body above it.
 	return statusBarStyle.Render(left + mid + strings.Repeat(" ", pad) + right)
 }
 
@@ -1841,41 +1470,21 @@ func (m model) renderList(width, height int) string {
 	return lipgloss.JoinVertical(lipgloss.Left, lines...)
 }
 
-// renderListRow renders one article row at EXACTLY `width` cells wide.
-// Column layout (left-to-right):
-//
-//	bar  score   title                          source         age
-//	 1     5       titleW                         14            7
-//	     space          space               space          space        = 4 gaps
-//
-// Every column is pre-padded with runewidth.FillRight to its exact
-// visible-cell width BEFORE being run through a lipgloss style. We
-// avoid any outer lipgloss Width / MaxWidth on the assembled row,
-// because lipgloss sometimes wraps a slightly-too-wide row rather
-// than clipping it, which manifested as phantom continuation lines
-// in earlier renders. The numbers above sum to exactly `width`.
-//
-// The selected-row visual is: solid-green bar (background-colored
-// space, not a unicode block which renders unreliably on some
-// Windows terminals) + selected-title style + selected-row background.
+// renderListRow: bar(2) score(5) bm(1) title(W) source(14) age(7) + 5 gaps.
 func (m model) renderListRow(a models.Article, width int, selected bool) string {
 	const (
-		barW    = 2 // 2-cell selection bar
-		scoreW  = 5 // " ### "
-		bmW     = 1 // bookmark glyph or space
+		barW    = 2
+		scoreW  = 5
+		bmW     = 1
 		sourceW = 14
 		ageW    = 7
-		gaps    = 5 // 5 single-space gaps between bar/score/bm/title/source/age
+		gaps    = 5
 	)
 	titleW := width - barW - scoreW - bmW - sourceW - ageW - gaps
 	if titleW < 8 {
 		titleW = 8
 	}
 
-	// Bar: 2 cells. Selected = solid accent-green block via background
-	// colour on two spaces (no character, no font-rendering surprises).
-	// Unselected = two plain spaces. Two cells makes the selection
-	// unmistakable even on terminals that ate the single-cell version.
 	var bar string
 	if selected {
 		bar = selectedBarStyle.Render("  ")
@@ -1883,24 +1492,14 @@ func (m model) renderListRow(a models.Article, width int, selected bool) string 
 		bar = "  "
 	}
 
-	// Score chip: " %3d " is 5 cells exactly.
 	score := scoreStyle(a.Score, hasKEV(a)).Render(fmt.Sprintf(" %3d ", a.Score))
 
-	// Bookmark glyph: ★ in amber if bookmarked, single space if not.
-	// ASCII single-cell stars render reliably across Windows
-	// terminals; the unicode ★ (U+2605) is also 1 cell on all
-	// platforms I've tested.
 	bmGlyph := " "
 	if m.bookmarks[a.ID] {
 		bmGlyph = lipgloss.NewStyle().Foreground(accentAmber).Bold(true).Render("★")
 	}
 
-	// Title: strip embedded newlines and other control chars FIRST -
-	// Bluesky / Mastodon posts often arrive with the full post body as
-	// the "title" field, including \n. runewidth.Truncate counts \n
-	// as 0 cells but the terminal still hard-breaks on it, which split
-	// our rows across two terminal lines and showed up as phantom
-	// continuation rows in earlier debugging.
+	// Strip control chars first; Bluesky / Mastodon titles often have embedded \n.
 	cleanTitle := sanitizeOneLine(a.Title)
 	titleText := runewidth.FillRight(runewidth.Truncate(cleanTitle, titleW, "…"), titleW)
 	var title string
@@ -1913,22 +1512,13 @@ func (m model) renderListRow(a models.Article, width int, selected bool) string 
 		title = titleStyle.Render(titleText)
 	}
 
-	// Source + age: fixed-width columns. Source also goes through the
-	// single-line sanitizer (Mastodon source strings are URL-shaped and
-	// occasionally include odd unicode that breaks column alignment).
 	sourceText := runewidth.FillRight(runewidth.Truncate(sanitizeOneLine(a.Source), sourceW, "…"), sourceW)
 	source := dimStyle.Render(sourceText)
 	ageText := runewidth.FillRight(runewidth.Truncate(humanizeAge(a.PublishedAt), ageW, ""), ageW)
 	age := dimStyle.Render(ageText)
 
-	// Assemble. Total visible width =
-	//   2 (bar) + 1 + 5 (score) + 1 + 1 (bm) + 1 + titleW + 1 + 14 (source) + 1 + 7 (age)
-	// = titleW + 34 = (width - 34) + 34 = width.
 	row := bar + " " + score + " " + bmGlyph + " " + title + " " + source + " " + age
 
-	// Apply selected-row background WITHOUT setting a width on the wrapper -
-	// the row is already exactly `width` cells, and Width()/MaxWidth() were
-	// what caused the wrap artifact in the previous attempt.
 	if selected {
 		return selectedRowStyle.Render(row)
 	}
@@ -1941,28 +1531,20 @@ func (m model) renderPreview(width, height int) string {
 	}
 	a := m.articles[m.selected]
 
-	// Title block
-	// Hero title block - bold white text on a tinted dark-card
-	// background, like the article-card headers on the web reader.
 	cleanTitle := sanitizeOneLine(a.Title)
 	titleBlock := previewHeroTitleStyle.Width(width).Render(wordWrap(cleanTitle, width-2))
 
-	// KEV banner: red strip across the top of the preview if this
-	// article is KEV-listed. Same visual signal as the modal.
 	var kevBanner string
 	if hasKEV(a) {
 		kevBanner = kevPulseBannerStyle.Render(runewidth.FillRight("  ●  ACTIVELY EXPLOITED  ", width))
 	}
 
-	// Meta line: src icon + source name, age, score chip.
 	scoreChip := scoreStyle(a.Score, hasKEV(a)).Render(fmt.Sprintf(" score %d ", a.Score))
 	metaLine := srcIcon(a.SourceType) + " " +
 		previewMetaStyle.Render(a.Source) + "  " +
 		previewMetaStyle.Render("·  "+humanizeAge(a.PublishedAt)+"  ·  ") +
 		scoreChip
 
-	// Tags - render as space-separated chips so they read visually in
-	// the terminal without HTML conventions.
 	var tagsLine string
 	if len(a.Tags) > 0 {
 		var chips []string
@@ -1972,25 +1554,20 @@ func (m model) renderPreview(width, height int) string {
 		tagsLine = lipgloss.JoinHorizontal(lipgloss.Top, chips...)
 	}
 
-	// AI triage line ("what? so what?") - populated by the daemon's
-	// aitriage worker if ANTHROPIC_API_KEY is set. Renders above the
-	// summary as a cyan-accented callout. Empty for articles the
-	// worker hasn't processed yet or for hosts without the AI key.
+	// Triage line is populated by the daemon's worker when a Claude/OpenAI key is set.
 	var triageLine string
 	if strings.TrimSpace(a.Triage) != "" {
-		label := lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render("◆ AI triage: ")
+		label := lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render("◆ triage: ")
 		triageLine = label + lipgloss.NewStyle().Foreground(textBright).Render(sanitizeOneLine(a.Triage))
 		triageLine = wordWrap(triageLine, width)
 	}
 
-	// Summary (word-wrapped to fit the available width).
 	summary := strings.TrimSpace(a.Summary)
 	if summary == "" {
 		summary = dimStyle.Render("(no summary)")
 	}
 	summary = wordWrap(summary, width)
 
-	// URL footer - so the user can see where `o` would go.
 	urlLabel := previewMetaStyle.Render("url:")
 	urlLine := urlLabel + " " + dimStyle.Render(truncateForFlash(a.URL))
 
@@ -2009,8 +1586,6 @@ func (m model) renderPreview(width, height int) string {
 
 	return lipgloss.JoinVertical(lipgloss.Left, parts...)
 }
-
-// ----------------- helpers --------------------
 
 func hasKEV(a models.Article) bool {
 	for _, t := range a.Tags {
@@ -2037,16 +1612,8 @@ func humanizeAge(t time.Time) string {
 	}
 }
 
-// sanitizeOneLine collapses control characters (newlines, tabs, etc.)
-// to single spaces, so any string we pass through runewidth + lipgloss
-// is guaranteed to be a single visual line. Without this, content with
-// embedded newlines (common in Bluesky post bodies stored as the
-// article title) breaks across multiple terminal rows and the column
-// alignment falls apart.
-//
-// We replace each control rune with a space rather than stripping it,
-// so cell counts the upstream caller computed via runewidth.StringWidth
-// stay accurate after sanitization.
+// sanitizeOneLine collapses control chars to spaces.
+// Bluesky/Mastodon titles often carry embedded \n which breaks column alignment.
 func sanitizeOneLine(s string) string {
 	if s == "" {
 		return ""
@@ -2060,8 +1627,6 @@ func sanitizeOneLine(s string) string {
 		}
 		b.WriteRune(r)
 	}
-	// Collapse runs of multiple spaces down to one so the resulting
-	// title doesn't have unsightly gaps where newlines used to be.
 	out := b.String()
 	for strings.Contains(out, "  ") {
 		out = strings.ReplaceAll(out, "  ", " ")
@@ -2069,9 +1634,7 @@ func sanitizeOneLine(s string) string {
 	return strings.TrimSpace(out)
 }
 
-// wordWrap is a hand-rolled word-wrapper because lipgloss.NewStyle().Width()
-// doesn't break on word boundaries - it hard-clips lines, which mangles
-// summaries with embedded URLs.
+// wordWrap breaks on word boundaries; lipgloss.Width hard-clips, which mangles URLs.
 func wordWrap(s string, width int) string {
 	if width <= 0 {
 		return s
@@ -2110,18 +1673,12 @@ func max(a, b int) int {
 	return b
 }
 
-// ============= New modal renderers (Phase 5) =========================
-
-// renderStatsModal renders the Feast Stats modal: total chewed, still
-// waiting (unread), KEV count, top feeding tubes (per-source), most-
-// chewed tags. Same content as the web reader's S modal.
 func (m model) renderStatsModal() string {
 	if m.stats == nil {
 		return m.renderModal("FEAST STATS", []string{dimStyle.Render("(no stats available)")}, false)
 	}
 	s := m.stats
 
-	// KEV count: count articles with kev tag from the most-recent corpus.
 	kevCount := 0
 	for _, a := range m.articles {
 		if hasKEV(a) {
@@ -2129,14 +1686,12 @@ func (m model) renderStatsModal() string {
 		}
 	}
 
-	// Hero numbers row.
 	heroLine := dimStyle.Render("  total chewed     ") + statHeroNumber(s.TotalArticles, accent) + "  " +
 		dimStyle.Render("  still waiting    ") + statHeroNumber(s.UnreadCount, accentCyan) + "  " +
 		dimStyle.Render("  kev-listed       ") + statHeroNumber(kevCount, accentRed)
 
 	lines := []string{heroLine, ""}
 
-	// Top feeding tubes (top 10 sources by count).
 	lines = append(lines, modalSectionStyle.Render("::  Top feeding tubes  ::"))
 	sources := topKMap(s.SourceBreakdown, 10)
 	maxSrcCount := 0
@@ -2154,7 +1709,6 @@ func (m model) renderStatsModal() string {
 	}
 	lines = append(lines, "")
 
-	// Most-chewed tags.
 	lines = append(lines, modalSectionStyle.Render("::  Most-chewed tags  ::"))
 	tags := topKMap(s.TopTags, 12)
 	maxTagCount := 0
@@ -2174,18 +1728,15 @@ func (m model) renderStatsModal() string {
 	return m.renderModal("FEAST STATS", lines, false)
 }
 
-// renderSourcePickerModal renders a selectable list of every source
-// in the corpus. j/k navigates, Enter applies as a filter, Esc cancels.
 func (m model) renderSourcePickerModal() string {
 	var lines []string
 	lines = append(lines, dimStyle.Render(fmt.Sprintf("  %d sources :: j/k nav, Enter selects, 0 clears, q cancels", len(m.sourceList))))
 	lines = append(lines, "")
 
-	visibleRows := m.height * 60 / 100 // ~60% of screen for the list
+	visibleRows := m.height * 60 / 100
 	if visibleRows < 8 {
 		visibleRows = 8
 	}
-	// Keep cursor in view.
 	if m.sourceCursor < m.sourceOffset {
 		m.sourceOffset = m.sourceCursor
 	}
@@ -2238,9 +1789,6 @@ func (m model) renderIOCModal() string {
 	return m.renderModal("IOC TASTE TEST", lines, false)
 }
 
-// renderMITREModal renders the MITRE ATT&CK coverage modal: a list of
-// technique IDs and their article-mention counts in the last 30 days.
-// j/k navigates, Enter filters the feed to that technique.
 func (m model) renderMITREModal() string {
 	var lines []string
 	lines = append(lines, dimStyle.Render(fmt.Sprintf("  %d techniques across the last 30 days :: j/k nav, Enter filters feed, q dismisses", len(m.mitreEntries))))
@@ -2282,9 +1830,6 @@ func (m model) renderMITREModal() string {
 	return m.renderModal("MITRE ATT&CK COVERAGE", lines, false)
 }
 
-// renderVizModal renders the source-viz / feeding-tubes bar chart.
-// Same data as Stats's top-feeding-tubes but full top-30, dedicated
-// modal so the screenshot reads as "this is one big chart".
 func (m model) renderVizModal() string {
 	var lines []string
 	lines = append(lines, dimStyle.Render(fmt.Sprintf("  %d sources :: distribution across the current corpus", len(m.vizEntries))))
@@ -2309,11 +1854,6 @@ func (m model) renderVizModal() string {
 	return m.renderModal("FEEDING TUBES // FLOW", lines, false)
 }
 
-// ----------------- Modal shell -----------------------------------
-
-// renderModal centres `lines` inside a bordered box and overlays it
-// on a dark backdrop. Used by all the new (non-CVE) modals so they
-// share the same chrome.
 func (m model) renderModal(title string, lines []string, kev bool) string {
 	modalW := m.width * 80 / 100
 	if modalW > 120 {
@@ -2347,18 +1887,11 @@ func (m model) renderModal(title string, lines []string, kev bool) string {
 	)
 }
 
-// ----------------- Helpers ---------------------------------------
-
-// statHeroNumber renders a big-ish number in a coloured style for
-// the stats modal's hero row.
 func statHeroNumber(n int, c lipgloss.TerminalColor) string {
 	return lipgloss.NewStyle().Foreground(c).Bold(true).Render(fmt.Sprintf("%-6d", n))
 }
 
-// renderHBar draws a horizontal bar chart cell using Unicode block
-// characters. `value` is the bar height; `max` the chart's scale;
-// `width` the maximum bar width in cells; `c` the bar colour.
-// Empty space after the bar is rendered dim.
+// renderHBar draws a bar from value/max width cells; empty space filled with dim dots.
 func renderHBar(value, max, width int, c lipgloss.TerminalColor) string {
 	if max <= 0 {
 		return strings.Repeat(" ", width)
@@ -2375,11 +1908,7 @@ func renderHBar(value, max, width int, c lipgloss.TerminalColor) string {
 	return lipgloss.NewStyle().Foreground(c).Render(bar) + dimStyle.Render(empty)
 }
 
-// renderAIBriefModal renders the AI intel brief modal. Loading state
-// while the LLM call is in flight; BYOK hint if no AI client is wired
-// up; rendered brief body once the call resolves.
 func (m model) renderAIBriefModal() string {
-	// Use the W-variant label if set, otherwise the I default.
 	title := m.aiBriefLabel
 	if title == "" {
 		title = "WORM'S DIGEST :: last 24h"
@@ -2389,7 +1918,7 @@ func (m model) renderAIBriefModal() string {
 		lines = []string{
 			lipgloss.NewStyle().Foreground(accentAmber).Bold(true).Render("  [BYOK required]"),
 			"",
-			"  No AI client configured. Set one of these env vars and restart:",
+			"  No summarizer configured. Set one of these env vars and restart:",
 			"",
 			"    " + accentText("ANTHROPIC_API_KEY") + dimStyle.Render(" - Claude Haiku (recommended)"),
 			"    " + accentText("OPENAI_API_KEY") + dimStyle.Render("    - gpt-4o-mini"),
@@ -2445,11 +1974,6 @@ func (m model) renderAIBriefModal() string {
 	return m.renderModal("WORM'S DIGEST :: last 24h", lines, false)
 }
 
-// ============= Phase 5i-5l: leaderboards / patch brief / score explain / ATT&CK export
-
-// openLeaderboards loads both the trending CVE list and the pre-KEV
-// candidate list. The combined modal renders them side-by-side as
-// the web reader's /trending and /pre-kev pages do.
 func (m *model) openLeaderboards() {
 	if rows, err := m.store.HottestCVEs(168, 20); err == nil {
 		m.trendingCVEs = rows
@@ -2481,8 +2005,6 @@ func (m model) updateLeaderboards(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// renderLeaderboardModal paints the combined trending + pre-KEV
-// leaderboard. /trending on the left half, /pre-kev on the right.
 func (m model) renderLeaderboardModal() string {
 	var lines []string
 	lines = append(lines, modalSectionStyle.Render("::  TRENDING CVEs (last 7d, by mention count)  ::"))
@@ -2528,8 +2050,6 @@ func (m model) renderLeaderboardModal() string {
 	return m.renderModal("LEADERBOARDS // /trending + /pre-kev", lines, false)
 }
 
-// ----- Patch Tuesday brief reader (P) --------------------------------
-
 func (m *model) openPatchBrief() {
 	briefs, err := m.store.RecentPatchBriefs(90)
 	if err != nil {
@@ -2556,7 +2076,6 @@ func (m model) renderPatchBriefModal() string {
 		lines = append(lines, dimStyle.Render("  vendor list in the config panel."))
 		return m.renderModal("PATCH TUESDAY", lines, false)
 	}
-	// Show the most-recent brief (first row from RecentPatchBriefs).
 	b := m.patchBriefs[0]
 	lines = append(lines, lipgloss.NewStyle().Foreground(accentCyan).Bold(true).Render("  "+b.Vendor+" - "+b.BriefDate))
 	lines = append(lines, dimStyle.Render(fmt.Sprintf("  window: %s → %s   articles: %d   generated: %s",
@@ -2580,8 +2099,6 @@ func (m model) renderPatchBriefModal() string {
 	}
 	return m.renderModal("PATCH TUESDAY", lines, false)
 }
-
-// ----- Score explainer (e) -------------------------------------------
 
 func (m *model) openScoreExplain() {
 	if m.scorer == nil {
@@ -2651,11 +2168,7 @@ func (m model) renderScoreExplainModal() string {
 	return m.renderModal("SCORE EXPLAINER", lines, false)
 }
 
-// ----- MITRE ATT&CK Navigator JSON export (E) ------------------------
-
-// exportATTACKLayer queries TTPFrequency and writes a Navigator
-// v4.5 JSON layer to ~/secfeed-attack-<YYYYMMDD>.json. Returns the
-// path it wrote to so the TUI flash can show "saved → /home/x/...json".
+// exportATTACKLayer writes a Navigator v4.5 layer JSON to ~/secfeed-attack-<YYYYMMDD>.json.
 func (m *model) exportATTACKLayer() (string, error) {
 	freq, err := m.store.TTPFrequency(30)
 	if err != nil {

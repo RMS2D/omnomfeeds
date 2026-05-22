@@ -848,9 +848,9 @@ func (s *Store) DeleteSavedSearch(userID, id string) error {
 	return err
 }
 
-// --- Article AI explanation cache (Pro) ---
+// --- Article explanation cache (Pro) ---
 
-// GetArticleExplanation returns the cached AI summary for an article, or
+// GetArticleExplanation returns the cached summary for an article, or
 // ("", sql.ErrNoRows) if we haven't generated one yet.
 func (s *Store) GetArticleExplanation(articleID int64) (string, error) {
 	var text string
@@ -900,9 +900,7 @@ func (s *Store) PutArticleTriage(articleID int64, triage, provider string) error
 }
 
 // PrefetchedTriage returns triage lines already cached for a list of
-// article IDs. Used by /api/articles to attach triage to each row
-// without firing N AI calls per request. Articles missing from the
-// returned map have no triage yet and will be generated lazily.
+// article IDs; missing entries are generated lazily.
 func (s *Store) PrefetchedTriage(ids []int64) (map[int64]string, error) {
 	if len(ids) == 0 {
 		return map[int64]string{}, nil
@@ -933,9 +931,9 @@ func (s *Store) PrefetchedTriage(ids []int64) (map[int64]string, error) {
 	return out, nil
 }
 
-// --- CVE AI explanation cache (Pro) ---
+// --- CVE explanation cache (Pro) ---
 
-// GetCVEExplanation returns the cached 3-bullet AI summary for a CVE,
+// GetCVEExplanation returns the cached 3-bullet summary for a CVE,
 // or ("", sql.ErrNoRows) if we haven't generated one yet.
 func (s *Store) GetCVEExplanation(cveID string) (string, error) {
 	var text string

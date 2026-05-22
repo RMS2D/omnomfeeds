@@ -1,14 +1,5 @@
-// Package analytics is the in-house event log. We capture which features
-// users actually touch so we know what's worth keeping and what's worth
-// killing. No third-party JS, no IPs, no UAs. Anonymous traffic is
-// de-duplicated via an opaque session cookie. Signed-in users are
-// recorded by user_id alongside the same session cookie so we can stitch
-// pre-login activity to a converted account.
-//
-// Volumes are intentionally modest: a few events per page view. SQLite
-// WAL handles the write rate at our scale without batching. If this ever
-// changes, switch Emit() to push onto a channel that a goroutine drains
-// into a multi-row INSERT.
+// Package analytics is the in-house event log: no third-party JS, no IPs, no UAs.
+// Anonymous traffic dedupes via session cookie; signed-in users join by user_id.
 package analytics
 
 import (
@@ -223,11 +214,8 @@ var internalEmails = []string{
 	"rob@wiredepth.com",
 }
 
-// excludeFilter holds pre-quoted SQL list literals for the operator
-// accounts to filter from dashboard queries. Built once per BuildSummary
-// call. User IDs and session tokens come from our own DB (UUIDs and
-// 32-char hex respectively) so inline interpolation is safe; we still
-// strip anything that isn't [A-Za-z0-9-] as a belt-and-braces guard.
+// excludeFilter holds pre-quoted SQL list literals for operator accounts.
+// IDs come from our DB but we still strip non-[A-Za-z0-9-] as a guard.
 type excludeFilter struct {
 	UserIDList  string // SQL list literal: 'uuid1','uuid2'
 	SessionList string // SQL list literal: 'hex1','hex2'

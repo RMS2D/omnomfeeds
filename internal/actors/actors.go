@@ -1,13 +1,6 @@
-// Package actors hosts curated lists of well-known threat actor groups
-// and malware families with their common aliases, plus an Extract
-// function that scans article text for matches. Matched names become
-// "actor:<slug>" or "malware:<slug>" tags that the frontend renders as
-// distinct chips with click-to-filter behaviour.
-//
-// Lists are hand-curated, not auto-imported from MITRE's full Groups /
-// Software JSON. The trade-off: smaller binary, lower noise, focus on
-// the names a reader is actually likely to see in 2026 security news.
-// Add to the lists as the threat landscape shifts.
+// Package actors matches well-known threat actor groups and malware
+// families in article text, emitting "actor:<slug>" / "malware:<slug>" tags.
+// Lists are hand-curated for lower noise vs MITRE auto-import.
 package actors
 
 import (

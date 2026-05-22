@@ -4,8 +4,8 @@ A self-hosted security news reader. Pulls 55+ RSS feeds, Reddit, Bluesky, Mastod
 
 **Two surfaces, same data, one binary:**
 
-- **`./secfeed`** — HTTP daemon + web reader at `localhost:8080`. Two-pane vim-keybind interface in the browser.
-- **`./secfeed tui`** — Bubbletea terminal reader. Same keybinds, same features, no browser. For when you live in tmux.
+- **`./secfeed`** - HTTP daemon + web reader at `localhost:8080`. Two-pane vim-keybind interface in the browser.
+- **`./secfeed tui`** - Bubbletea terminal reader. Same keybinds, same features, no browser. For when you live in tmux.
 
 Single Go binary. Embedded UI. SQLite on disk. No telemetry. MIT-licensed.
 

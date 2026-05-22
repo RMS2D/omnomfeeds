@@ -1,7 +1,5 @@
-// Package digestmail sends scheduled email digests (daily / weekly) to
-// Pro users who opted in. Reuses the existing AI summarizer + Resend
-// client. Worker ticks every 30 minutes; users who pass their cooldown
-// get the latest digest emailed and last_sent_at bumped.
+// Package digestmail sends scheduled email digests (daily / weekly) to opted-in
+// Pro users. Reuses the summarizer + Resend client; worker ticks every 30 min.
 package digestmail
 
 import (
@@ -152,8 +150,7 @@ func (w *Worker) generateDigest(ctx context.Context) (digestBody, error) {
 	if len(arts) == 0 {
 		return digestBody{}, fmt.Errorf("no articles to summarise")
 	}
-	// Cap for the AI prompt; keep the source-link list a bit larger so
-	// the email has a "full picks" footer.
+	// Cap for the summarizer prompt; source-link list stays larger for the email footer.
 	aiArts := arts
 	if len(aiArts) > ai.MaxArticles {
 		aiArts = aiArts[:ai.MaxArticles]
@@ -187,14 +184,14 @@ type digestBody struct {
 
 // SendNow generates a fresh digest and emails it to a single recipient,
 // bypassing the cooldown / opt-in checks the periodic tick uses. Returns
-// a hard error if the worker isn't fully configured (Resend / AI) or any
-// step fails. Used by the admin "send test" endpoint.
+// a hard error if the worker isn't fully configured (Resend / summarizer) or
+// any step fails. Used by the admin "send test" endpoint.
 func (w *Worker) SendNow(ctx context.Context, to string) error {
 	if w.resendAPIKey == "" {
 		return errors.New("RESEND_API_KEY not configured")
 	}
 	if w.ai == nil {
-		return errors.New("AI provider not configured")
+		return errors.New("summarizer provider not configured")
 	}
 	body, err := w.generateDigest(ctx)
 	if err != nil {

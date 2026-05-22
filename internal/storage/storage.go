@@ -16,10 +16,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// isSafeArticleURL rejects URLs that aren't http(s). Belt-and-braces
-// against XSS via javascript:/data:/file: schemes in RSS link tags. The
-// rendered output already escapes HTML special chars, but `javascript:`
-// contains none of those and survives escaping intact.
+// isSafeArticleURL rejects non-http(s) schemes to block javascript:/data:/file:.
 func isSafeArticleURL(raw string) bool {
 	if raw == "" {
 		return false
@@ -43,11 +40,8 @@ type Store struct {
 }
 
 func New(path string) (*Store, error) {
-	// DSN-level PRAGMAs would apply per-connection, but cap the pool to 1
-	// regardless: SQLite is single-writer, so multiple connections don't
-	// help write throughput and they DO race each other into SQLITE_BUSY
-	// when the fetch loop floods inserts. WAL mode plus a 5s busy timeout
-	// gives concurrent callers room to wait their turn rather than failing.
+	// Single-writer pool + WAL + 5s busy timeout. SQLite is single-writer; more
+	// connections just race into SQLITE_BUSY under the fetch loop.
 	dsn := path +
 		"?_pragma=busy_timeout(5000)" +
 		"&_pragma=journal_mode(WAL)" +
@@ -60,9 +54,6 @@ func New(path string) (*Store, error) {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 	db.SetConnMaxLifetime(0)
-	// Defensive explicit set in case the DSN form is parsed differently
-	// by a future driver version. With max 1 conn, this single Exec
-	// configures the pool's only connection.
 	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
 		db.Close()
 		return nil, err
@@ -80,8 +71,7 @@ func (s *Store) Close() error {
 	return s.db.Close()
 }
 
-// DB returns the underlying *sql.DB so enrichment packages (mitre/cve) can
-// share the same SQLite file for their own tables. Read/write only.
+// DB exposes the underlying *sql.DB so enrichment packages can share it.
 func (s *Store) DB() *sql.DB {
 	return s.db
 }
@@ -118,11 +108,7 @@ func (s *Store) migrate() error {
 		s.db.Exec("CREATE INDEX IF NOT EXISTS idx_articles_dup ON articles(duplicate_of)")
 	}
 
-	// Self-host bookmark table. Distinct from user_bookmarks (which
-	// is multi-user, hosted-mode only). One row per bookmarked
-	// article; presence = bookmarked. The TUI uses this; the
-	// web reader uses localStorage for anonymous + user_bookmarks
-	// for signed-in.
+	// Self-host bookmark table; distinct from multi-user user_bookmarks.
 	_, _ = s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS bookmarks (
 			article_id    INTEGER PRIMARY KEY REFERENCES articles(id) ON DELETE CASCADE,
@@ -133,10 +119,7 @@ func (s *Store) migrate() error {
 	return s.migrateUserTables()
 }
 
-// migrateUserTables adds the per-user overlay tables used in HOSTED_MODE.
-// Tables are created unconditionally so self-host installs see the schema
-// but never write to them, and a self-host can opt into hosted later
-// without a data migration.
+// migrateUserTables creates the HOSTED_MODE user overlay tables on every install.
 func (s *Store) migrateUserTables() error {
 	_, err := s.db.Exec(`
 		CREATE TABLE IF NOT EXISTS users (
@@ -159,12 +142,8 @@ func (s *Store) migrateUserTables() error {
 			user_agent    TEXT,
 			expires_at    DATETIME NOT NULL
 		);
-		-- Patch Tuesday auto-briefs. One row per (vendor, brief_date)
-		-- so we never regenerate the same vendor's brief twice for the
-		-- same calendar day. brief_text is the AI summary; articles are
-		-- counted at generation time for context. fetched-from window
-		-- (since/until) is captured so the brief can describe what it
-		-- covered.
+		-- Patch Tuesday auto-briefs. One row per (vendor, brief_date) so
+		-- we never regenerate the same vendor's brief twice the same day.
 		CREATE TABLE IF NOT EXISTS patch_briefs (
 			vendor         TEXT NOT NULL,
 			brief_date     DATE NOT NULL,
@@ -308,10 +287,8 @@ func (s *Store) migrateUserTables() error {
 			provider     TEXT NOT NULL DEFAULT ''
 		);
 
-		-- cve_ai_explanations caches the Pro 3-bullet AI summary keyed by
-		-- CVE id so the first Pro user to ask "explain CVE-X" pays once
-		-- and every subsequent reader gets the cached text. Stored forever
-		-- (CVE descriptions are functionally immutable post-publication).
+		-- cve_ai_explanations caches the Pro 3-bullet summary keyed by CVE id
+		-- so only the first explain request pays. Stored forever (CVE descs are immutable).
 		CREATE TABLE IF NOT EXISTS cve_ai_explanations (
 			cve_id       TEXT PRIMARY KEY,
 			explanation  TEXT NOT NULL,
@@ -376,13 +353,8 @@ func (s *Store) migrateUserTables() error {
 }
 
 func (s *Store) Upsert(a models.Article) error {
-	// Reject URLs that aren't http(s). RSS feeds are untrusted; an item
-	// with `<link>javascript:alert(...)</link>` would store a payload that
-	// renders as a clickable XSS in the reader and on the public /cve and
-	// /trending pages. Validate at the storage boundary so EVERY source
-	// path (RSS, Bluesky, Reddit, Mastodon, GitHub, MalwareBazaar) is
-	// covered with one check. Empty / unparseable / wrong-scheme URLs are
-	// dropped silently - we lose the article but never plant XSS.
+	// Reject non-http(s) URLs at the storage boundary to block XSS payloads
+	// from untrusted feeds (RSS, Bluesky, etc.).
 	if !isSafeArticleURL(a.URL) {
 		return nil
 	}
@@ -455,26 +427,15 @@ type ListFilter struct {
 	Since       time.Time
 	Limit       int
 	Offset      int
-	// VisibleBskySources, when non-nil, restricts which bluesky author-feed
-	// articles (source like "Bluesky:@handle") this caller can see. Other
-	// source types and bluesky search-term articles are unaffected. Pass
-	// the fully-qualified source strings ("Bluesky:@handle") so the SQL
-	// IN clause matches by stored value. Nil disables the filter.
+	// Restricts visible "Bluesky:@handle" sources; nil = no filter.
 	VisibleBskySources *[]string
-	// UserID, when non-empty, switches the read-state column from the
-	// global articles.read flag to a per-user overlay via LEFT JOIN
-	// against user_read_state. The Unread filter then means "unread for
-	// THIS user", not "unread for everyone." Set in hosted mode for
-	// every signed-in request.
+	// Non-empty switches read-state to a per-user overlay via user_read_state.
 	UserID string
 }
 
 func (s *Store) List(f ListFilter) ([]models.Article, error) {
-	// Per-user overlay: when UserID is set we JOIN user_read_state and
-	// expose its presence as the article's read flag, replacing the global
-	// articles.read column. The per-user JOIN arg goes first so its
-	// placeholder position matches the SELECT/FROM at the start.
-	var args []interface{}
+	// When UserID is set, JOIN user_read_state to override the global read flag.
+	var args []any
 	var query string
 	if f.UserID != "" {
 		query = `SELECT a.id, a.title, a.url, a.source, a.source_type, a.summary,
@@ -531,9 +492,8 @@ func (s *Store) List(f ListFilter) ([]models.Article, error) {
 		args = append(args, f.Since)
 	}
 	if f.VisibleBskySources != nil {
-		// "Bluesky:@handle" is the per-account form; search-feed articles
-		// store "Bluesky" (no @) and stay visible to everyone. Empty
-		// allow-list hides ALL author-feed bluesky articles.
+		// Author-feed articles store "Bluesky:@handle"; search-feed articles
+		// store "Bluesky" and stay public. Empty allow-list hides all authors.
 		if len(*f.VisibleBskySources) == 0 {
 			query += " AND (source_type != 'bluesky' OR source NOT LIKE 'Bluesky:@%')"
 		} else {
@@ -596,9 +556,7 @@ type PatchBrief struct {
 	GeneratedAt  time.Time `json:"generated_at"`
 }
 
-// GetPatchBrief returns the brief for a given vendor and YYYY-MM-DD date,
-// or nil if none. Used by the worker to detect "already generated for
-// today" and by the API to serve cached briefs.
+// GetPatchBrief returns the brief for vendor+YYYY-MM-DD, or nil if none.
 func (s *Store) GetPatchBrief(vendor, briefDate string) (*PatchBrief, error) {
 	row := s.db.QueryRow(
 		`SELECT vendor, brief_date, brief_text, article_count, window_start, window_end, generated_at
@@ -612,8 +570,7 @@ func (s *Store) GetPatchBrief(vendor, briefDate string) (*PatchBrief, error) {
 	return &b, nil
 }
 
-// PutPatchBrief inserts or replaces a brief row. Caller is responsible
-// for guarding against accidental regeneration via GetPatchBrief first.
+// PutPatchBrief inserts or replaces a brief row.
 func (s *Store) PutPatchBrief(b PatchBrief) error {
 	_, err := s.db.Exec(
 		`INSERT OR REPLACE INTO patch_briefs
@@ -624,9 +581,7 @@ func (s *Store) PutPatchBrief(b PatchBrief) error {
 	return err
 }
 
-// RecentPatchBriefs returns every patch brief generated in the last
-// `days` days, newest first. Drives the in-app banner ("here's the
-// latest Patch Tuesday brief"). Vendor filtering happens client-side.
+// RecentPatchBriefs returns briefs generated in the last `days` days, newest first.
 func (s *Store) RecentPatchBriefs(days int) ([]PatchBrief, error) {
 	if days <= 0 {
 		days = 30
@@ -653,11 +608,8 @@ func (s *Store) RecentPatchBriefs(days int) ([]PatchBrief, error) {
 	return out, nil
 }
 
-// VendorArticles pulls articles published in `[since, until]` whose
-// title / summary / tags mention any of the supplied keywords (case-
-// insensitive substring). Backs the Patch Tuesday brief generator -
-// "give me everything Microsoft-y from the last 24h" type query.
-// Returns articles already de-duped (no duplicate_of rows).
+// VendorArticles returns de-duped articles in [since, until] whose
+// title/summary/tags substring-match any keyword (case-insensitive).
 func (s *Store) VendorArticles(since, until time.Time, keywords []string, limit int) ([]models.Article, error) {
 	if limit <= 0 {
 		limit = 80
@@ -665,9 +617,8 @@ func (s *Store) VendorArticles(since, until time.Time, keywords []string, limit 
 	if len(keywords) == 0 {
 		return nil, nil
 	}
-	// Build the OR LIKE pattern. We could JSON-decode tags and match
-	// exactly but cheap substring catches title + summary + tag text in
-	// one pass; word boundaries aren't critical at this scale.
+	// OR LIKE across title+summary+tag text in one pass; word boundaries
+	// aren't critical at this scale.
 	clauses := make([]string, 0, len(keywords))
 	args := []any{since, until}
 	for _, k := range keywords {
@@ -702,10 +653,7 @@ func (s *Store) VendorArticles(since, until time.Time, keywords []string, limit 
 	return out, nil
 }
 
-// GetWhatsNewDismiss reads the user's last_whats_new_dismiss timestamp
-// from the user_settings JSON blob. Returns zero time when unset or the
-// blob doesn't parse. Used by the "what changed while you were gone"
-// banner to compute the "since" window.
+// GetWhatsNewDismiss reads last_whats_new_dismiss from the user_settings blob.
 func (s *Store) GetWhatsNewDismiss(userID string) (time.Time, error) {
 	blob, err := s.GetSettings(userID)
 	if err != nil {
@@ -726,9 +674,7 @@ func (s *Store) GetWhatsNewDismiss(userID string) (time.Time, error) {
 	return t, nil
 }
 
-// PutWhatsNewDismiss merges last_whats_new_dismiss=ts into the user's
-// settings JSON blob without clobbering other keys. Used by the dismiss
-// endpoint so the client doesn't have to send a full settings PUT.
+// PutWhatsNewDismiss merges last_whats_new_dismiss into the settings blob.
 func (s *Store) PutWhatsNewDismiss(userID string, ts time.Time) error {
 	blob, err := s.GetSettings(userID)
 	if err != nil {
@@ -746,11 +692,8 @@ func (s *Store) PutWhatsNewDismiss(userID string, ts time.Time) error {
 	return s.PutSettings(userID, string(out))
 }
 
-// RecentAliasMentionCount counts articles published in the last `days`
-// days whose title or summary contains any of the given aliases
-// (case-insensitive substring). Backs the actor/malware Insight Card
-// "X recent mentions" stat. Cheap because the article corpus is
-// bounded and LIKE patterns short-circuit on the first match.
+// RecentAliasMentionCount counts articles in the last `days` whose
+// title or summary substring-matches any alias (case-insensitive).
 func (s *Store) RecentAliasMentionCount(aliases []string, days int) (int, error) {
 	if len(aliases) == 0 {
 		return 0, nil
@@ -789,10 +732,8 @@ type CVEActivity struct {
 
 var hotCVERe = regexp.MustCompile(`^CVE-\d{4}-\d{4,7}$`)
 
-// HottestCVEs returns the top `limit` CVE IDs by article-mention count over
-// the last `hours` window, newest article carrying each CVE included as
-// context. Public ticker fodder - no per-user data. KEV flag is true if
-// any article in the window paired this CVE with a kev:* tag.
+// HottestCVEs returns the top CVE IDs by mention count in the last `hours`,
+// with the newest article carrying each CVE for context. KEV flag set if any.
 func (s *Store) HottestCVEs(hours, limit int) ([]CVEActivity, error) {
 	rows, err := s.db.Query(
 		`SELECT title, url, source, tags, published_at FROM articles
@@ -882,10 +823,7 @@ func sortHottest(rows []CVEActivity) {
 	}
 }
 
-// CVEConsensusRow is one source's track record on a CVE: which source
-// posted about it, how many times, when most recently, and where the
-// latest post lives. Drives the per-CVE "who's talking about this"
-// heatmap in the deep-dive modal.
+// CVEConsensusRow is one source's track record on a CVE for the heatmap.
 type CVEConsensusRow struct {
 	Source     string    `json:"source"`
 	SourceType string    `json:"source_type"`
@@ -894,13 +832,7 @@ type CVEConsensusRow struct {
 	LatestURL  string    `json:"latest_url"`
 }
 
-// CVEConsensus returns the distinct sources that have posted about a CVE
-// in the last `days` days, ordered by most-recent-post first. Powers the
-// "researcher consensus" heatmap on the CVE deep-dive modal.
-// ArticlesForCVE returns articles whose tag array contains the exact
-// given CVE ID, newest first. Used by the per-CVE landing page to show
-// every source that's mentioned a CVE. Limit caps the result; pass 50
-// for the page (more would dilute the view), 200 for the sitemap query.
+// ArticlesForCVE returns articles tagged with the exact CVE ID, newest first.
 func (s *Store) ArticlesForCVE(cveID string, limit int) ([]models.Article, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
 	if cveID == "" {
@@ -937,10 +869,7 @@ func (s *Store) ArticlesForCVE(cveID string, limit int) ([]models.Article, error
 	return out, rows.Err()
 }
 
-// TopMentionedCVEs returns the most-mentioned CVE IDs across the whole
-// corpus, newest-by-mention-count first. Used by the dynamic /cve
-// sitemap and any caller wanting the canonical "most talked about" set
-// for backfills, exports, or batch enrichment.
+// TopMentionedCVEs returns the most-mentioned CVE IDs corpus-wide, by mention count.
 func (s *Store) TopMentionedCVEs(limit int) ([]string, error) {
 	if limit <= 0 || limit > 5000 {
 		limit = 200
@@ -1062,9 +991,7 @@ type CVETimelineEvent struct {
 	URL    string    `json:"url"`
 }
 
-// vendorPSIRTSources lists article sources whose presence implies a
-// first-party vendor advisory. Used by the CVE timeline to flag when
-// the affected vendor itself acknowledged the issue.
+// vendorPSIRTSources lists sources that count as first-party vendor advisories.
 var vendorPSIRTSources = map[string]bool{
 	"MSRC Blog":                  true,
 	"Palo Alto PSIRT":            true,
@@ -1093,16 +1020,8 @@ var pocTagSet = map[string]bool{
 	"rce":     true,
 }
 
-// CVETimeline builds a chronological list of milestone events for a
-// given CVE by scanning the articles table:
-//
-//	first_mention - earliest article tagged with the CVE
-//	first_poc     - earliest article ALSO tagged with exploit / poc / rce
-//	advisory      - earliest article whose source is a known vendor PSIRT
-//	latest        - most recent article tagged with the CVE (if different)
-//
-// Returns events in chronological order. Empty if no articles tag the
-// CVE at all.
+// CVETimeline returns chronological milestone events for a CVE:
+// first_mention, first_poc, advisory (PSIRT), latest. Empty if no articles match.
 func (s *Store) CVETimeline(cveID string) ([]CVETimelineEvent, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
 	if cveID == "" {
@@ -1190,10 +1109,7 @@ func (s *Store) CVETimeline(cveID string) ([]CVETimelineEvent, error) {
 	return out, nil
 }
 
-// TTPFrequency counts T-code occurrences in article tags over the
-// last `days` days. Backs the ATT&CK Navigator export - higher counts
-// → darker colour cells in the rendered Navigator layer. Returns
-// `{T1059: 42, T1190: 18, ...}` as a map.
+// TTPFrequency counts T-code occurrences in tags over the last `days` days.
 func (s *Store) TTPFrequency(days int) (map[string]int, error) {
 	if days <= 0 {
 		days = 30
@@ -1230,9 +1146,7 @@ func (s *Store) TTPFrequency(days int) (map[string]int, error) {
 	return out, nil
 }
 
-// TTPFrequencyForBookmarks counts T-codes in articles the user has
-// bookmarked. Powers the per-user ATT&CK export. Returns nil/empty if
-// the user has no bookmarks.
+// TTPFrequencyForBookmarks counts T-codes across a user's bookmarks.
 func (s *Store) TTPFrequencyForBookmarks(userID string) (map[string]int, error) {
 	rows, err := s.db.Query(
 		`SELECT a.tags FROM articles a
@@ -1266,13 +1180,8 @@ func (s *Store) TTPFrequencyForBookmarks(userID string) (map[string]int, error) 
 	return out, nil
 }
 
-// PreKEVCandidates returns a map of CVE -> distinct-source count for
-// CVEs mentioned in articles published in the last `hours` hours, where
-// the distinct source count is >= minSources. The caller is responsible
-// for filtering out CVEs that are already on the CISA KEV list - this
-// method only knows about article mentions, not KEV status. Drives the
-// "pre-KEV velocity" detector: cross-source signal that a CVE is
-// getting heat days/hours before CISA officially adds it.
+// PreKEVCandidates returns CVE -> distinct-source-count for CVEs mentioned in
+// the last `hours` with at least minSources distinct sources. Caller filters KEV.
 func (s *Store) PreKEVCandidates(hours, minSources int) (map[string]int, error) {
 	if hours <= 0 {
 		hours = 72
@@ -1325,11 +1234,7 @@ func (s *Store) PreKEVCandidates(hours, minSources int) (map[string]int, error) 
 	return out, nil
 }
 
-// RecentKEVMentionCount counts articles PUBLISHED in the last `hours`
-// window that carry any kev:* tag. Powers the worm's mood gauge.
-// Uses published_at (not fetched_at) so a server restart that backfills
-// older articles doesn't spike the count - what matters is whether the
-// outside world is talking about KEV-listed CVEs right now.
+// RecentKEVMentionCount counts kev:*-tagged articles published in the last `hours`.
 func (s *Store) RecentKEVMentionCount(hours int) (int, error) {
 	var n int
 	err := s.db.QueryRow(
@@ -1398,12 +1303,8 @@ func (s *Store) Sources() ([]string, error) {
 	return sources, nil
 }
 
-// ToggleBookmark flips the bookmark state for a single article.
-// Returns the new bookmark state ("true" if now bookmarked, false if
-// removed). Used by the TUI's `b` keybind.
+// ToggleBookmark flips bookmark state and returns the new value.
 func (s *Store) ToggleBookmark(id int64) (bool, error) {
-	// Check current state, flip it. Two queries instead of one
-	// INSERT-OR-DELETE because SQLite has no UPSERT-DELETE shorthand.
 	var exists int
 	row := s.db.QueryRow("SELECT 1 FROM bookmarks WHERE article_id = ?", id)
 	if err := row.Scan(&exists); err == nil && exists == 1 {
@@ -1414,10 +1315,7 @@ func (s *Store) ToggleBookmark(id int64) (bool, error) {
 	return true, err
 }
 
-// BookmarkIDs returns every article_id with an active bookmark row.
-// Caller can build a set for O(1) lookup during list rendering. The
-// table is small (anyone bookmarking >10k articles can pay for that
-// query) so we don't paginate.
+// BookmarkIDs returns every bookmarked article_id as a set for O(1) lookup.
 func (s *Store) BookmarkIDs() (map[int64]bool, error) {
 	rows, err := s.db.Query("SELECT article_id FROM bookmarks")
 	if err != nil {
@@ -1434,10 +1332,7 @@ func (s *Store) BookmarkIDs() (map[int64]bool, error) {
 	return out, rows.Err()
 }
 
-// BookmarkedArticles returns every article currently bookmarked, in
-// most-recently-bookmarked order. Used by the TUI's `B` keybind
-// (filter to bookmarked-only) and by the future MITRE Navigator
-// export for "everything I bookmarked tagged initial-access".
+// BookmarkedArticles returns bookmarked articles in most-recently-bookmarked order.
 func (s *Store) BookmarkedArticles(limit int) ([]models.Article, error) {
 	if limit <= 0 {
 		limit = 500
@@ -1481,50 +1376,36 @@ type CleanupReport struct {
 	WALCheckpoint string // result of PRAGMA wal_checkpoint
 }
 
-// DailyCleanup runs the full retention pass: expire sessions, prune
-// magic-link tokens, drop old alert-fire dedup rows, purge read
-// articles older than 90 days, drop analytics events older than 180
-// days, drop NVD + OTX cache rows older than 90 days, and run a WAL
-// checkpoint so the journal file doesn't grow unbounded. Every step is
-// independent - one failing doesn't abort the others. Returns the row
-// counts so main.go can log a single summary line per tick.
+// DailyCleanup runs the retention pass: sessions, magic links, alert-fire
+// dedup rows, read articles >90d, events >180d, NVD/OTX cache >90d, + WAL
+// checkpoint. Each step is independent.
 func (s *Store) DailyCleanup() CleanupReport {
 	var r CleanupReport
 	r.Sessions, _ = s.CleanupExpiredSessions()
 	r.MagicLinks, _ = s.CleanupExpiredMagicLinks()
 	r.AlertFires, _ = s.CleanupOldAlertFires()
 
-	// Articles: 90 day retention on READ articles only. Unread stays
-	// forever (product decision - users may want to see unread items
-	// they missed). Same Purge() that was defined but never called.
+	// Read articles >90d. Unread stays forever.
 	if n, err := s.Purge(90 * 24 * time.Hour); err == nil {
 		r.Articles = n
 	}
 
-	// Analytics events: 180 days. Past that the dashboard's longest
-	// window (90 days) doesn't reach them and they're just disk weight.
+	// Analytics events >180d (past the dashboard's longest 90d window).
 	eventsCutoff := time.Now().Add(-180 * 24 * time.Hour)
 	if res, err := s.db.Exec(`DELETE FROM events WHERE ts < ?`, eventsCutoff); err == nil {
 		r.Events, _ = res.RowsAffected()
 	}
 
-	// NVD cache: 90 day TTL. CVE metadata can change (CVSS, KEV add,
-	// description fixes) so stale entries shouldn't serve forever.
+	// NVD + OTX cache: 90d TTL since CVE metadata mutates (CVSS, KEV add).
 	nvdCutoff := time.Now().Add(-90 * 24 * time.Hour)
 	if res, err := s.db.Exec(`DELETE FROM cve_details WHERE fetched_at < ?`, nvdCutoff); err == nil {
 		r.NVD, _ = res.RowsAffected()
 	}
-
-	// OTX cache: same 90-day TTL.
 	if res, err := s.db.Exec(`DELETE FROM cve_otx WHERE fetched_at < ?`, nvdCutoff); err == nil {
 		r.OTX, _ = res.RowsAffected()
 	}
 
-	// PRAGMA wal_checkpoint(PASSIVE) is non-blocking and merges the WAL
-	// file back into the main database. Without periodic checkpoints
-	// the WAL grows whenever writers outrun the auto-checkpoint
-	// (default: 1000 pages). PASSIVE means we don't wait for readers
-	// to release - safer in a single-writer + many-readers app.
+	// PASSIVE checkpoint: non-blocking, doesn't wait for readers.
 	var busy, log_, checkpointed int
 	if err := s.db.QueryRow(`PRAGMA wal_checkpoint(PASSIVE)`).Scan(&busy, &log_, &checkpointed); err == nil {
 		r.WALCheckpoint = fmt.Sprintf("busy=%d log=%d checkpointed=%d", busy, log_, checkpointed)

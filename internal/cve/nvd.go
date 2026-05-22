@@ -17,12 +17,8 @@ import (
 
 const nvdAPIBase = "https://services.nvd.nist.gov/rest/json/cves/2.0"
 
-// ErrNotFound is returned by NVDClient.Get when the upstream NVD API
-// reports no record for the requested CVE (either HTTP 404 or 200 with
-// an empty vulnerabilities array). Callers use errors.Is to map this to
-// a 404 response instead of a generic 502 — important because hitting
-// /api/cve/<random-id> is a common HN poke and a 502 makes the backend
-// look like it's crashing when it's just "CVE doesn't exist."
+// ErrNotFound: NVD has no record for the CVE (404, or 200 with empty array).
+// Callers use errors.Is to return 404 instead of 502.
 var ErrNotFound = errors.New("cve not found")
 
 // CVEDetail is the per-CVE payload secfeed returns to the frontend.

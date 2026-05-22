@@ -10,14 +10,8 @@ import (
 	"time"
 )
 
-// publicRSS is the channel we serve at /feed.xml. RSS 2.0 with atom:link
-// for self-discovery, so feed readers can show "subscribed to X" with a
-// stable URL. We don't proxy the article body - we point at the original
-// source so the publisher gets the click. We add summary + score + tag
-// context in the description so a reader skimming feed-titles can tell
-// what they're looking at.
-//
-// Cached in-memory for 10 minutes to keep aggregator hammering off SQLite.
+// publicRSS: /feed.xml. RSS 2.0 + atom:link self-discovery, links point at
+// the original source (publisher gets the click). 10min in-mem cache.
 
 type rssItem struct {
 	XMLName     xml.Name `xml:"item"`

@@ -58,16 +58,9 @@ func tokenFromRequest(r *http.Request) (raw, hash []byte, ok bool) {
 	return b, sum[:], true
 }
 
-// remoteIP extracts the best-effort client IP, preferring X-Forwarded-For
-// from Caddy. Used only as input to a SHA-256 fingerprint for rate-limiting
-// magic link issuance, never logged in plaintext.
-// remoteIP returns the originating IP, honouring X-Forwarded-For only
-// when the request came in through a trusted proxy CIDR
-// (TRUSTED_PROXY_CIDR env var, defaults to loopback). Without this, a
-// magic-link flood can spoof XFF on each request to evade the per-IP
-// cap when the service is ever reachable directly (local dev exposed
-// publicly, debug deploys, mistake). Function and CIDR set duplicated
-// in server/ratelimit.go to avoid an auth->server import cycle.
+// remoteIP returns the client IP, honouring X-Forwarded-For only when the
+// request came through TRUSTED_PROXY_CIDR (defaults to loopback).
+// Duplicated in server/ratelimit.go to avoid an auth->server cycle.
 func remoteIP(r *http.Request) string {
 	if authRemoteIsTrustedProxy(r.RemoteAddr) {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {

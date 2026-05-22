@@ -1,16 +1,5 @@
-// Package alerts is the Pro-only "fire a webhook when something matches"
-// worker. It runs as a goroutine spawned from main, polls the storage for
-// recently-fetched articles + enabled rules every interval, and POSTs
-// formatted payloads to user-supplied webhook URLs (Slack / Discord /
-// generic).
-//
-// Safety:
-//   - SSRF guard rejects loopback + private IP webhook URLs so a
-//     malicious user can't aim a webhook at the local network.
-//   - HTTPS-only.
-//   - Short timeout, no retries: webhooks that 500 once are skipped this
-//     tick and tried on the next match.
-//   - Dedup table (alert_fires) makes the worker idempotent across restarts.
+// Package alerts is the Pro webhook-fire worker. SSRF-guarded, HTTPS-only,
+// short timeout, alert_fires dedup table for restart idempotency.
 package alerts
 
 import (
@@ -61,15 +50,8 @@ func New(store *storage.Store, siteBase string) *Worker {
 	}
 }
 
-// newSSRFGuardedClient builds an http.Client whose dialer rejects any
-// post-resolution IP that's loopback, private, link-local, multicast,
-// or unspecified. Doing the check at socket-open time eliminates the
-// DNS-rebinding window between a pre-flight LookupIP and the actual
-// dial inside http.Client.Do. CheckRedirect re-applies the validation
-// on every Location header so a 30x to an internal address can't slip
-// through. Connection pooling is intentionally minimal because each
-// webhook target is unique - reuse offers no benefit and the dial-time
-// check needs to run on every request.
+// newSSRFGuardedClient validates resolved IPs at socket-open time and on
+// every redirect to close the DNS-rebinding window.
 func newSSRFGuardedClient() *http.Client {
 	dialer := &net.Dialer{Timeout: 5 * time.Second}
 	transport := &http.Transport{
@@ -82,18 +64,13 @@ func newSSRFGuardedClient() *http.Client {
 			if err != nil {
 				return nil, err
 			}
-			// Reject the entire dial if ANY resolved IP is on the
-			// blocklist. Catches multi-A records where one entry is a
-			// public decoy and another is internal.
+			// Reject the dial if ANY resolved IP is on the blocklist.
 			for _, ip := range ips {
 				if isForbiddenIP(ip) {
 					return nil, fmt.Errorf("webhook dial blocked: %s resolves to disallowed address %s", host, ip.String())
 				}
 			}
-			// Pick the first resolved IP and connect to it directly so
-			// the dial uses the IP we validated, not whatever the dialer
-			// re-resolves. This closes the rebinding window between
-			// LookupIP and the underlying Dial.
+			// Connect directly to the validated IP so the dialer can't re-resolve.
 			return dialer.DialContext(ctx, network, net.JoinHostPort(ips[0].String(), port))
 		},
 		MaxIdleConns:    4,
@@ -103,10 +80,7 @@ func newSSRFGuardedClient() *http.Client {
 		Timeout:   5 * time.Second,
 		Transport: transport,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// On every redirect, re-validate the destination URL host
-			// against the blocklist. http.Client.Do does its own
-			// resolution for the redirect target which would otherwise
-			// skip our DialContext guard.
+			// Re-validate each redirect's host; http.Client resolves the target itself.
 			if len(via) >= 5 {
 				return errors.New("too many redirects")
 			}
@@ -129,10 +103,7 @@ func newSSRFGuardedClient() *http.Client {
 	}
 }
 
-// isForbiddenIP returns true for any address class a webhook should
-// never reach: loopback, private RFC1918, link-local (including
-// cloud-metadata 169.254.169.254), multicast, unspecified. Pull-out so
-// the dial-time guard and the redirect guard agree on the policy.
+// isForbiddenIP rejects loopback, RFC1918, link-local (incl. 169.254.169.254), multicast, unspecified.
 func isForbiddenIP(ip net.IP) bool {
 	return ip.IsLoopback() ||
 		ip.IsPrivate() ||
@@ -284,17 +255,8 @@ func (w *Worker) send(ctx context.Context, r *storage.AlertRule, a *models.Artic
 	return nil
 }
 
-// validateWebhookURL is the friendly pre-flight check the rule-creation
-// UI calls when a user saves a webhook URL. It catches typos and
-// obviously-bad inputs (non-https, IP literals in private ranges) so
-// the user sees a clean error instead of a hidden failure at fire time.
-//
-// The REAL SSRF defense is the dial-time guard in newSSRFGuardedClient
-// (see DialContext + CheckRedirect). That's what protects against DNS
-// rebinding, multi-A-record bypass, and redirect-to-internal: this
-// pre-flight is purely UX and is intentionally allowed to be lenient
-// on DNS failures (some webhook services use short-TTL or geo-pinned
-// DNS that resolves fine from the actual request path but fails here).
+// validateWebhookURL is the pre-flight UX check. Real SSRF defense
+// is in newSSRFGuardedClient's DialContext + CheckRedirect.
 func validateWebhookURL(raw string) error {
 	if raw == "" {
 		return errors.New("webhook URL required")

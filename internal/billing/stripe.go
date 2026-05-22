@@ -114,11 +114,8 @@ func (c *stripeClient) createCheckout(ctx context.Context, in checkoutInput) (*c
 	if in.CustomerID != "" {
 		form.Set("customer", in.CustomerID)
 	} else if in.CustomerEmail != "" {
-		// In subscription mode Stripe creates the Customer automatically
-		// when none is provided. We pre-fill the email so the user
-		// doesn't have to retype it. NOTE: `customer_creation` is
-		// payment-mode only - Stripe rejects subscription sessions
-		// that include it as of mid-2024.
+		// Stripe auto-creates the Customer in subscription mode; pre-fill
+		// email. customer_creation is payment-mode only.
 		form.Set("customer_email", in.CustomerEmail)
 	}
 

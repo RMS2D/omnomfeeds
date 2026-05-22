@@ -1,13 +1,6 @@
-// Package patchtuesday auto-generates AI summaries of vendor patch-day
-// releases (Microsoft / Adobe Patch Tuesday, Oracle CPU). The worker
-// ticks hourly; on each tick it asks "is today a patch day for any
-// vendor I know about?" and, if so, whether a brief has already been
-// generated for that vendor+date. If not, it pulls the last 24h of
-// vendor-tagged articles and asks the AI to summarise.
-//
-// Threshold-triggered vendors (Apple, Linux distros, browser stable
-// channels) are stubbed for v1 - the worker recognises their names in
-// the config table but the threshold detector is "coming soon".
+// Package patchtuesday auto-generates summaries of vendor patch-day releases
+// (Microsoft / Adobe Patch Tuesday, Oracle CPU). Worker ticks hourly.
+// Threshold-triggered vendors (Apple, distros, browsers) stubbed for v1.
 package patchtuesday
 
 import (

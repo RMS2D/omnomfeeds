@@ -38,10 +38,7 @@ var defaultConfigBytes []byte
 var version = "dev"
 
 func main() {
-	// Subcommand dispatch lives at the top so the TUI doesn't pay the
-	// cost of spinning up the full feed-fetcher / scoring / server stack.
-	// `secfeed tui` only needs the config path + a read-mostly SQLite
-	// handle; everything else is the daemon's job and runs separately.
+	// `secfeed tui` bypasses the fetcher/scoring/server stack.
 	if len(os.Args) > 1 && os.Args[1] == "tui" {
 		runTUI()
 		return
@@ -103,11 +100,7 @@ func main() {
 		normalSrcs = append(normalSrcs, bskySrc)
 	}
 	if cfg.Bluesky.Enabled && bskySrc != nil {
-		// Compute the watched-handles list fresh each fetch cycle:
-		// operator's config.json baseline ∪ the editorial curated list
-		// ∪ every user's personal subs. New per-user adds get picked up
-		// without a binary restart. The curated list is auto-included so
-		// hosted users get a populated feed the moment they sign up.
+		// Watched-handle list rebuilt each cycle: config.json ∪ curated ∪ per-user subs.
 		handlesFn := func() []string {
 			seen := make(map[string]struct{})
 			add := func(h string) {
@@ -133,10 +126,7 @@ func main() {
 			}
 			return out
 		}
-		// Only register the source if there's at least one handle to fetch
-		// at startup time. If the operator's list is empty but users add
-		// handles later, the source still ticks (handlesFn re-checks every
-		// poll). So always register when bsky auth is configured.
+		// Always register; handlesFn re-checks each poll, so user adds work without restart.
 		normalSrcs = append(normalSrcs, sources.NewBlueskyAccounts(handlesFn, bskySrc))
 	}
 	for _, inst := range cfg.Mastodon.Instances {
@@ -186,13 +176,12 @@ func main() {
 		}
 	}()
 
-	// --- AI provider (BYOK) ---
+	// BYOK summarizer provider.
 	var aiClient ai.Summarizer
 	provider := strings.ToLower(strings.TrimSpace(cfg.AI.Provider))
 	anthroKey := os.Getenv("ANTHROPIC_API_KEY")
 	openaiKey := os.Getenv("OPENAI_API_KEY")
 	if provider == "" {
-		// Auto-detect by available key
 		if anthroKey != "" {
 			provider = "anthropic"
 		} else if openaiKey != "" {
@@ -202,22 +191,22 @@ func main() {
 	switch provider {
 	case "anthropic":
 		if anthroKey == "" {
-			log.Printf("[AI] anthropic provider selected but ANTHROPIC_API_KEY env var unset; AI digest disabled")
+			log.Printf("[llm] anthropic selected but ANTHROPIC_API_KEY unset; disabled")
 		} else {
 			aiClient = ai.NewAnthropicClient(anthroKey, cfg.AI.Model, cfg.AI.Focus)
-			log.Printf("[AI] provider :: %s", aiClient.Name())
+			log.Printf("[llm] provider :: %s", aiClient.Name())
 		}
 	case "openai":
 		if openaiKey == "" {
-			log.Printf("[AI] openai provider selected but OPENAI_API_KEY env var unset; AI digest disabled")
+			log.Printf("[llm] openai selected but OPENAI_API_KEY unset; disabled")
 		} else {
 			aiClient = ai.NewOpenAIClient(openaiKey, cfg.AI.Model, cfg.AI.Focus)
-			log.Printf("[AI] provider :: %s", aiClient.Name())
+			log.Printf("[llm] provider :: %s", aiClient.Name())
 		}
 	case "":
-		// neither key set - silent, no AI features
+		// no key set; no summarizer
 	default:
-		log.Printf("[AI] unknown provider %q (expected anthropic or openai)", provider)
+		log.Printf("[llm] unknown provider %q (expected anthropic or openai)", provider)
 	}
 
 	enr := &server.Enrichment{
@@ -238,17 +227,10 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Background sweeper for the in-memory caches added for /cve/<id>,
-	// /trending, /pre-kev, and "while you were gone". Every cache had a
-	// read-time TTL check but never removed expired entries; without the
-	// sweeper cvePageCache could grow toward NVD's ~240k CVE space.
+	// Sweep TTL'd entries from the in-memory CVE/trending caches.
 	srv.StartCacheSweeper(ctx)
 
-	// Daily DB cleanup: expired sessions, magic-link tokens, alert-fire
-	// dedup rows, read articles >90d, analytics events >180d, NVD/OTX
-	// cache >90d, then a WAL checkpoint to keep the journal bounded.
-	// First tick at +5min so the box has time to settle after restart;
-	// subsequent ticks at 24h intervals.
+	// Daily DB cleanup. First tick +5min after start, then every 24h.
 	go func() {
 		t := time.NewTimer(5 * time.Minute)
 		defer t.Stop()
@@ -265,8 +247,7 @@ func main() {
 		}
 	}()
 
-	// Pro webhook-alert worker. Only spun up in hosted mode; in self-host
-	// nobody can save alert rules so the goroutine would have nothing to do.
+	// Pro webhook-alert worker; hosted-mode only.
 	if cfg.Hosted.Enabled {
 		siteBase := strings.TrimSuffix(cfg.Hosted.OAuthRedirectURL, "/auth/callback")
 		if siteBase == "" {
@@ -278,17 +259,14 @@ func main() {
 		log.Printf("[alerts] webhook worker started (site=%s)", siteBase)
 	}
 
-	// Pro AI semantic-dedup worker. Hosted mode + AI provider required;
-	// runs every 30 minutes regardless of user count - the cost is fixed
-	// per cycle, the benefit is shared.
+	// Semantic-dedup worker; hosted + LLM provider required.
 	if cfg.Hosted.Enabled && aiClient != nil {
 		dw := aidedup.New(db, aiClient)
 		go dw.Run(ctx)
 		log.Printf("[aidedup] semantic-dedup worker started")
 	}
 
-	// Pro email digest worker. Sends daily / weekly summaries to opted-in
-	// users via Resend. Needs both AI provider and Resend API key.
+	// Email digest worker; needs hosted + LLM + Resend.
 	if cfg.Hosted.Enabled && aiClient != nil && cfg.Hosted.ResendAPIKey != "" {
 		siteBase := strings.TrimSuffix(cfg.Hosted.OAuthRedirectURL, "/auth/callback")
 		if siteBase == "" {
@@ -300,23 +278,18 @@ func main() {
 		log.Printf("[digestmail] email digest worker started")
 	}
 
-	// Patch Tuesday brief generator. Hosted mode + AI required; runs
-	// hourly and only does work on calendar-pinned patch days (MS / Adobe
-	// 2nd Tue, Oracle CPU Jan/Apr/Jul/Oct 3rd Tue).
+	// Patch Tuesday brief generator; hourly tick, calendar-gated.
 	if cfg.Hosted.Enabled && aiClient != nil {
 		pw := patchtuesday.New(db, aiClient)
 		go pw.Run(ctx)
 		log.Printf("[patchtuesday] brief worker started")
 	}
 
-	// AI triage worker: generates inline "what? so what?" one-liners
-	// for high-score articles. Hosted mode + AI required. Per-article
-	// cost is ~$0.0005; cache is forever, cost bounded by article
-	// volume not user count.
+	// Triage worker: inline "what? so what?" lines for high-score articles.
 	if cfg.Hosted.Enabled && aiClient != nil {
 		tw := aitriage.New(db, aiClient)
 		go tw.Run(ctx)
-		log.Printf("[aitriage] triage worker started")
+		log.Printf("[triage] worker started")
 	}
 
 	go func() {
@@ -368,11 +341,7 @@ func main() {
 	}
 }
 
-// resolveConfigPath picks where secfeed expects its config:
-//   1. Positional CLI arg (legacy / dev workflow).
-//   2. SECFEED_CONFIG env var.
-//   3. OS user config dir + /secfeed/config.json.
-//   4. Fall back to ./config.json.
+// resolveConfigPath: positional arg → SECFEED_CONFIG → OS config dir → ./config.json.
 func resolveConfigPath() string {
 	if len(os.Args) > 1 && os.Args[1] != "" {
 		return os.Args[1]
@@ -387,15 +356,7 @@ func resolveConfigPath() string {
 	return "config.json"
 }
 
-// runTUI loads the same config + opens the same SQLite DB the server
-// would, then hands off to internal/tui. SQLite WAL handles concurrent
-// reads + the occasional TUI write (mark-read, bookmark) cleanly, so
-// running this alongside a `secfeed serve` instance is fine.
-//
-// We also spin up NVD + EPSS clients pointed at the same DB so the
-// CVE popover can show CVSS / CWE / EPSS percentile inline. Both
-// clients cache against SQLite so first lookups go to the network
-// but subsequent are instant.
+// runTUI loads the same config + DB as the server, then hands off to internal/tui.
 func runTUI() {
 	cfgPath := resolveTUIConfigPath()
 	if err := ensureConfigExists(cfgPath); err != nil {
@@ -414,15 +375,11 @@ func runTUI() {
 	}
 	defer db.Close()
 
-	// NVD: use NVD_API_KEY env var if present (raises the rate limit
-	// from 5/30s to 50/30s). Without a key the default-throttled
-	// client still works, just slower on cold lookups.
+	// NVD_API_KEY env var raises the rate limit from 5/30s to 50/30s.
 	nvd := cve.NewNVDClient(db.DB(), os.Getenv("NVD_API_KEY"))
 	epss := cve.NewEPSSClient(db.DB())
 
-	// AI summarizer (BYOK). Anthropic takes precedence if both keys
-	// are set since Haiku is cheaper + faster than gpt-4o-mini. If
-	// neither key is set, the AI brief modal renders a BYOK hint.
+	// BYOK summarizer; Anthropic takes precedence when both keys are set.
 	var summarizer ai.Summarizer
 	if key := os.Getenv("ANTHROPIC_API_KEY"); key != "" {
 		summarizer = ai.NewAnthropicClient(key, "", "")
@@ -430,9 +387,6 @@ func runTUI() {
 		summarizer = ai.NewOpenAIClient(key, "", "")
 	}
 
-	// Scorer: a fresh one is fine (it's stateless aside from the KEV
-	// catalog, which it loads lazily). The TUI uses this for the
-	// score-explainer modal (`e` key).
 	scorer := scoring.New()
 	scorer.UpdateKEV()
 
@@ -441,12 +395,7 @@ func runTUI() {
 	}
 }
 
-// resolveTUIConfigPath is a tiny variant of resolveConfigPath that
-// ignores the "tui" subcommand token at os.Args[1] and looks at
-// os.Args[2] for an optional positional config path
-// (`secfeed tui /path/to/config.json`). Otherwise it uses the same
-// env-var + OS-config-dir fallback as the server mode, so the TUI
-// reads the same SQLite the daemon writes to by default.
+// resolveTUIConfigPath: like resolveConfigPath but reads os.Args[2] past the "tui" subcommand.
 func resolveTUIConfigPath() string {
 	if len(os.Args) > 2 && os.Args[2] != "" {
 		return os.Args[2]

@@ -10,11 +10,8 @@ import (
 	"github.com/mmcdole/gofeed"
 )
 
-// Reddit blocks /.json from datacenter IPs (Cloudflare 403s every UA we
-// send). The /.rss endpoint on the same subreddits stays open with a
-// browser-shaped UA, so we drop down to RSS for parity with the rest of
-// the source pipeline. SourceType stays "reddit" so the UI can still
-// theme + filter on it distinctly from generic RSS feeds.
+// Reddit blocks /.json from datacenter IPs; /.rss stays open with a
+// browser-shaped UA. SourceType stays "reddit" so UI can theme distinctly.
 type RedditSource struct {
 	subreddit string
 }

@@ -1,15 +1,5 @@
-// ratelimit.go - simple per-IP sliding-window limiter used to cap AI
-// endpoints. Goal: prevent a scraper / abuser from blowing through the
-// Anthropic budget by hammering /api/digest force-refresh or /explain
-// endpoints. Cache mitigates most of it; this is the second line.
-//
-// Not a real DDoS shield - that's Cloudflare / Caddy's job. This is
-// just a cost guardrail: each IP can burn N AI calls per minute, no
-// more. Beyond that returns 429.
-//
-// Storage is in-memory (sync.Map) with a tiny background sweeper.
-// Tracks request timestamps per IP+route bucket. No persistence -
-// restart clears the window, which is fine.
+// ratelimit.go: per-IP sliding-window cost guardrail on summarizer endpoints.
+// In-mem sync.Map with a background sweeper; restart clears the window.
 
 package server
 
@@ -88,13 +78,8 @@ func (rl *rateLimiter) sweep() {
 	}
 }
 
-// trustedProxyCIDRs is the allow-list of network prefixes whose
-// X-Forwarded-For headers we honour. Configured via TRUSTED_PROXY_CIDR
-// env var (comma-separated CIDRs); defaults to loopback only. If a
-// request arrives from outside this set, the XFF header is IGNORED and
-// we use the actual TCP source address. Stops spoofed XFF from
-// bypassing rate limits or anonymising magic-link floods when the
-// service is ever reached directly (local dev, debug deploys, mistake).
+// trustedProxyCIDRs: prefixes whose X-Forwarded-For we honour. Defaults to
+// loopback. Anything else's XFF is ignored to block spoofed-IP bypasses.
 var trustedProxyCIDRs = parseTrustedProxyCIDRs(os.Getenv("TRUSTED_PROXY_CIDR"))
 
 func parseTrustedProxyCIDRs(env string) []*net.IPNet {
@@ -134,12 +119,8 @@ func remoteIsTrustedProxy(remoteAddr string) bool {
 	return false
 }
 
-// clientIP returns the originating client IP. The X-Forwarded-For header
-// is consulted ONLY when the request arrived from a trusted proxy
-// (TRUSTED_PROXY_CIDR env var, defaults to loopback). Otherwise we use
-// the direct TCP source. Without this, a client sending
-// `X-Forwarded-For: 1.2.3.4` on each request can bypass per-IP rate
-// limits and anonymise magic-link rate-limiting.
+// clientIP: returns originating IP. XFF honoured only from trusted proxies
+// (TRUSTED_PROXY_CIDR) to block spoofed-IP bypasses of per-IP rate limits.
 func clientIP(r *http.Request) string {
 	if remoteIsTrustedProxy(r.RemoteAddr) {
 		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
@@ -167,7 +148,7 @@ func (s *Server) aiRateLimit(bucket string, h http.Handler) http.Handler {
 			w.Header().Set("Retry-After", "60")
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusTooManyRequests)
-			w.Write([]byte(`{"error":"rate limit: too many AI calls per minute from this IP","retry_after_s":60}`))
+			w.Write([]byte(`{"error":"rate limit: too many summarizer calls per minute from this IP","retry_after_s":60}`))
 			return
 		}
 		h.ServeHTTP(w, r)

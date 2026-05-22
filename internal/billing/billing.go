@@ -168,13 +168,8 @@ func (h *Handler) handleWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := h.dispatchEvent(r, &ev); err != nil {
 		log.Printf("[billing] webhook: %s: %v", ev.Type, err)
-		// Distinguish permanent from transient failures. sql.ErrNoRows
-		// means we got an event for a customer we don't know about (or
-		// have already deleted) - retrying won't help and a 500 storm
-		// for 72 hours just clogs the Stripe dashboard. Acknowledge with
-		// 200 to drop the event quietly. Anything else might self-heal
-		// (race with another webhook, transient DB error, NVD/EPSS lag),
-		// so 500 makes Stripe retry.
+		// sql.ErrNoRows means unknown/deleted customer; ack 200 so Stripe
+		// stops retrying. Everything else 500s for self-heal retries.
 		if errors.Is(err, sql.ErrNoRows) {
 			log.Printf("[billing] webhook: %s acknowledged with 200 - unknown customer, no retry useful", ev.Type)
 			w.WriteHeader(http.StatusOK)

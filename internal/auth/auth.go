@@ -42,11 +42,8 @@ type User struct {
 	IsAdmin     bool
 }
 
-// IsPro returns whether the user gets the Pro experience right now. Admin
-// users (operators) are treated as Pro at runtime so the deployment owner
-// can use every feature without going through Stripe. They are NOT counted
-// in the dashboard's paid-subscriber metric, which queries pro_until
-// directly from the users table and stays NULL for admin rows.
+// IsPro: admins get Pro at runtime but stay NULL in pro_until,
+// so the dashboard's paid-subscriber metric remains accurate.
 func (u *User) IsPro() bool {
 	if u == nil {
 		return false
@@ -122,11 +119,8 @@ func (h *Handler) handleLogout(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
-// Middleware wraps an http.Handler with a session resolver. Tries cookie
-// auth first (browser path), then bearer-token auth (REST API path). If
-// either resolves a user we stamp it on the context; otherwise the next
-// handler runs anonymous. Endpoints that REQUIRE a user should call
-// RequireUser to enforce 401 on the anonymous path.
+// Middleware resolves session via cookie then bearer; stamps user
+// on context if found. Endpoints needing auth call RequireUser.
 func (h *Handler) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if u := h.resolveUser(r); u != nil {

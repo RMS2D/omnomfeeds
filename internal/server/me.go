@@ -146,17 +146,8 @@ func (s *Server) handleMeRead(w http.ResponseWriter, r *http.Request) {
 
 // --- Per-user Bluesky watched accounts ---
 
-// handleMeBskyAccounts owns the per-user watched-handle list.
-//   GET  -> {"handles": [...]}
-//   POST {"action":"add","handle":"x.bsky.social"}        -> add one
-//   POST {"action":"remove","handle":"x.bsky.social"}     -> remove one
-//   POST {"action":"add_bulk","handles":["a","b","c"]}    -> batch add
-//
-// Free-tier intentional: curating your own researcher list is the
-// fastest path to value for a new signup. Pro is reserved for features
-// with ongoing per-user infrastructure cost (custom webhook alerts,
-// digest email, AI personalisation). Storage is capped per user (see
-// userBskyAccountsCap) so we can't be DoS'd by a runaway script.
+// handleMeBskyAccounts: per-user watched Bluesky handles (GET / add / remove / add_bulk).
+// Free-tier feature; capped via userBskyAccountsCap to bound storage.
 const userBskyAccountsCap = 100
 
 func (s *Server) handleMeBskyAccounts(w http.ResponseWriter, r *http.Request) {
@@ -323,16 +314,9 @@ func (s *Server) handleMeDigest(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// --- AI personalization (Pro) ---
-//
-//	POST /api/me/personalize {profile, article_ids[]}
-//	    -> {sorted_ids: [...]}  (Pro-gated, no caching, ~$0.008 per call)
-//
-// The frontend captures the user's profile separately (settings JSON);
-// the endpoint takes profile + a batch of article ids, looks up each
-// article's title + summary, builds the prompt, calls the AI, and
-// returns the ids sorted by relevance. The frontend then re-orders the
-// visible list.
+// --- Personalization (Pro) ---
+// POST /api/me/personalize {profile, article_ids[]} -> {sorted_ids: [...]}.
+// Pro-gated, uncached, ~$0.008/call. Frontend re-orders the visible list.
 func (s *Server) handleMePersonalize(w http.ResponseWriter, r *http.Request) {
 	u := auth.UserFromContext(r.Context())
 	if u == nil {
@@ -348,7 +332,7 @@ func (s *Server) handleMePersonalize(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.enrich == nil || s.enrich.AI == nil {
-		http.Error(w, "no AI provider configured", http.StatusServiceUnavailable)
+		http.Error(w, "no summarizer provider configured", http.StatusServiceUnavailable)
 		return
 	}
 
@@ -677,11 +661,8 @@ func (s *Server) handleMeTokens(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "auth required", http.StatusUnauthorized)
 		return
 	}
-	// Token management is browser-only on purpose: a stolen bearer token
-	// must not be able to mint additional tokens. Cookie presence is the
-	// proxy for "this is the actual user at their browser." The auth
-	// middleware sets the cookie HttpOnly so JS / API consumers can't
-	// spoof it.
+	// Token ops are browser-only: a stolen bearer must not mint more tokens.
+	// Cookie presence (HttpOnly) proxies for "actual user at the browser".
 	if _, err := r.Cookie("omnom_session"); err != nil {
 		http.Error(w, "token operations require a browser session", http.StatusForbidden)
 		return
@@ -829,13 +810,8 @@ func (httpError) Error() string { return "http error" }
 
 // --- "What changed while you were gone" banner ---
 
-// handleMeWhatsNew powers a dismissible banner on the /app reader. GET
-// returns either {dismissed: true} (if the user dismissed it in the last
-// 24h) or {summary, since, article_count, generated_at}. POST writes
-// the current time as the new dismiss timestamp so the banner stays
-// hidden for the next 24h. Pro-gated; uses the same AI key as the daily
-// brief. Cache key includes the dismiss timestamp so dismissing
-// implicitly invalidates the cached summary.
+// handleMeWhatsNew: dismissible "what changed while you were gone" banner.
+// Pro-gated; cache key includes dismiss timestamp so dismiss invalidates it.
 const whatsNewCacheTTL = 6 * time.Hour
 const whatsNewMaxLookback = 14 * 24 * time.Hour
 const whatsNewQuietWindow = 24 * time.Hour
@@ -851,7 +827,7 @@ func (s *Server) handleMeWhatsNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if s.enrich == nil || s.enrich.AI == nil {
-		writeJSON(w, 503, map[string]string{"error": "no AI provider configured"})
+		writeJSON(w, 503, map[string]string{"error": "no summarizer provider configured"})
 		return
 	}
 
@@ -884,9 +860,8 @@ func (s *Server) handleMeWhatsNew(w http.ResponseWriter, r *http.Request) {
 	dismiss, _ := s.store.GetWhatsNewDismiss(u.ID)
 	now := time.Now()
 
-	// ?force=1 lets the user manually re-open the brief from the command
-	// palette even if they've dismissed it inside the quiet window. The
-	// AI summary is identical; we just bypass the auto-hide gate.
+	// ?force=1 lets the user re-open the brief inside the quiet window
+	// from the command palette; same summary, just bypasses the auto-hide.
 	force := r.URL.Query().Get("force") == "1"
 
 	// Inside the quiet window? Don't show a banner. The frontend treats
@@ -900,7 +875,7 @@ func (s *Server) handleMeWhatsNew(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Compute the lookback window. Floor at 14 days so a user away for
-	// months doesn't trigger a comparably-large AI call.
+	// months doesn't trigger a comparably-large summarizer call.
 	since := dismiss
 	floor := now.Add(-whatsNewMaxLookback)
 	if since.Before(floor) {
@@ -935,7 +910,7 @@ func (s *Server) handleMeWhatsNew(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Build the slim AI input. Same shape the daily brief uses.
+	// Build the slim summarizer input. Same shape the daily brief uses.
 	aiArts := make([]ai.Article, 0, len(articles))
 	for _, a := range articles {
 		aiArts = append(aiArts, ai.Article{

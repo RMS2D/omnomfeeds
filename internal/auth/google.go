@@ -15,19 +15,8 @@ import (
 	"time"
 )
 
-// Google OAuth 2.0 + PKCE flow.
-//
-// /auth/google           -> generate state + PKCE verifier, set short cookie,
-//                           302 to accounts.google.com consent screen
-// /auth/callback         -> validate state cookie, exchange code via
-//                           oauth2.googleapis.com/token (with PKCE verifier),
-//                           parse the ID token JWT payload, upsert user,
-//                           issue session, 303 to /
-//
-// We do not verify the ID token signature against Google's JWKS. The token
-// arrived directly from googleapis.com over TLS during the exchange, so trust
-// is anchored at the transport layer. JWKS verification is a future hardening
-// step but not load-bearing for correctness at this scale.
+// Google OAuth 2.0 + PKCE flow. Trust is anchored at TLS (token comes
+// directly from googleapis.com); JWKS verification is future hardening.
 
 const (
 	googleAuthEndpoint  = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -238,18 +227,8 @@ var validGoogleIssuers = map[string]bool{
 	"https://accounts.google.com": true,
 }
 
-// parseGoogleIDToken decodes the JWT payload (header.payload.signature)
-// and returns the claims. The signature itself isn't verified against
-// Google's JWKS - we trust the token by transport (it arrives directly
-// from oauth2.googleapis.com over TLS to this process). However the
-// audience, issuer, and expiry claims ARE validated here: cheap to
-// check, close an entire class of confused-deputy attack where a token
-// issued for a different OAuth client / different identity provider /
-// long-expired could be replayed in.
-//
-// expectedAud is the Google client ID this server is configured for.
-// Binding to OUR client makes it impossible for a token minted for any
-// other app to be accepted here even if an attacker could deliver one.
+// parseGoogleIDToken decodes the JWT payload (sig trusted via TLS).
+// Validates aud/iss/exp to block confused-deputy / replay attacks.
 func parseGoogleIDToken(s, expectedAud string) (*googleIDClaims, error) {
 	parts := strings.SplitN(s, ".", 3)
 	if len(parts) != 3 {

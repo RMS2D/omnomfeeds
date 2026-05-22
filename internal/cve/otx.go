@@ -58,14 +58,8 @@ func (o *OTXClient) EnsureTable() error {
 	return err
 }
 
-// Get returns OTX pulse data for a CVE, cached for 6h on disk. Cache
-// behavior:
-//   - 200 OK (any count, including 0): cached for full TTL
-//   - 404 from upstream: cached as "OTX has no record" for full TTL
-//   - timeout / 5xx / network err: NOT cached, retried on next call
-//
-// OTX's response times from some datacenters run 4-5s; the HTTP client
-// timeout above is generous to keep the first-lookup miss path working.
+// Get: OTX pulse data, 6h disk cache. 200/404 cached, 5xx/timeout retried.
+// HTTP timeout is generous because OTX runs 4-5s from some datacenters.
 func (o *OTXClient) Get(ctx context.Context, cveID string) (*OTXData, error) {
 	cveID = strings.ToUpper(strings.TrimSpace(cveID))
 	if cveID == "" {

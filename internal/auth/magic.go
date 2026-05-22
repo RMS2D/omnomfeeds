@@ -86,17 +86,8 @@ func (h *Handler) handleMagicRequest(w http.ResponseWriter, r *http.Request) {
 	_, _ = w.Write([]byte(`{"ok":true}`))
 }
 
-// handleMagicVerify is the magic-link landing handler. Two phases:
-//
-//	GET  /auth/magic/verify?t=<token> -> render an interstitial page with a
-//	     "Sign me in" button. The token is NOT consumed here; corporate /
-//	     consumer mail scanners (Microsoft Safe Links, Outlook, Gmail) GET
-//	     every link they see, and consuming on GET would burn the token
-//	     before the user ever opened the email.
-//
-//	POST /auth/magic/verify with the token in the form body -> consume the
-//	     token, upsert the user, issue a session cookie, redirect to /app.
-//	     Only a real human click reaches POST.
+// handleMagicVerify: GET renders an interstitial, POST consumes the token.
+// Split because mail scanners GET every link and would burn one-shot tokens.
 func (h *Handler) handleMagicVerify(w http.ResponseWriter, r *http.Request) {
 	if h.cfg.ResendAPIKey == "" {
 		http.Error(w, "magic-link login not configured", http.StatusServiceUnavailable)

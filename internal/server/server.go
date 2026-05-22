@@ -75,8 +75,8 @@ type Server struct {
 	digestWorker *digestmail.Worker
 	alertsWorker *alerts.Worker
 
-	// Cached AI digest: regenerating costs API budget, so we hold the latest
-	// brief for 1 hour. Force-refresh via POST /api/digest.
+	// Cached digest: regenerating costs budget, so hold the latest brief
+	// for 1 hour. Force-refresh via POST /api/digest.
 	digestMu       sync.Mutex
 	digestText     string
 	digestAt       time.Time
@@ -96,9 +96,8 @@ type Server struct {
 	preKEVCache map[string]int
 	preKEVAt    time.Time
 
-	// Per-IP rate limiter on AI endpoints. Guards the Anthropic bill
-	// against a scraper hammering /api/digest force-refresh or the
-	// per-article / per-CVE explainers. See ratelimit.go.
+	// Per-IP limiter on summarizer endpoints (digest force-refresh,
+	// per-article / per-CVE explainers). See ratelimit.go.
 	aiLimiter *rateLimiter
 
 	// analytics records who-uses-what for the admin dashboard. nil-safe;
@@ -123,9 +122,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		enrich:        enr,
 		stream:        newStreamHub(),
 		whatsNewCache: make(map[string]*whatsNewEntry),
-		// 20 AI calls per minute per IP. Authenticated Pro users
-		// rarely hit this (cache hits dominate); scrapers slam into
-		// it fast.
+		// 20 summarizer calls/min/IP; cache hits cover real users.
 		aiLimiter: newRateLimiter(20, 60*time.Second),
 		analytics: analytics.New(store.DB()),
 	}
@@ -186,13 +183,10 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	mux.HandleFunc("/api/cve/", s.handleCVE)
 	// Server-Sent Events stream for real-time refresh notifications
 	mux.HandleFunc("/api/stream", s.handleStream)
-	// AI digest. In hosted mode the brief uses the operator's Anthropic
-	// key (which costs real money per call), so Pro is required. Self-host
-	// uses BYOK from env and stays open. Per-IP rate limit applies on
-	// top of the Pro gate so a single Pro account can't burn through
-	// the budget either (cache covers them anyway, but defence in depth).
+	// Digest brief: hosted = Pro-gated (operator pays per call); self-host = open.
+	// Per-IP limiter applies on top so a single Pro account can't burn the budget.
 	mux.Handle("/api/digest", s.aiRateLimit("digest", proGate(cfg.Hosted.Enabled, http.HandlerFunc(s.handleDigest))))
-	// Per-article AI explainer. Pro-gated in hosted mode; cached per
+	// Per-article explainer. Pro-gated in hosted mode; cached per
 	// article.id so repeat clicks across users only cost one LLM call.
 	mux.Handle("/api/articles/explain/", s.aiRateLimit("explain", proGate(cfg.Hosted.Enabled, http.HandlerFunc(s.handleArticleExplain))))
 	// Per-user identity endpoint. Returns nil for anonymous; populated when
@@ -247,7 +241,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		mux.Handle("/api/me/channels", auth.RequireUser(http.HandlerFunc(s.handleMeChannels)))
 		mux.Handle("/api/me/channels/", auth.RequireUser(http.HandlerFunc(s.handleMeChannels)))
 
-		// Pro: AI personalization. Re-sorts the visible feed by relevance
+		// Pro: personalization. Re-sorts the visible feed by relevance
 		// to a user-supplied profile blurb.
 		mux.Handle("/api/me/personalize", auth.RequireUser(http.HandlerFunc(s.handleMePersonalize)))
 
@@ -286,21 +280,10 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 				s.emit(w, r, analytics.EvPageView, "/", nil)
 				serveEmbeddedFile(w, r, webFS, "landing.html")
 			case r.URL.Path == "/app", strings.HasPrefix(r.URL.Path, "/app/"):
-				// Anonymous visitors get the reader in read-only mode:
-				// they can browse the feed, open CVE modals, see actor
-				// chips, export ATT&CK layers. Auth-required tabs and
-				// mutations are hidden / no-ops in the client; the
-				// server-side gates on /api/me/* and /api/billing/*
-				// remain the real enforcement.
+				// Anonymous = read-only; real auth enforcement is on /api/me/* + /api/billing/*.
 				s.emit(w, r, analytics.EvPageView, "/app", nil)
-				// /app embeds the live reader UI as a single big HTML +
-				// inline-JS payload. After a deploy that ships bug fixes
-				// or new features, returning visitors must NOT serve the
-				// previously-cached HTML or they'll keep running last
-				// build's JS until they hard-reload. no-cache forces a
-				// conditional GET on every visit; the underlying
-				// ServeContent already emits Last-Modified, so unchanged
-				// builds short-circuit to 304 without re-downloading.
+				// no-cache so returning visitors don't run last build's inline JS;
+				// Last-Modified still allows 304 short-circuit on unchanged builds.
 				w.Header().Set("Cache-Control", "no-cache")
 				serveEmbeddedFile(w, r, webFS, "index.html")
 			case r.URL.Path == "/privacy":
@@ -400,17 +383,8 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	return s
 }
 
-// visibleBskySourcesForCaller returns the list of "Bluesky:@handle" source
-// strings the requester is allowed to see. Three contributors to the set:
-//
-//  1. Operator baseline (config.json's Bluesky.WatchedAccounts).
-//  2. The editorial curated researcher list (107 handles), auto-included
-//     so every hosted user has a populated feed without configuring a
-//     single thing.
-//  3. The caller's personal additions (user_bluesky_accounts), if signed
-//     in. This is the "add your own" layer.
-//
-// Anonymous viewers in hosted mode get just (1) and (2).
+// visibleBskySourcesForCaller: operator baseline + curated researcher list +
+// (when signed in) user_bluesky_accounts. Anonymous gets the first two.
 func (s *Server) visibleBskySourcesForCaller(r *http.Request) []string {
 	seen := make(map[string]bool)
 	add := func(h string) {
@@ -516,11 +490,8 @@ func serveStaticOr404(w http.ResponseWriter, r *http.Request, webFS fs.FS, fileS
 	serveNotFound(w, r, webFS)
 }
 
-// serveEmbeddedFileAs is like serveEmbeddedFile but pins the
-// Content-Type instead of letting Go sniff. Used for files where the
-// extension alone wouldn't yield the right MIME (and for the few
-// non-text assets where we want to be explicit - favicon.svg,
-// sitemap.xml, robots.txt, og-cover.svg).
+// serveEmbeddedFileAs is like serveEmbeddedFile but pins Content-Type
+// (favicon.svg, sitemap.xml, robots.txt, og-cover.svg).
 func serveEmbeddedFileAs(w http.ResponseWriter, r *http.Request, webFS fs.FS, name, contentType string) {
 	f, err := webFS.Open(name)
 	if err != nil {
@@ -557,7 +528,7 @@ func (s *Server) handleAdminDigestSendTest(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if s.digestWorker == nil {
-		writeJSON(w, 503, map[string]string{"error": "digest worker not running (needs hosted mode + AI provider + RESEND_API_KEY)"})
+		writeJSON(w, 503, map[string]string{"error": "digest worker not running (needs hosted mode + summarizer provider + RESEND_API_KEY)"})
 		return
 	}
 	var body struct {
@@ -739,13 +710,8 @@ func (s *Server) handleArticles(w http.ResponseWriter, r *http.Request) {
 	if s.cfg.Hosted.Enabled {
 		visible := s.visibleBskySourcesForCaller(r)
 		filter.VisibleBskySources = &visible
-		// Per-user read overlay: signed-in callers get their own read
-		// state from user_read_state instead of the global flag.
-		// History scope: free tier 30 days, Pro tier full corpus.
-		// This is the actual Pro distinction the landing promises -
-		// the same /api/articles endpoint, the same SQL, but free
-		// users see a 30-day window over both listing + search while
-		// Pro spans the whole archive.
+		// Per-user read overlay from user_read_state. Free = 30d window,
+		// Pro = full archive (the actual Pro distinction on /api/articles).
 		u := auth.UserFromContext(r.Context())
 		if u != nil {
 			filter.UserID = u.ID
@@ -780,11 +746,8 @@ func (s *Server) handleArticles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Threat actor + malware family extraction: scan each article's
-	// title/summary/tags for known APT names + malware families.
-	// Matches become "actor:<slug>" / "malware:<slug>" tags the
-	// frontend renders as distinct chips. Free for everyone (the
-	// curated list ships in the binary).
+	// Threat actor + malware family extraction; matches become
+	// actor:<slug> / malware:<slug> tags. Free for everyone.
 	for i := range articles {
 		extracted := actors.Extract(articles[i].Title, articles[i].Summary, articles[i].Tags)
 		if len(extracted) > 0 {
@@ -792,11 +755,8 @@ func (s *Server) handleArticles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Pre-KEV velocity decoration: tag articles that mention a CVE which
-	// has crossed the "talked about by 3+ distinct sources in the last
-	// 72h" threshold AND is not yet on the CISA KEV list. The frontend
-	// renders this as a prominent "🔮 PRE-KEV" badge - it's a heads-up
-	// that CISA may add this CVE soon and you might want to act now.
+	// Pre-KEV velocity: flag CVEs mentioned by 3+ sources in 72h that
+	// aren't on KEV yet (CISA may add them soon).
 	if preKEV := s.getPreKEVSet(); len(preKEV) > 0 {
 		for i := range articles {
 			for _, t := range articles[i].Tags {
@@ -807,12 +767,8 @@ func (s *Server) handleArticles(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// AI triage attachment for Pro users: bulk-fetch cached triage lines
-	// for the returned articles and stick them on the .Triage field.
-	// Articles without cached triage get the empty string (omitempty hides
-	// the field in JSON). A background worker fills the cache over time
-	// for high-score articles; lazy fill happens via the explicit triage
-	// endpoint.
+	// Pro triage attachment: bulk-fetch cached triage lines for .Triage.
+	// Missing entries get empty string (omitempty); background worker fills the cache.
 	if s.cfg.Hosted.Enabled {
 		if u := auth.UserFromContext(r.Context()); u != nil && u.IsPro() {
 			ids := make([]int64, 0, len(articles))
@@ -932,11 +888,8 @@ func (m *assetMatcher) match(a *models.Article) []string {
 	return hits
 }
 
-// parseAssetProfile splits the user-supplied keyword string on commas,
-// semicolons, newlines, and pipes. Strips whitespace AND surrounding
-// punctuation users tend to copy-paste in (quotes, brackets, parens,
-// backticks), lowercases, drops entries shorter than 2 chars or longer
-// than 30, dedupes.
+// parseAssetProfile splits on , ; newline | and strips edge punctuation
+// + whitespace. Lowercases, drops <2 or >30 chars, dedupes.
 func parseAssetProfile(raw string) []string {
 	const punctTrim = `"'` + "`" + `()[]{}<>.,:;!?*` // chars to strip from edges
 	out := []string{}
@@ -1086,12 +1039,8 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// hottestCVECache holds pre-serialised JSON responses keyed by (hours,
-// limit). The underlying query is ~4s on a warm box because EPSSClient
-// fans out to one SQLite query per CVE; serving from this cache turns
-// repeat requests into a memcpy. Public endpoint, cached 5 min - the
-// data doesn't shift faster than that and the trending page polls every
-// 60s anyway.
+// hottestCVECache: pre-serialised JSON by (hours, limit), 5min TTL.
+// Underlying query is ~4s on a warm box; cache turns repeats into memcpy.
 type hottestCVECacheEntry struct {
 	payload []byte
 	expiry  time.Time
@@ -1402,13 +1351,8 @@ var (
 
 const preKEVCacheTTL = 5 * time.Minute
 
-// handlePreKEV returns the CVEs that have crossed the "multiple curated
-// sources are talking about this in the last 72h" threshold AND aren't
-// already on the CISA KEV list. Each row carries the distinct-source
-// count, EPSS overlay where known, and the latest article that mentioned
-// it (title + source + url + relative time). Sorted by source count
-// desc, EPSS percentile desc, then CVE id asc. Optional ?hours= and
-// ?min= override the defaults. Public, 5-min server cache.
+// handlePreKEV: CVEs crossing the multi-source 72h threshold but not yet on KEV.
+// Rows carry source count, EPSS, latest article. ?hours / ?min override defaults.
 func (s *Server) handlePreKEV(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	hours, _ := strconv.Atoi(q.Get("hours"))
@@ -1543,13 +1487,8 @@ func (s *Server) handleHealthz(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleWormMood returns the worm's current state based on KEV activity
-// in the last 24 hours. Drives the visual mood swing in the header sprite.
-// Thresholds calibrated against the live corpus (median ~4/day, max ~13
-// in normal weeks - 10+ is a real spike, e.g. Patch Tuesday or campaign).
-//   level 0 / "hibernating" - no KEV-tagged article published in 24h
-//   level 1 / "eating"      - 1-9 (normal activity)
-//   level 2 / "frenzy"      - 10+ (patch wave / active campaign)
+// handleWormMood returns the worm's state from 24h KEV count. Thresholds
+// calibrated against the live corpus: 0 hibernating, 1-9 eating, 10+ frenzy.
 func (s *Server) handleWormMood(w http.ResponseWriter, r *http.Request) {
 	count, err := s.store.RecentKEVMentionCount(24)
 	if err != nil {
@@ -1812,13 +1751,13 @@ func (s *Server) handleMitreTechnique(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 200, t)
 }
 
-// handleDigest returns the AI-generated "what happened today" brief.
+// handleDigest returns the summarizer-generated "what happened today" brief.
 // GET serves the cached brief (or generates one if cache empty / stale).
 // POST forces a fresh generation, ignoring the cache.
 func (s *Server) handleDigest(w http.ResponseWriter, r *http.Request) {
 	if s.enrich == nil || s.enrich.AI == nil {
 		writeJSON(w, 503, map[string]any{
-			"error":    "no AI provider configured",
+			"error":    "no summarizer provider configured",
 			"hint":     "set ANTHROPIC_API_KEY or OPENAI_API_KEY env var, then restart secfeed",
 			"provider": "",
 		})
@@ -1900,7 +1839,7 @@ func (s *Server) handleDigest(w http.ResponseWriter, r *http.Request) {
 }
 
 // handleCVE owns /api/cve/<id> (NVD + EPSS detail, open to everyone) and
-// /api/cve/<id>/explain (3-bullet AI deep-dive, Pro-gated). KEV status
+// /api/cve/<id>/explain (3-bullet deep-dive, Pro-gated). KEV status
 // is already on the article tags from the scorer, so the frontend
 // overlays that itself.
 func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
@@ -1915,7 +1854,7 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// "/api/cve/<id>/explain" -> deep-dive AI summary.
+	// "/api/cve/<id>/explain" -> deep-dive summary.
 	if strings.HasSuffix(strings.ToLower(tail), "/explain") {
 		id := strings.ToUpper(strings.TrimSuffix(tail, "/explain"))
 		id = strings.TrimSuffix(id, "/EXPLAIN")
@@ -1924,11 +1863,8 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 	}
 
 	id := strings.ToUpper(tail)
-	// Reject anything that doesn't look like a CVE-ID up front. Without
-	// this, pathological inputs (long strings, LIKE meta-chars) burn a
-	// LIKE scan on the articles table inside CVEConsensus/CVETimeline
-	// and an NVD round-trip. Matches the same regex the /cve/<id> HTML
-	// route applies.
+	// Reject non-CVE-ID inputs up front; without this, pathological strings
+	// trigger LIKE scans + NVD round-trips. Same regex as /cve/<id>.
 	if !cveIDPattern.MatchString(id) {
 		writeJSON(w, 400, map[string]string{"error": "invalid CVE ID format", "id": id})
 		return
@@ -1937,11 +1873,8 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	d, err := s.enrich.NVD.Get(ctx, id)
 	if err != nil {
-		// 404 when NVD has no record, 502 only for genuine upstream
-		// failures (timeout, network, malformed response). HN pokers hit
-		// /api/cve/<random> as recon - returning 502 made the backend
-		// look like it was crashing when "CVE doesn't exist" is the
-		// actual answer.
+		// 404 = NVD has no record; 502 = genuine upstream failure.
+		// Recon probes shouldn't make the backend look like it's crashing.
 		if errors.Is(err, cve.ErrNotFound) {
 			writeJSON(w, 404, map[string]string{"error": "CVE not found in NVD", "id": id})
 			return
@@ -2002,7 +1935,7 @@ func (s *Server) handleCVE(w http.ResponseWriter, r *http.Request) {
 // article_ai_explanations forever.
 func (s *Server) handleArticleExplain(w http.ResponseWriter, r *http.Request) {
 	if s.enrich == nil || s.enrich.AI == nil {
-		writeJSON(w, 503, map[string]string{"error": "no AI provider configured"})
+		writeJSON(w, 503, map[string]string{"error": "no summarizer provider configured"})
 		return
 	}
 	idStr := strings.TrimPrefix(r.URL.Path, "/api/articles/explain/")
@@ -2066,17 +1999,15 @@ func (s *Server) handleArticleExplain(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// handleCVEExplain returns the 3-bullet AI deep-dive for a CVE. Cached
-// in cve_ai_explanations so the first Pro user pays the LLM call and
-// every subsequent reader gets the cached text. Pro-gated in hosted
-// mode; open in self-host (you ARE the operator paying for the key).
+// handleCVEExplain returns the 3-bullet deep-dive for a CVE. Cached in
+// cve_ai_explanations so only the first Pro caller pays the LLM call.
 func (s *Server) handleCVEExplain(w http.ResponseWriter, r *http.Request, id string) {
 	if id == "" {
 		writeJSON(w, 400, map[string]string{"error": "cve id required"})
 		return
 	}
 	if s.enrich.AI == nil {
-		writeJSON(w, 503, map[string]string{"error": "no AI provider configured"})
+		writeJSON(w, 503, map[string]string{"error": "no summarizer provider configured"})
 		return
 	}
 	if s.cfg.Hosted.Enabled {
@@ -2102,13 +2033,12 @@ func (s *Server) handleCVEExplain(w http.ResponseWriter, r *http.Request, id str
 		return
 	}
 
-	// Per-IP rate limit on the AI cost-bearing path. Cache hits above
-	// don't count - those are free. This kicks in only when we're about
-	// to spend an LLM call. Same 20/min cap as /api/articles/explain/.
+	// Per-IP limit on the cost-bearing path; cache hits are free.
+	// Same 20/min cap as /api/articles/explain/.
 	if s.aiLimiter != nil && !s.aiLimiter.allow("cve-explain|"+clientIP(r)) {
 		w.Header().Set("Retry-After", "60")
 		writeJSON(w, http.StatusTooManyRequests, map[string]any{
-			"error":         "rate limit: too many AI calls per minute from this IP",
+			"error":         "rate limit: too many summarizer calls per minute from this IP",
 			"retry_after_s": 60,
 		})
 		return

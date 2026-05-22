@@ -21,16 +21,8 @@ var htmlTagRe = regexp.MustCompile(`<[^>]*>`)
 
 var rssDialer = &net.Dialer{Timeout: 10 * time.Second}
 
-// rssDialTLS performs the TLS handshake using a Chrome ClientHelloSpec
-// from uTLS instead of Go's default crypto/tls fingerprint. Akamai
-// (Microsoft Security blog, others) fingerprints Go's TLS handshake
-// (JA3/JA4) and either RST_STREAM-s the h2 stream or silently drops
-// the h1.1 connection even with a browser User-Agent. Matching Chrome's
-// fingerprint makes the request indistinguishable from a real browser
-// at the TLS layer. ALPN is trimmed to h1.1 only so the http.Transport
-// (which has h2 disabled) speaks the protocol the conn negotiated.
-// ALPN values aren't part of the JA3 hash, so the fingerprint match
-// holds.
+// rssDialTLS handshakes with a Chrome uTLS ClientHelloSpec so Akamai's
+// JA3/JA4 fingerprinting doesn't drop us. ALPN trimmed to h1.1 only.
 func rssDialTLS(ctx context.Context, network, addr string) (net.Conn, error) {
 	rawConn, err := rssDialer.DialContext(ctx, network, addr)
 	if err != nil {
@@ -63,12 +55,8 @@ func rssDialTLS(ctx context.Context, network, addr string) (net.Conn, error) {
 	return uconn, nil
 }
 
-// rssTransport is the underlying http.Transport pairing the uTLS Chrome
-// spec dialer with HTTP/1.1-only behaviour. Exposed at package scope so
-// the retry wrapper can call CloseIdleConnections() to evict a poisoned
-// pool entry between attempts. IdleConnTimeout shortened from 90s to 30s
-// so a flaky cached connection clears within a single 3-minute fetch
-// cycle instead of getting reused for 30+ minutes.
+// rssTransport pairs the uTLS dialer with h1.1-only. Exposed so retries
+// can CloseIdleConnections() to evict poisoned pool entries. Idle 30s.
 var rssTransport = &http.Transport{
 	DialTLSContext:      rssDialTLS,
 	TLSNextProto:        map[string]func(authority string, c *tls.Conn) http.RoundTripper{},
@@ -110,16 +98,8 @@ func isTransientFetchErr(err error) bool {
 	return false
 }
 
-// transientHTTPStatuses are HTTP status codes we treat as worth retrying
-// on a fresh connection. 404 is in the list because Akamai-backed feeds
-// (Microsoft, Dark Reading, etc) sometimes serve transient 404s for
-// valid URLs during edge-cache route flaps; the canonical URL is fine
-// on the next dial. Permanent 404s still fail loud - they 404 on the
-// retry too and we report the original error.
-//
-// 403 is intentionally NOT here. Akamai bot blocks return 403 and
-// retrying just burns the budget without changing the outcome (see
-// Check Point Research / SentinelOne /blog/feed/ history).
+// transientHTTPStatuses: retry on fresh conn. 404 included because Akamai
+// edge-cache flaps. 403 excluded: bot blocks don't change on retry.
 var transientHTTPStatuses = map[int]bool{
 	http.StatusRequestTimeout:     true, // 408
 	http.StatusTooManyRequests:    true, // 429
@@ -238,11 +218,8 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 
 	var articles []models.Article
 	for _, item := range feed.Items {
-		// Skip sponsored content the feed pretends is news. Dark Reading,
-		// SC Magazine, and a few others stuff these into the main feed.
-		// They typically have no stable pubDate and rotating tracking
-		// URLs, so without this filter they republish themselves every
-		// fetch cycle and pin to the top via ORDER BY published_at DESC.
+		// Skip sponsored items: unstable pubDates + rotating URLs make
+		// them republish every cycle and pin to the top.
 		if isSponsoredTitle(item.Title) {
 			continue
 		}
@@ -253,11 +230,8 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 		} else if item.UpdatedParsed != nil {
 			pub = *item.UpdatedParsed
 		}
-		// Clamp future pubDates to now. Some feeds (event calendars,
-		// pre-published advisories) put a future date in pubDate, which
-		// pins the item to the top of an ORDER BY published_at DESC list
-		// and renders as "just now" forever. A small grace window
-		// tolerates clock skew between this host and the feed origin.
+		// Clamp future pubDates to now (event calendars / pre-pub advisories
+		// would pin to top forever). Small grace window for clock skew.
 		if pub.After(time.Now().Add(2 * time.Hour)) {
 			pub = time.Now()
 		}

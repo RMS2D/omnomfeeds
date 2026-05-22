@@ -308,24 +308,50 @@ func ruleSubtitle(r *storage.AlertRule) string {
 	return r.Kind
 }
 
+// slackEscape neutralises mrkdwn metacharacters so a crafted feed title
+// can't render a fake hyperlink or bold in the Slack notification.
+func slackEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
+}
+
+// discordEscape strips markdown metacharacters that Discord renders in embeds.
+func discordEscape(s string) string {
+	for _, c := range []string{"\\", "*", "_", "~", "`", "[", "]", "(", ")", "|", ">"} {
+		s = strings.ReplaceAll(s, c, "\\"+c)
+	}
+	return s
+}
+
+// safeHTTPURL returns "" when url isn't http(s); the link field is then dropped.
+func safeHTTPURL(raw string) string {
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") {
+		return ""
+	}
+	return raw
+}
+
 func formatSlack(r *storage.AlertRule, a *models.Article, base string) []byte {
-	// Slack incoming-webhook payload. Block Kit gives us a clean two-line
-	// presentation: bolded title with a labeled tag, then the URL.
 	deepLink := base + "/app?search=" + url.QueryEscape(a.Title)
+	title := slackEscape(a.Title)
+	srcURL := safeHTTPURL(a.URL)
 	body := map[string]any{
-		"text": fmt.Sprintf("[%s] %s", strings.ToUpper(ruleLabel(r)), a.Title),
+		"text": fmt.Sprintf("[%s] %s", strings.ToUpper(ruleLabel(r)), title),
 		"blocks": []map[string]any{
 			{
 				"type": "section",
 				"text": map[string]any{
 					"type": "mrkdwn",
-					"text": fmt.Sprintf("*[%s]* %s\n_%s_", ruleLabel(r), a.Title, ruleSubtitle(r)),
+					"text": fmt.Sprintf("*[%s]* %s\n_%s_", slackEscape(ruleLabel(r)), title, slackEscape(ruleSubtitle(r))),
 				},
 			},
 			{
 				"type": "context",
 				"elements": []map[string]any{
-					{"type": "mrkdwn", "text": fmt.Sprintf("<%s|source> · <%s|open in feed> · score %d", a.URL, deepLink, a.Score)},
+					{"type": "mrkdwn", "text": fmt.Sprintf("<%s|source> · <%s|open in feed> · score %d", srcURL, deepLink, a.Score)},
 				},
 			},
 		},
@@ -336,17 +362,18 @@ func formatSlack(r *storage.AlertRule, a *models.Article, base string) []byte {
 
 func formatDiscord(r *storage.AlertRule, a *models.Article, base string) []byte {
 	deepLink := base + "/app?search=" + url.QueryEscape(a.Title)
+	title := discordEscape(a.Title)
 	body := map[string]any{
 		"username":   "oM noM Feeds",
 		"avatar_url": base + "/favicon.ico",
-		"content":    fmt.Sprintf("**[%s]** %s", ruleLabel(r), a.Title),
+		"content":    fmt.Sprintf("**[%s]** %s", discordEscape(ruleLabel(r)), title),
 		"embeds": []map[string]any{
 			{
-				"title":       a.Title,
-				"url":         a.URL,
-				"description": truncate(a.Summary, 280) + fmt.Sprintf("\n\n[open in feed](%s) · score %d", deepLink, a.Score),
-				"color":       3893160, // accent green in decimal
-				"footer":      map[string]any{"text": ruleSubtitle(r)},
+				"title":       title,
+				"url":         safeHTTPURL(a.URL),
+				"description": discordEscape(truncate(a.Summary, 280)) + fmt.Sprintf("\n\n[open in feed](%s) · score %d", deepLink, a.Score),
+				"color":       3893160,
+				"footer":      map[string]any{"text": discordEscape(ruleSubtitle(r))},
 			},
 		},
 	}

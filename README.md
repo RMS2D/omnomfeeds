@@ -1,18 +1,25 @@
 # oM noM Security Feeds
 
-A self-hosted security news reader that pulls 55+ RSS feeds, Reddit, Bluesky, Mastodon, GitHub Security Advisories, and MalwareBazaar; deduplicates across them; scores articles by keyword relevance to your threat model; cross-references every CVE-ID against NVD, EPSS, CISA KEV, and AlienVault OTX inline; and renders the result as a keyboard-driven two-pane reader in your browser.
+A self-hosted security news reader. Pulls 55+ RSS feeds, Reddit, Bluesky, Mastodon, GitHub Security Advisories, and MalwareBazaar; deduplicates across them; scores articles by keyword relevance to your threat model; cross-references every CVE-ID against NVD, EPSS, CISA KEV, and AlienVault OTX inline.
+
+**Two surfaces, same data, one binary:**
+
+- **`./secfeed`** — HTTP daemon + web reader at `localhost:8080`. Two-pane vim-keybind interface in the browser.
+- **`./secfeed tui`** — Bubbletea terminal reader. Same keybinds, same features, no browser. For when you live in tmux.
 
 Single Go binary. Embedded UI. SQLite on disk. No telemetry. MIT-licensed.
 
 ```
-> j/k:nav  o:open  b:★  /:search  s:src  t:type  1-9:score  u:unread  d:dupes  r:refresh  : :cmd  D:decode  v:viz  T:mitre  S:stats  I:brief  c:config  ?:help
+> j/k:nav  o:open  b:★  /:search  s:src  t:type  1-9:score  u:unread  d:dupes  r:refresh  c:CVE  D:IOC  T:mitre  S:stats  v:viz  I:brief  W:gone  L:trending  P:patch  E:export  e:explain  ?:help
 ```
 
 ## Why this exists
 
 Every morning, staying current on security meant 30-60 minutes of fragmented browsing - Twitter for breaking news, r/netsec, BleepingComputer, NVD for new CVEs, CISA KEV for newly-exploited stuff, vendor PSIRT blogs for whatever ships next. The signal-to-noise was terrible and the cross-referencing was manual ("is this CVE in KEV? did anyone serious post about it? what's the EPSS?"). This is the tool that consolidates that morning - one corpus, scored, KEV-flagged, threat-actor-tagged, with a vim-style reader for triaging fast.
 
-Built solo. The hosted version at [omnomfeeds.com](https://omnomfeeds.com) runs this same binary if you want to try before installing, but the OSS path is fully usable and is what this README is about.
+Two surfaces because security teams live in different places. Web reader for sharing URLs with the team; TUI for the operator who's already in tmux and doesn't want one more browser tab.
+
+Built solo. The hosted version at [omnomfeeds.com](https://omnomfeeds.com) runs this same binary if you want to try the web reader before installing, but the OSS path is fully usable and is what this README is about.
 
 ---
 
@@ -220,14 +227,64 @@ Tune categories or weights by editing keyword lists in `internal/scoring/scoring
 
 ---
 
+## Surfaces
+
+Two ways to use the reader. Same SQLite, same scoring, same data.
+
+### Web reader (`./secfeed`)
+
+The default. Starts an HTTP daemon on `localhost:8080` that fetches feeds, scores them, fires webhooks, and serves the two-pane reader UI in your browser. Press `?` in the app for the live keybind cheatsheet.
+
+Public surfaces the daemon also serves:
+- **`/trending`** - top CVEs by mention count, last 7 days
+- **`/pre-kev`** - CVEs being talked about across 3+ curated sources but not yet in CISA KEV (early-warning list)
+- **`/cve/<id>`** - per-CVE deep-dive page (CVSS / EPSS / KEV / OTX + every article that mentioned it)
+- **`/live`** - SSE stream of newly-ingested articles
+- **`/feed.xml`** - the corpus as RSS, for piping into your existing reader
+
+### Terminal reader (`./secfeed tui`)
+
+A [Bubbletea](https://github.com/charmbracelet/bubbletea) TUI hitting the same SQLite. Two-pane interface, vim-keybinds, mouse-free workflow. Designed for the operator who already lives in tmux.
+
+```
+┌─[ ●●● FEED ]─────────────────────────────┬─[ READER ]──────────────────────────┐
+│  46 ★ [BleepingComputer] CVE-2026-...    │  [CVE Alerts] CVE-2026-34216 -      │
+│ ▌47 ● [TheHackerWire] CVE-2026-2587 ...  │  CtrlPanel: Authenticated RCE       │
+│  43   [Blockchain Report] Grafana's ...  │                                     │
+│  35   [eu-forums.bsky.social] Ekrem ...  │  ◆ Bluesky  ·  2d ago  ·  score 42  │
+│  ...                                     │                                     │
+│                                          │  rce  T1190  cisa kev  exploit      │
+│                                          │                                     │
+│                                          │  ◆ AI triage: Authenticated RCE     │
+│                                          │  in CtrlPanel admin UI - patch ...  │
+│                                          │                                     │
+│                                          │  url: https://github.com/.../...    │
+└──────────────────────────────────────────┴─────────────────────────────────────┘
+filters: score≥10                          j/k nav   o open   /search   ? help
+```
+
+The daemon (`./secfeed`) handles fetching. Run it in the background, then open either or both readers. They share the SQLite via WAL so concurrent reads + occasional writes (mark-read, bookmark) are clean.
+
+```
+# Terminal 1: daemon
+./secfeed
+
+# Terminal 2 (or any time later): TUI on the same data
+./secfeed tui
+```
+
+The TUI is a self-host-only surface. It opens the local SQLite directly; there's no auth, no remote API to hit. To use the AI features (`I` brief, `W` "while you were gone" brief), set `ANTHROPIC_API_KEY` or `OPENAI_API_KEY` in the environment before launching.
+
 ## Keybinds
+
+Both surfaces share the same keybinds. Anything you learn in the web reader works in the TUI and vice versa.
 
 ```
 Navigation
   j / k         next / prev item
   g / G         top / bottom
   ctrl-d/u      half-page down / up
-  space         toggle preview pane
+  space         toggle preview pane (web only)
 
 Reading
   o / Enter     open in browser (marks read)
@@ -244,21 +301,27 @@ Filters
   t             cycle source-type filter
   u             toggle unread-only
   d             toggle show-dupes
-  U             undo last filter change
+  U             undo last filter change (web only)
 
 Tools
   r             force refresh
-  :  /  ^K      command palette (fuzzy-search any action)
+  :  /  ^K      command palette (web only - fuzzy-search any action)
+  c             CVE deep-dive popover (CVSS / EPSS / KEV / consensus / timeline)
   D             IOC decoder (paste hash / CVE / IP / URL / domain)
-  v             feeding tubes - source distribution viz
   T             MITRE ATT&CK coverage modal
-  S             feast stats - per-source + per-tag counts
+  S             Feast Stats (per-source + per-tag bar charts)
+  v             Feeding Tubes (source distribution chart)
   I             AI intel brief :: last 24h (needs ANTHROPIC_API_KEY)
-  W             "while you were gone" brief :: since your last visit
-  H             momentum view :: which CVEs are accelerating
-  c             config panel (sources, scoring, behavior, profile, alerts)
+  W             while you were gone brief :: last 4h
+  L             leaderboards :: /trending + /pre-kev
+  P             Patch Tuesday brief reader
+  e             score explainer (which keywords fired?)
+  E             export MITRE ATT&CK Navigator layer JSON
   ?             keybind cheatsheet
+  q / ctrl-c    quit TUI
 ```
+
+Some web-only operations (`U` undo filter, `space` preview toggle, `:` command palette, config panel) don't have TUI equivalents in v1 - the TUI defers config editing to your `$EDITOR` on `config.json` rather than embedding a multi-tab form in the terminal.
 
 ---
 
@@ -302,6 +365,8 @@ Hosted privacy policy at [omnomfeeds.com/privacy](https://omnomfeeds.com/privacy
 | | Self-host | Hosted free | Hosted Pro |
 |---|---|---|---|
 | All 55+ RSS / Reddit / Bluesky / Mastodon sources | ✅ | ✅ | ✅ |
+| **Web reader** (browser, `localhost:8080`) | ✅ | ✅ | ✅ |
+| **Bubbletea TUI** (`./secfeed tui`) | ✅ | - | - |
 | CVE enrichment (NVD + EPSS + KEV + OTX) | ✅ | ✅ | ✅ |
 | Threat actor + malware family chips | ✅ | ✅ | ✅ |
 | Public leaderboards (`/trending`, `/pre-kev`, `/cve/<id>`) | ✅ | ✅ | ✅ |

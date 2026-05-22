@@ -6,22 +6,24 @@ Drafts for HN, Reddit, Mastodon, X. Plus what I learned from research into how S
 
 ## TL;DR posting plan
 
-| Channel | Day / time (UTC) | Day / time (PT) | Why |
-|---|---|---|---|
-| **Hacker News** | Sunday 12:00-15:00 UTC | Sunday 04:00-07:00 PT | Highest breakout rate (~11.75% per Myriade's 157k-post dataset), low Sunday-morning submission competition, mods more active rescuing posts from /new |
-| **r/netsec** | Mon-Wed 14:00-17:00 UTC | Mon-Wed 07:00-10:00 PT | Highest weekday engagement, post BEFORE HN so the karma is independent |
-| **r/cybersecurity** | Tue 15:00 UTC | Tue 08:00 PT | Higher reach, post same day as r/netsec |
-| **r/blueteamsec** | Wed 13:00 UTC | Wed 06:00 PT | Niche, post mid-week when triage volume is highest |
-| **r/selfhosted** | Sat 14:00 UTC | Sat 07:00 PT | Weekend selfhost-tinkering audience |
-| **Mastodon (infosec.exchange)** | Tue 14:00 UTC | Tue 07:00 PT | Same window as Reddit, post a screenshot |
-| **X/Twitter** | Tue 14:00 UTC | Tue 07:00 PT | Same window. Tag a few infosec accounts (don't ask for boosts in the post itself) |
+All times EDT (UTC-4 during DST).
+
+| Channel | Day / time (EDT) | Why |
+|---|---|---|
+| **Hacker News** | Sun 08:00-11:00 AM | Highest breakout rate (~11.75% per Myriade's 157k-post dataset), low Sunday-morning submission competition, mods more active rescuing posts from /new |
+| **r/netsec** | Mon-Wed 10:00 AM - 01:00 PM | Highest weekday engagement, post BEFORE HN so the karma is independent |
+| **r/cybersecurity** | Tue 11:00 AM | Higher reach, post same day as r/netsec |
+| **r/blueteamsec** | Wed 09:00 AM | Niche, post mid-week when triage volume is highest |
+| **r/selfhosted** | Sat 10:00 AM | Weekend selfhost-tinkering audience |
+| **Mastodon (infosec.exchange)** | Tue 10:00 AM | Same window as Reddit, post a screenshot |
+| **X/Twitter** | Tue 10:00 AM | Same window. Tag a few infosec accounts (don't ask for boosts in the post itself) |
 
 **Sequence to actually follow:**
 
-1. **Mon morning PT**: r/netsec + r/cybersecurity + Mastodon + X (build initial visibility)
-2. **Wed morning PT**: r/blueteamsec (separate conversation)
-3. **Sat morning PT**: r/selfhosted (selfhost-tinkering audience)
-4. **Sun 4 AM PT**: HN Show HN (the big one)
+1. **Mon morning EDT**: r/netsec + r/cybersecurity + Mastodon + X (build initial visibility)
+2. **Wed morning EDT**: r/blueteamsec (separate conversation)
+3. **Sat morning EDT**: r/selfhosted (selfhost-tinkering audience)
+4. **Sun 08:00 AM EDT**: HN Show HN (the big one)
 
 Spacing matters because if HN hits the front page, an r/netsec mod might recognise the URL was just posted there and treat it as cross-promotion (downweighted). 6-day gap should be enough.
 
@@ -97,17 +99,21 @@ The "is this freemium garbage?" question lands within 20 minutes. Answer with:
 ### Title
 
 ```
-Show HN: oM noM - self-hosted security news reader, single Go binary, KEV-aware
+Show HN: oM noM - Bubbletea TUI + web reader for security feeds, KEV-aware
 ```
 
-(79 chars. Hits the `Show HN: $NAME - $function` pattern. "self-hosted" + "single Go binary" + "KEV-aware" are three differentiators competing for the slot - this is OK because each one matters to a different sub-audience.)
+(74 chars. `Show HN: $NAME - $function` pattern. "Bubbletea TUI" is the HN-attractor (vim/terminal/charm-cli crowd); "web reader" tells the rest "we have a browser surface too if that's your thing"; "KEV-aware" is the security-niche differentiator.)
+
+Backup titles if the first one doesn't hook:
+- `Show HN: A vim-keybind TUI for security feeds with inline CVE/KEV cross-referencing`
+- `Show HN: A self-hosted security feed reader (Bubbletea TUI + web UI, single Go binary)`
 
 ### Body (the box you fill in when submitting)
 
 Don't fill this in. HN's Show HN body field is usually empty - the URL is what people click. If you must, keep it to one sentence:
 
 ```
-Open-source security news reader that cross-references every CVE-ID inline against NVD, EPSS, CISA KEV, and OTX. Single Go binary, SQLite on disk, MIT-licensed.
+Open-source security feed reader. Bubbletea TUI + web UI on the same data. Cross-references every CVE-ID inline against NVD, EPSS, CISA KEV, and OTX. Single Go binary, MIT-licensed.
 ```
 
 ### Backstory comment (paste within 60 seconds of submission)
@@ -121,37 +127,62 @@ KEV for newly-exploited stuff, vendor PSIRT blogs. The signal-to-noise was bad
 and the cross-referencing was manual - "is this CVE in KEV? is anyone serious
 posting about it? what's the EPSS?". This is what I wanted to exist.
 
-What it does:
-- Pulls 55+ RSS feeds + Reddit + Bluesky + Mastodon + GitHub Advisories
-- Deduplicates across them (URL normalisation + title cosine similarity)
-- Scores each item against keyword categories tied to MITRE ATT&CK and CISA
-  KEV velocity
-- Inline CVE chips: click any CVE-ID for CVSS / EPSS / KEV status / OTX pulses
-  without leaving the reader
-- "Pre-KEV" warning: flags CVEs being talked about by 3+ curated sources
-  before CISA adds them to KEV. Saved me from late-patching twice in testing.
-- MITRE ATT&CK Navigator layer export for "everything I read tagged
-  initial-access this week"
+It's one Go binary with two surfaces on the same SQLite:
+
+  ./secfeed       # daemon + web reader at localhost:8080
+  ./secfeed tui   # Bubbletea TUI on the same data
+
+The TUI is the one I actually use most days. Two-pane, vim keybinds, CVE
+popover with CVSS / EPSS / KEV / OTX, IOC decoder, MITRE ATT&CK coverage,
+Feast Stats with bar charts, /trending + /pre-KEV leaderboards, AI intel
+brief (BYOK Anthropic/OpenAI), bookmarks, source picker, the lot. Web
+reader has the same keybinds for when you want to share a URL with
+someone.
+
+What's specifically security-flavoured (vs a generic RSS reader like
+Miniflux / Fusion):
+
+- Inline CVE chips: every CVE-ID in every article is clickable for
+  CVSS v3 score + severity + vector, EPSS percentile, CWE, CISA KEV
+  status (red pulse if actively exploited, amber "pre-KEV" if heating
+  up across curated sources but not yet in KEV)
+- Pre-KEV warning: flags CVEs being talked about by 3+ curated sources
+  before CISA adds them to KEV. Surfaced two actively-exploited bugs
+  2-5 days before CISA picked them up in testing.
+- 30 curated threat actors (APT41, Lazarus, Scattered Spider, LockBit,
+  Volt Typhoon...) and 30 malware families (Cobalt Strike, Mimikatz,
+  Sliver, BumbleBee...) detected via alias lists
+- MITRE ATT&CK Navigator v4.5 layer export - drops straight into
+  attack-navigator.mitre.org for a coverage heatmap
+- Webhook routing to Slack / Discord / Teams with an SSRF-guarded
+  poster (rejects RFC1918, link-local, loopback, DNS rebinds)
 
 Stack:
-- One Go binary, ~16 MB. Embedded UI. SQLite + WAL.
+- One Go binary, ~24 MB. Bubbletea + bubbles + lipgloss for the TUI;
+  embedded HTML for the web reader. SQLite + WAL.
 - No Postgres. No Redis. No Docker required.
 - ~120-180 MB RAM after warm-up on the default feed set
 - Runs comfortably on a 1-vCPU 1 GB droplet
 
 Things I'm honestly unsure about:
-- Scoring is keyword-based and deterministic. Fast and explainable but not
-  great at semantic relevance. AI re-ranking is opt-in BYOK; not sure if it
-  should be more prominent in the README.
-- I run a hosted version at omnomfeeds.com because friends asked. The repo
-  is the canonical thing - hosted is "I don't want a daemon, here's the
-  same binary running for you." Pro tier is $10/mo and exists because
-  Anthropic Haiku + Resend + the droplet bill is non-zero per active user.
-  If anything in the README or website reads "open-source bait, paid SaaS
-  switch" - that's a bug and I'd like to know.
+- Scoring is keyword-based and deterministic. Fast and explainable but
+  not great at semantic relevance. AI re-ranking is opt-in BYOK; not
+  sure if it should be more prominent in the README.
+- The TUI doesn't have config-editor modals (webhook rules, source
+  list, profile blurb) - those live in config.json. Web reader has
+  GUI panels for them. Reasoning: terminal users are happier in
+  $EDITOR on JSON than juggling forms in a TUI. Want to know if
+  anyone disagrees.
+- I run a hosted version at omnomfeeds.com because friends asked. The
+  repo is the canonical thing - hosted is "I don't want a daemon, here's
+  the same binary running for you." Pro tier is $10/mo and exists
+  because Anthropic Haiku + Resend + the droplet bill is non-zero per
+  active user. If anything in the README or website reads "open-source
+  bait, paid SaaS switch" - that's a bug and I'd like to know.
 
-Happy to answer questions on the Go stack, source curation, the KEV
-pre-warning algorithm, or the scoring weights. Code:
+Happy to answer questions on the Bubbletea / lipgloss build, the Go
+stack, source curation, the KEV pre-warning algorithm, or the scoring
+weights. Code:
 https://github.com/RMS2D/omnomfeeds
 ```
 
@@ -232,7 +263,7 @@ that wired together.
 
 **Title:**
 ```
-oM noM Security Feeds: open-source security news reader with inline CVE/KEV/EPSS cross-referencing (Go single binary)
+oM noM Security Feeds: open-source security news reader with inline CVE/KEV/EPSS cross-referencing (Bubbletea TUI + web UI, single Go binary)
 ```
 
 **Body:**
@@ -243,8 +274,10 @@ and this is what I wanted to exist for my own daily workflow.
 The tool pulls 55+ security RSS feeds, Reddit, Bluesky, Mastodon, and GitHub
 Advisories into one corpus, deduplicates with URL normalisation + title
 cosine similarity, scores articles against keyword categories tied to MITRE
-ATT&CK and CISA KEV velocity, and renders the result as a vim-keybind
-two-pane reader in the browser.
+ATT&CK and CISA KEV velocity, and renders the result through either a
+Bubbletea TUI (`./secfeed tui`) or a vim-keybind two-pane reader in the
+browser (`./secfeed`, served at localhost:8080). Both surfaces hit the
+same SQLite, same keybinds, same features.
 
 The differentiator from a general RSS reader (Feedly, Miniflux, etc.) is
 the inline CVE enrichment. Every CVE-ID in any article is clickable and
@@ -373,14 +406,15 @@ attribution beyond the curated chip lists. What else?
 
 **Title:**
 ```
-oM noM Security Feeds: self-hosted security news aggregator (Go single binary, no Docker, SQLite)
+oM noM Security Feeds: self-hosted security news aggregator with both web UI and Bubbletea TUI (Go single binary, no Docker)
 ```
 
 **Body:**
 ```
 Sharing here because the constraints fit r/selfhosted's typical pickiness:
 
-- One Go binary. ~16 MB. Runs as `./secfeed` from anywhere on your PATH.
+- One Go binary, ~24 MB (~8 MB of that is Bubbletea + bubbles + lipgloss
+  for the TUI). Runs as `./secfeed` from anywhere on your PATH.
 - No Postgres. No Redis. No Docker required.
 - SQLite + WAL on disk, ~50 MB/month of article growth, older articles
   auto-archive to a compressed cold tier.
@@ -393,7 +427,16 @@ Sharing here because the constraints fit r/selfhosted's typical pickiness:
 What it does: pulls 55+ security RSS feeds, Reddit, Bluesky, Mastodon,
 GitHub Security Advisories, and MalwareBazaar; deduplicates them; scores
 articles by relevance to security categories; cross-references every CVE
-with NVD/EPSS/KEV/OTX inline. Vim-keybind two-pane reader in the browser.
+with NVD/EPSS/KEV/OTX inline. Two surfaces on the same SQLite:
+
+  ./secfeed       # daemon + web reader at localhost:8080 (vim-keybind two-pane)
+  ./secfeed tui   # Bubbletea TUI on the same data, same keybinds
+
+Both surfaces share the keybinds (j/k nav, o open, b bookmark, / search,
+c CVE deep-dive, D IOC decoder, T MITRE coverage, S stats, v feeding
+tubes, I AI intel brief if BYOK, L leaderboards, E ATT&CK Navigator
+export, e score explainer, ? help). The TUI is the one I actually use
+most days; web reader is for sharing URLs with the team.
 
 Config lives at the standard OS user-config path (XDG-compliant on Linux,
 Application Support on macOS, APPDATA on Windows). Editable as JSON or

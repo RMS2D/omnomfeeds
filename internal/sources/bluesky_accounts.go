@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"sync"
 	"time"
@@ -128,7 +129,7 @@ func (b *BlueskyAccountsSource) Fetch(ctx context.Context) ([]models.Article, er
 func (b *BlueskyAccountsSource) fetchAccount(ctx context.Context, handle, token string) ([]models.Article, error) {
 	endpoint := fmt.Sprintf(
 		"https://bsky.social/xrpc/app.bsky.feed.getAuthorFeed?actor=%s&limit=30&filter=posts_no_replies",
-		handle,
+		url.QueryEscape(handle),
 	)
 	req, err := http.NewRequestWithContext(ctx, "GET", endpoint, nil)
 	if err != nil {
@@ -166,7 +167,7 @@ func (b *BlueskyAccountsSource) fetchAccount(ctx context.Context, handle, token 
 
 		parts := strings.Split(post.URI, "/")
 		webURL := fmt.Sprintf("https://bsky.app/profile/%s/post/%s",
-			post.Author.Handle, parts[len(parts)-1])
+			url.PathEscape(post.Author.Handle), url.PathEscape(parts[len(parts)-1]))
 
 		title := post.Record.Text
 		if len(title) > 120 {

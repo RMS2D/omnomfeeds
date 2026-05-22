@@ -204,7 +204,7 @@ func (b *BlueskySource) search(ctx context.Context, query, token string) ([]mode
 
 		parts := strings.Split(post.URI, "/")
 		webURL := fmt.Sprintf("https://bsky.app/profile/%s/post/%s",
-			post.Author.Handle, parts[len(parts)-1])
+			url.PathEscape(post.Author.Handle), url.PathEscape(parts[len(parts)-1]))
 
 		title := post.Record.Text
 		if len(title) > 120 {

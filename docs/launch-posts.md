@@ -579,3 +579,76 @@ DMs open for feedback.
 - **Goal that's actually meaningful**: 50-200 self-host installs in the first week, irrespective of HN rank
 
 The HN rank doesn't matter past "did it generate inbound interest." A post that gets to #4 with 800 pts and 0 installs is worse than a post that flatlines at #38 with 60 pts and 30 active self-hosters who star + open issues + fork.
+
+---
+
+## Pre-loaded comment responses
+
+Templates, not scripts. Paraphrase before pasting. Don't be the bot.
+
+### "Why not just use $existing-tool (Feedly / Inoreader / TLDR Sec / etc.)?"
+
+> Mostly because security feeds need different scoring than general news. The keyword categories here map to MITRE ATT&CK techniques; KEV-listed CVEs get a separate visual; EPSS percentile is inline on every CVE chip; cross-source consensus is a first-class signal. A general aggregator doesn't know which RSS post about CVE-2026-1234 is the PSIRT advisory versus the third-hand summary. This one does, because it built that taxonomy.
+
+### "Why a TUI and a web reader?"
+
+> Different ergonomics. The web reader is for sharing URLs with your team and the public CVE landing pages. The TUI is for the operator who already lives in tmux and doesn't want one more browser tab. Same SQLite under both; WAL handles the concurrent reads.
+
+### "Does it work on a Raspberry Pi / ARM box?"
+
+> Yes, linux/arm64 is in the release artefacts. SQLite + a small Go process, the resource floor is low. The daemon and the TUI talk to the same DB, so a `secfeed serve` on the Pi + `secfeed tui` over SSH is the intended use case.
+
+### "Why no full-text article storage?"
+
+> Deliberate. We index title + summary, score against them, and link to the source. No full-text means smaller DB, no copyright surface, no "did you scrape my blog?" thread. The cost is no in-app reader, but the reader pane embeds the source page; the trade-off lands fine.
+
+### "AI features?"
+
+> BYOK and fully optional. Self-host with no key set means zero LLM traffic. The hosted Pro tier uses your own Anthropic or OpenAI key for the inline triage line, the Patch Tuesday brief, and semantic dedup. No prompt training data, no provider-side accumulation; same key-handling discipline as any direct API consumer.
+
+### "Why a hosted version if it's open source?"
+
+> Convenience, not lock-in. The self-host path is the canonical install and gets every feature except the hosted-only worker stack (webhook alerts, email digests, semantic dedup, patch-Tuesday briefs). Those are gated on running multi-tenant infrastructure you probably don't want to operate for one person. If you do want them: it's all in the repo.
+
+### "What if omnomfeeds.com goes down?"
+
+> Your self-host install is unaffected; the hosted instance and the OSS binary share code but not infrastructure. ETA + status updates would go on the GitHub issues for the repo.
+
+### "Why Go?"
+
+> Single static binary, embedded HTML/CSS/JS via `//go:embed`, cross-compiles to every target without a toolchain dance. The TUI uses Bubbletea, which is the only "good" terminal UI framework in any language right now. SQLite via `modernc.org/sqlite` (pure-Go, no cgo, no MUSL surprises on Alpine).
+
+### "How is the worm theme not annoying?"
+
+> It's mostly subtle - the brand mark and a status-bar mood gauge. The full cyberpunk styling kicks in on the TUI. There's an easter egg if you type `nom` three times; if you find that annoying, you can disable it in settings.
+
+### "Pricing?"
+
+> Self-host is free, MIT-licensed, complete. The hosted Pro tier is a flat monthly via Stripe and gates only the multi-tenant worker features (alerts, digests, semantic dedup, patch briefs). The price-page is the source of truth; I'm not pasting it into HN comments.
+
+### Sharp / hostile question handling
+
+- **"Yet another news aggregator"**: agree partly, point to the security-specific scoring and KEV awareness. Don't argue.
+- **"You're going to abandon this in 6 months"**: respond once, link to release cadence + the maintenance posture in CONTRIBUTING. Don't engage further.
+- **"AI? Pass."**: agree the AI is optional, point to the env-var that disables it. Don't defend the feature.
+- **Pricing rage**: don't defend pricing in HN comments. "Self-host is free and feature-complete for the threat model most readers have here" once, and move on.
+- **Security concerns raised in good faith**: thank them, link to SECURITY.md, encourage email disclosure.
+- **Bad-faith "I found a vuln"**: do not engage in the thread. Link SECURITY.md, request email. Never confirm or deny a vuln in public.
+
+### Boilerplate one-liners you'll use repeatedly
+
+> Self-host install: `curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh` (Windows in the README).
+
+> Release artefacts are cosign-signed via the GitHub OIDC workflow; verification command in the README.
+
+> Feed config lives in `~/.config/secfeed/config.json` on first run.
+
+> The KEV pulse uses the CISA KEV catalog directly, no third-party intermediary.
+
+### Things to NOT post in HN comments
+
+- Calendar timelines or roadmap promises ("v2 by Q3" sets you up for failure)
+- Comparisons to specific competitors by name
+- Anything that sounds like marketing register ("seamless", "comprehensive", "leveraging")
+- Replies past midnight your local time (you'll regret the tone)
+- Replies to obvious flamebait (don't feed it)

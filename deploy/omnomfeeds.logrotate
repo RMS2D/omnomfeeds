@@ -1,0 +1,13 @@
+/var/log/omnomfeeds/*.log {
+    daily
+    rotate 14
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 omnom omnom
+    sharedscripts
+    postrotate
+        systemctl reload omnomfeeds.service > /dev/null 2>&1 || true
+    endscript
+}

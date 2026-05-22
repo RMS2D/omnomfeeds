@@ -2,6 +2,8 @@
 
 A self-hosted security news reader. Pulls 55+ RSS feeds, Reddit, Bluesky, Mastodon, GitHub Security Advisories, and MalwareBazaar; deduplicates across them; scores articles by keyword relevance to your threat model; cross-references every CVE-ID against NVD, EPSS, CISA KEV, and AlienVault OTX inline.
 
+![TUI screenshot](docs/screenshots/tui.png)
+
 **Two surfaces, same data, one binary:**
 
 - **`./secfeed`** - HTTP daemon + web reader at `localhost:8080`. Two-pane vim-keybind interface in the browser.
@@ -12,6 +14,10 @@ Single Go binary. Embedded UI. SQLite on disk. No telemetry. MIT-licensed.
 ```
 > j/k:nav  o:open  b:★  /:search  s:src  t:type  1-9:score  u:unread  d:dupes  r:refresh  c:CVE  D:IOC  T:mitre  S:stats  v:viz  I:brief  W:gone  L:trending  P:patch  E:export  e:explain  ?:help
 ```
+
+[![asciicast](docs/screenshots/tui-demo.gif)](docs/screenshots/tui-demo.gif)
+
+> If you're trying the hosted instance at omnomfeeds.com and it's unreachable, your self-host install is unaffected; the two share code, not infrastructure. Status notes go on [GitHub issues](https://github.com/RMS2D/omnomfeeds/issues).
 
 ## Why this exists
 

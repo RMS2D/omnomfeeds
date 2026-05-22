@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -147,7 +148,7 @@ func (b *BlueskyAccountsSource) fetchAccount(ctx context.Context, handle, token 
 	}
 
 	var result bskyFeedResp
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&result); err != nil {
 		return nil, err
 	}
 

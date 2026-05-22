@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"github.com/RMS2D/omnomfeeds/internal/models"
 	"time"
+
+	"github.com/RMS2D/omnomfeeds/internal/models"
 )
 
 type MastodonSource struct {
@@ -112,7 +114,7 @@ func (m *MastodonSource) fetchSearch(ctx context.Context, query string) ([]model
 	var result struct {
 		Statuses []mastodonStatus `json:"statuses"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&result); err != nil {
 		return nil, err
 	}
 
@@ -137,7 +139,7 @@ func (m *MastodonSource) fetchEndpoint(ctx context.Context, endpoint string) ([]
 	}
 
 	var statuses []mastodonStatus
-	if err := json.NewDecoder(resp.Body).Decode(&statuses); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&statuses); err != nil {
 		return nil, err
 	}
 

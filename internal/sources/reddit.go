@@ -3,6 +3,7 @@ package sources
 import (
 	"context"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -48,7 +49,7 @@ func (r *RedditSource) Fetch(ctx context.Context) ([]models.Article, error) {
 	}
 
 	parser := gofeed.NewParser()
-	feed, err := parser.Parse(resp.Body)
+	feed, err := parser.Parse(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("reddit rss parse: %v", err)
 	}

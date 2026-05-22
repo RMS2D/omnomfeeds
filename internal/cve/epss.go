@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -59,12 +60,14 @@ func (e *EPSSClient) Refresh(ctx context.Context) error {
 	if resp.StatusCode != 200 {
 		return fmt.Errorf("epss: status %d", resp.StatusCode)
 	}
-	gzr, err := gzip.NewReader(resp.Body)
+	// 64 MB compressed cap; 600 MB decompressed cap. Current EPSS file is
+	// ~30 MB compressed and grows linearly with CVE count.
+	gzr, err := gzip.NewReader(io.LimitReader(resp.Body, 64*1024*1024))
 	if err != nil {
 		return err
 	}
 	defer gzr.Close()
-	cr := csv.NewReader(gzr)
+	cr := csv.NewReader(io.LimitReader(gzr, 600*1024*1024))
 	cr.FieldsPerRecord = -1 // EPSS CSV has comment lines we must tolerate
 	tx, err := e.db.Begin()
 	if err != nil {

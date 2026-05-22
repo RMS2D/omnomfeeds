@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"github.com/RMS2D/omnomfeeds/internal/models"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/RMS2D/omnomfeeds/internal/models"
 )
 
 type BlueskySource struct {
@@ -83,7 +85,7 @@ func (b *BlueskySource) authenticate(ctx context.Context) error {
 	}
 
 	var session bskySessionResp
-	if err := json.NewDecoder(resp.Body).Decode(&session); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&session); err != nil {
 		return err
 	}
 
@@ -185,7 +187,7 @@ func (b *BlueskySource) search(ctx context.Context, query, token string) ([]mode
 	}
 
 	var result bskySearchResp
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&result); err != nil {
 		return nil, err
 	}
 

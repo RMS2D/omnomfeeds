@@ -4,12 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
-	"github.com/RMS2D/omnomfeeds/internal/models"
 	"strings"
 	"time"
+
+	"github.com/RMS2D/omnomfeeds/internal/models"
 )
 
 type GitHubAdvisorySource struct {
@@ -94,7 +96,7 @@ func (g *GitHubAdvisorySource) fetchBySeverity(ctx context.Context, severity str
 	}
 
 	var advisories []ghAdvisory
-	if err := json.NewDecoder(resp.Body).Decode(&advisories); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 8*1024*1024)).Decode(&advisories); err != nil {
 		return nil, err
 	}
 
@@ -228,7 +230,7 @@ func (g *GitHubPoCSource) Fetch(ctx context.Context) ([]models.Article, error) {
 		}
 
 		var result ghRepoSearch
-		json.NewDecoder(resp.Body).Decode(&result)
+		json.NewDecoder(io.LimitReader(resp.Body, 4*1024*1024)).Decode(&result)
 		resp.Body.Close()
 
 		for _, repo := range result.Items {

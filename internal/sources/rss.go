@@ -209,9 +209,9 @@ func (r *RSSSource) Fetch(ctx context.Context) ([]models.Article, error) {
 		return nil, fmt.Errorf("http error: %d", resp.StatusCode)
 	}
 
-	// 3. Pass the raw body to gofeed for parsing
+	// 10 MB cap so a hostile feed can't OOM the daemon.
 	parser := gofeed.NewParser()
-	feed, err := parser.Parse(resp.Body)
+	feed, err := parser.Parse(io.LimitReader(resp.Body, 10*1024*1024))
 	if err != nil {
 		return nil, fmt.Errorf("feed parsing error: %v", err)
 	}

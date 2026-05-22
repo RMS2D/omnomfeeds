@@ -24,6 +24,26 @@ omnomfeeds.com {
         X-Frame-Options "DENY"
         Referrer-Policy "strict-origin-when-cross-origin"
         Permissions-Policy "interest-cohort=()"
+        # CSP. Defense-in-depth against any XSS that slipped past
+        # safeHref() / escapeHTML(). Constraints driven by the actual
+        # surface:
+        #   - script-src 'unsafe-inline' because the app ships large
+        #     inline <script> blocks. Refactoring to nonces would be a
+        #     bigger change than the launch budget allows.
+        #   - style-src 'unsafe-inline' because the app uses many inline
+        #     style="..." attributes and inline <style> blocks.
+        #   - fonts.googleapis.com (stylesheet) + fonts.gstatic.com
+        #     (woff/woff2) are the only off-origin resources both
+        #     landing.html and index.html load.
+        #   - frame-ancestors 'none' is the CSP version of X-Frame-Options
+        #     DENY above; modern browsers prefer it. Keep both.
+        #   - form-action 'self' blocks form submissions to off-origin
+        #     targets - useful if any future XSS tries to exfil via form.
+        #   - object-src 'none' kills Flash / applet plugins outright.
+        #   - upgrade-insecure-requests catches stray http:// references
+        #     in user-rendered content (e.g. article links) and rewrites
+        #     to https:// before requesting.
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
         -Server
     }
 

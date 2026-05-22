@@ -292,6 +292,15 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 				// server-side gates on /api/me/* and /api/billing/*
 				// remain the real enforcement.
 				s.emit(w, r, analytics.EvPageView, "/app", nil)
+				// /app embeds the live reader UI as a single big HTML +
+				// inline-JS payload. After a deploy that ships bug fixes
+				// or new features, returning visitors must NOT serve the
+				// previously-cached HTML or they'll keep running last
+				// build's JS until they hard-reload. no-cache forces a
+				// conditional GET on every visit; the underlying
+				// ServeContent already emits Last-Modified, so unchanged
+				// builds short-circuit to 304 without re-downloading.
+				w.Header().Set("Cache-Control", "no-cache")
 				serveEmbeddedFile(w, r, webFS, "index.html")
 			case r.URL.Path == "/privacy":
 				serveEmbeddedFile(w, r, webFS, "privacy.html")

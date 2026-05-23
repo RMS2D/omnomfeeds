@@ -29,6 +29,46 @@ Spacing matters because if HN hits the front page, an r/netsec mod might recogni
 
 ---
 
+## Per-channel angle (what each audience cares about)
+
+Same product, different hooks. Read this table before opening the per-channel drafts; it's the angle each post should lead with.
+
+| Channel | Lead with | Mention as parallel | Keep out of the post body |
+|---|---|---|---|
+| **Hacker News** | TUI as a distinct technical artifact: Bubbletea + security feeds + KEV-aware. Vim keybinds. | Web reader (paragraph 2). Hosted demo URL as a "try without installing" link (paragraph 3). | Pro tier features. Stripe/billing/pricing. Alerts/digests/AI brief workers. Roadmap. |
+| **r/netsec** | Cross-source CVE enrichment. Inline NVD + EPSS + KEV + OTX. Pre-KEV velocity detector. | Both surfaces equally; pick whichever fits the reader. | Self-host install one-liner ergonomics. Marketing voice. |
+| **r/cybersecurity** | Morning-triage time-save: 30-60 min → one corpus, scored, KEV-flagged. | Both surfaces; the audience is mixed (red/blue/mgmt) so don't bias. | Deep technical detail; this is the broader sub. |
+| **r/blueteamsec** | Operational features only: KEV pulse, IOC decoder, MITRE ATT&CK Navigator export, threat-actor + malware-family chip detection. | Webhook routing to Slack/Discord (with SSRF guard). | TUI-as-novelty; this audience cares about what it DOES, not what it's built with. |
+| **r/selfhosted** | Single Go binary. No Docker. No Postgres. No Redis. SQLite. Pi-friendly. ~120-180 MB RAM. | The TUI gets a paragraph (selfhost overlap with terminal users is high). | Hosted version beyond a one-line mention. Pro features. |
+| **Mastodon (infosec.exchange)** | Screenshot + one sentence on enrichment. | One link. Stop. | Anything beyond 500 chars. |
+| **X / Twitter** | One-liner + screenshot + repo link. | None - the post is the link. | Tagging accounts "for boosts". Threads explaining the product. |
+
+### Why TUI-led on HN specifically
+
+HN responds to a specific technical novelty, not "I built a product". "Bubbletea + security feeds + KEV-aware" is fresh because it sits at the intersection of three buckets HN cares about (terminal tools, OSS infra, security niche). Leading with the TUI signals "craft project, OSS canonical" rather than "commercial launch". The web reader and hosted demo are mentioned so nobody can claim bait-and-switch, but they're parallel surfaces, not the headline.
+
+The Pro tier features (alerts, digests, AI brief, semantic dedup, patch-Tuesday workers) stay completely out of the post body. They come up in comments when someone asks; the templates in the "Pre-loaded comment responses" section below cover them.
+
+### Why each Reddit sub gets a different angle
+
+r/netsec is technical practitioners. They care about the enrichment math and the data sources. Lead with cross-source CVE enrichment, not "vim keybinds".
+
+r/cybersecurity is broader (red/blue/management/students). The morning-triage time-save framing works because all four sub-audiences feel that pain.
+
+r/blueteamsec is operational defenders. They care about KEV/EPSS/MITRE/IOC because those map to their daily tools. Lead operational; the Bubbletea framing is irrelevant here.
+
+r/selfhosted has a hard-earned pickiness about deployment shape. "Single binary, no Docker, SQLite, Pi-friendly" is the angle that lands. The TUI gets a paragraph because the overlap between selfhost users and terminal users is high, but it's not the lead.
+
+### Cross-channel discipline
+
+Whichever channel you're posting on, these rules hold:
+- One link to the GitHub repo, one optional link to the hosted demo. Never more.
+- No "try Pro free for X days" language anywhere. The hosted demo URL is for kicking tyres; commerce stays in comments and only when asked.
+- The HN post is the one that goes last (Sunday). The Reddit posts go first because they shouldn't feel like cross-promotion of the front-page HN story.
+- If HN does hit the front page mid-week, hold the rest of the Reddit posts until the spike fades. Cross-promotion gets flagged.
+
+---
+
 ## What makes Show HN posts hit the front page (research notes)
 
 ### The ranking math

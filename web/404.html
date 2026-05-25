@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>404 - oM noM Security Feeds</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #14191f;
+  --border: #2a3340;
+  --text: #e6ecf5;
+  --text-dim: #b8c4d4;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --accent-amber: #ffb547;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+.wrap {
+  text-align: center;
+  max-width: 540px;
+}
+.code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 18px;
+}
+.headline {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: -1px;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+.tagline {
+  font-size: 18px;
+  color: var(--text-dim);
+  margin-bottom: 22px;
+}
+.worm-stage {
+  margin: 28px auto 32px;
+  width: 280px;
+  height: 120px;
+  position: relative;
+  border-bottom: 1px dashed rgba(58,69,85,0.6);
+}
+.worm-stage svg {
+  position: absolute;
+  bottom: 6px;
+  left: 50%;
+  width: 60px;
+  height: 48px;
+  transform: translateX(-50%);
+  animation: worm-search 4s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgba(0,229,160,0.35));
+}
+.worm-stage svg .seg, .worm-stage svg .head { fill: var(--accent); }
+.worm-stage svg .seg.s3 { opacity: 0.35; }
+.worm-stage svg .seg.s2 { opacity: 0.6; }
+.worm-stage svg .seg.s1 { opacity: 0.85; }
+.worm-stage svg .eye   { fill: var(--bg); }
+.worm-stage svg .glint { fill: var(--accent-cyan); }
+@keyframes worm-search {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  25%      { transform: translateX(-80%) translateY(-2px) rotate(-3deg); }
+  50%      { transform: translateX(-50%) translateY(0); }
+  75%      { transform: translateX(-20%) translateY(-2px) rotate(3deg); }
+}
+.crumbs {
+  position: absolute;
+  bottom: 12px;
+  width: 100%;
+  display: flex;
+  justify-content: space-around;
+  pointer-events: none;
+}
+.crumbs .crumb {
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  opacity: 0.35;
+  border-radius: 50%;
+}
+.crumbs .crumb:nth-child(1) { opacity: 0.45; }
+.crumbs .crumb:nth-child(2) { opacity: 0.25; }
+.crumbs .crumb:nth-child(3) { opacity: 0.4; }
+.crumbs .crumb:nth-child(4) { opacity: 0.2; }
+.crumbs .crumb:nth-child(5) { opacity: 0.35; }
+.cta-row {
+  display: flex;
+  gap: 14px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 10px 20px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all 0.15s;
+  font-weight: 600;
+}
+.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.btn-primary:hover { background: var(--accent-cyan); }
+.btn-secondary {
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+.path {
+  margin-top: 22px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  word-break: break-all;
+}
+.path code {
+  background: rgba(86,226,255,0.06);
+  border: 1px solid rgba(86,226,255,0.18);
+  border-radius: 3px;
+  padding: 2px 8px;
+  color: var(--text-bright);
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <div class="code">:: error 404 :: not in the feed ::</div>
+
+  <div class="headline">404</div>
+  <div class="tagline">the worm came up empty.</div>
+
+  <div class="worm-stage" aria-hidden="true">
+    <svg viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="5"  cy="17"  r="3.0" class="seg s3"/>
+      <circle cx="10" cy="16"  r="3.6" class="seg s2"/>
+      <circle cx="16" cy="14"  r="4.4" class="seg s1"/>
+      <circle cx="24" cy="13"  r="5.4" class="head"/>
+      <circle cx="25" cy="11"  r="1.4" class="eye"/>
+      <circle cx="25.5" cy="10.5" r="0.5" class="glint"/>
+    </svg>
+    <div class="crumbs">
+      <span class="crumb"></span>
+      <span class="crumb"></span>
+      <span class="crumb"></span>
+      <span class="crumb"></span>
+      <span class="crumb"></span>
+    </div>
+  </div>
+
+  <div class="cta-row">
+    <a class="btn btn-primary" href="/">Back to the feed</a>
+    <a class="btn btn-secondary" href="/app">Open reader</a>
+  </div>
+
+  <div class="path">
+    you came looking for <code id="path">/</code>
+  </div>
+
+</div>
+
+<script>
+  document.getElementById('path').textContent = window.location.pathname || '/';
+</script>
+
+</body>
+</html>

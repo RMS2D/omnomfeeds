@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#0a0e14"/>
+      <stop offset="100%" stop-color="#14191f"/>
+    </linearGradient>
+    <linearGradient id="topAccent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#56e2ff"/>
+      <stop offset="50%" stop-color="#00e5a0"/>
+      <stop offset="100%" stop-color="#ffb547"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- top accent rule -->
+  <rect x="0" y="0" width="1200" height="3" fill="url(#topAccent)" opacity="0.55"/>
+
+  <!-- subtle dot grid for texture -->
+  <g fill="#2a3340" opacity="0.35">
+    <circle cx="60" cy="540" r="1.5"/>
+    <circle cx="120" cy="540" r="1.5"/>
+    <circle cx="180" cy="540" r="1.5"/>
+    <circle cx="240" cy="540" r="1.5"/>
+    <circle cx="300" cy="540" r="1.5"/>
+    <circle cx="360" cy="540" r="1.5"/>
+    <circle cx="420" cy="540" r="1.5"/>
+    <circle cx="480" cy="540" r="1.5"/>
+    <circle cx="540" cy="540" r="1.5"/>
+    <circle cx="600" cy="540" r="1.5"/>
+    <circle cx="660" cy="540" r="1.5"/>
+    <circle cx="720" cy="540" r="1.5"/>
+    <circle cx="780" cy="540" r="1.5"/>
+    <circle cx="840" cy="540" r="1.5"/>
+    <circle cx="900" cy="540" r="1.5"/>
+    <circle cx="960" cy="540" r="1.5"/>
+    <circle cx="1020" cy="540" r="1.5"/>
+    <circle cx="1080" cy="540" r="1.5"/>
+    <circle cx="1140" cy="540" r="1.5"/>
+  </g>
+
+  <!-- larva·feeding chip top-right -->
+  <g transform="translate(900, 60)">
+    <rect width="240" height="36" rx="3" fill="rgba(255,255,255,0.025)" stroke="#2a3340" stroke-width="1"/>
+    <text x="20" y="24" font-family="'JetBrains Mono', monospace" font-size="14" fill="#b8c4d4" letter-spacing="1.4">larva</text>
+    <text x="90" y="24" font-family="'JetBrains Mono', monospace" font-size="14" fill="#2a3340">·</text>
+    <text x="110" y="24" font-family="'JetBrains Mono', monospace" font-size="14" fill="#00e5a0" font-weight="700" letter-spacing="1.6">feeding</text>
+  </g>
+
+  <!-- WORM (big, centered above the wordmark) - scaled-up version of the standard sprite -->
+  <g transform="translate(180, 200) scale(8)" filter="url(#wormGlow)">
+    <circle cx="5"  cy="17" r="3.0" fill="#00e5a0" opacity="0.35"/>
+    <circle cx="10" cy="16" r="3.6" fill="#00e5a0" opacity="0.6"/>
+    <circle cx="16" cy="14" r="4.4" fill="#00e5a0" opacity="0.85"/>
+    <circle cx="24" cy="13" r="5.4" fill="#00e5a0"/>
+    <circle cx="25" cy="11" r="1.4" fill="#0a0e14"/>
+    <circle cx="25.5" cy="10.5" r="0.5" fill="#56e2ff"/>
+    <ellipse cx="28" cy="14.5" rx="2.4" ry="1.8" fill="#0a0e14"/>
+    <!-- teeth visible (chomping pose) -->
+    <polygon points="26.5,13.2 27.1,15.4 27.7,13.2" fill="#f3ecd9"/>
+    <polygon points="28.3,13.2 28.9,15.4 29.5,13.2" fill="#f3ecd9"/>
+    <polygon points="26.0,15.9 26.6,14.0 27.2,15.9" fill="#f3ecd9"/>
+    <polygon points="27.8,15.9 28.4,14.0 29.0,15.9" fill="#f3ecd9"/>
+  </g>
+
+  <!-- glow filter for worm -->
+  <defs>
+    <filter id="wormGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- WORDMARK -->
+  <text x="600" y="430" text-anchor="middle"
+        font-family="'JetBrains Mono', monospace"
+        font-size="80" font-weight="700"
+        fill="#ffffff" letter-spacing="-2">oM noM</text>
+  <text x="600" y="478" text-anchor="middle"
+        font-family="'JetBrains Mono', monospace"
+        font-size="22" font-weight="500"
+        fill="#b8c4d4" letter-spacing="9">SECURITY FEEDS</text>
+
+  <!-- tagline -->
+  <text x="600" y="540" text-anchor="middle"
+        font-family="'Space Grotesk', system-ui, sans-serif"
+        font-size="26" font-weight="500"
+        fill="#e6ecf5">A worm that eats your security feeds.</text>
+
+  <!-- bottom row: feature pill row -->
+  <g transform="translate(600, 590)" text-anchor="middle">
+    <text font-family="'JetBrains Mono', monospace" font-size="14" letter-spacing="1.4" fill="#b8c4d4">
+      <tspan fill="#56e2ff">50+ SOURCES</tspan>
+      <tspan fill="#2a3340">  ·  </tspan>
+      <tspan fill="#00e5a0">AI-AUGMENTED</tspan>
+      <tspan fill="#2a3340">  ·  </tspan>
+      <tspan fill="#ffb547">$10/MO PRO</tspan>
+    </text>
+  </g>
+</svg>

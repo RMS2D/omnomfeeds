@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex">
+<title>Admin - oM noM Security Feeds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #14191f;
+  --bg-row: #11161d;
+  --border: #2a3340;
+  --border-hi: #3a4555;
+  --text: #e6ecf5;
+  --text-dim: #b8c4d4;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --accent-amber: #ffb547;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+}
+.brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .worm-sprite {
+  width: 32px; height: 25px; flex-shrink: 0; vertical-align: middle;
+  animation: worm-bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+}
+.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
+.brand .worm-sprite .seg.s3 { opacity: 0.35; }
+.brand .worm-sprite .seg.s2 { opacity: 0.6; }
+.brand .worm-sprite .seg.s1 { opacity: 0.85; }
+.brand .worm-sprite .eye   { fill: var(--bg); }
+.brand .worm-sprite .glint { fill: var(--accent-cyan); }
+.brand .worm-sprite .mouth { fill: var(--bg); }
+@keyframes worm-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+.brand .tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  background: rgba(0,229,160,0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-left: 6px;
+}
+nav.top-nav {
+  display: flex;
+  gap: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.wrap {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 26px 24px 64px;
+}
+h1 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  letter-spacing: 1.4px;
+  color: var(--accent-cyan);
+  text-transform: uppercase;
+  margin: 26px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+h1:first-of-type { margin-top: 6px; }
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  position: relative;
+}
+.card .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1.1px;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.card .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: -0.4px;
+}
+.card .sub {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 6px;
+}
+.card.alert .value { color: var(--score-crit); }
+.card.good  .value { color: var(--accent); }
+.card.pro   .value { color: var(--accent-amber); }
+
+.row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-top: 18px;
+}
+@media (max-width: 900px) {
+  .row-2col { grid-template-columns: 1fr; }
+}
+
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 16px 18px;
+}
+.panel-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--accent);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.panel-title .count {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
+}
+td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(42,51,64,0.4);
+  vertical-align: middle;
+}
+tr:hover td { background: var(--bg-row); }
+td.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+td.dim  { color: var(--text-dim); }
+
+.dot {
+  display: inline-block;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+.dot.ok    { background: var(--accent); box-shadow: 0 0 6px rgba(0,229,160,0.4); }
+.dot.err   { background: var(--score-crit); box-shadow: 0 0 6px rgba(255,77,106,0.4); }
+.dot.stale { background: var(--accent-amber); box-shadow: 0 0 6px rgba(255,181,71,0.3); }
+
+.pill {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  background: rgba(86,226,255,0.08);
+  border: 1px solid rgba(86,226,255,0.3);
+  color: var(--accent-cyan);
+}
+.pill.pro    { background: rgba(255,181,71,0.08); border-color: rgba(255,181,71,0.35); color: var(--accent-amber); }
+.pill.google { background: rgba(86,226,255,0.08); border-color: rgba(86,226,255,0.3); color: var(--accent-cyan); }
+.pill.email  { background: rgba(0,229,160,0.08); border-color: rgba(0,229,160,0.3); color: var(--accent); }
+
+.meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.meta span strong { color: var(--text); font-weight: 600; }
+
+.empty {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  text-align: center;
+  padding: 18px 8px;
+}
+
+.reload-btn {
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.reload-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
+    oM noM Security Feeds
+    <span class="tag">admin</span>
+  </div>
+  <nav class="top-nav">
+    <a href="/app">&larr; back to app</a>
+    <a href="/admin/analytics">analytics &rarr;</a>
+    <button class="reload-btn" onclick="loadStats(true)">refresh</button>
+  </nav>
+</div>
+
+<div class="wrap">
+
+  <h1>:: at a glance ::</h1>
+  <div class="cards" id="cards">
+    <div class="card"><div class="label">Total users</div><div class="value" id="cTotalUsers">-</div><div class="sub" id="cTotalUsersSub">&nbsp;</div></div>
+    <div class="card pro"><div class="label">Pro subscribers</div><div class="value" id="cPro">-</div><div class="sub" id="cProSub">&nbsp;</div></div>
+    <div class="card good"><div class="label">Articles (24h)</div><div class="value" id="cArt24">-</div><div class="sub" id="cArtTotal">&nbsp;</div></div>
+    <div class="card"><div class="label">Sources erroring</div><div class="value" id="cSrcErr">-</div><div class="sub" id="cSrcMeta">&nbsp;</div></div>
+    <div class="card"><div class="label">Magic links (24h)</div><div class="value" id="cMagic">-</div><div class="sub">&nbsp;</div></div>
+    <div class="card"><div class="label">Uptime</div><div class="value mono" id="cUptime" style="font-size:20px;">-</div><div class="sub" id="cUptimeSub">&nbsp;</div></div>
+  </div>
+
+  <h1>:: service ::</h1>
+  <div class="panel">
+    <div class="meta">
+      <span><strong>started</strong> <span id="svcStarted" class="mono">-</span></span>
+      <span><strong>go</strong> <span id="svcGo" class="mono">-</span></span>
+      <span><strong>goroutines</strong> <span id="svcGoroutines" class="mono">-</span></span>
+      <span><strong>mem</strong> <span id="svcMem" class="mono">-</span></span>
+      <span><strong>hosted</strong> <span id="svcHosted" class="mono">-</span></span>
+    </div>
+  </div>
+
+  <div class="row-2col">
+
+    <div class="panel">
+      <div class="panel-title">Recent signups <span class="count" id="signupsCount"></span></div>
+      <div id="signupsTbl"><div class="empty">loading...</div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Pro subscribers <span class="count" id="proCount"></span></div>
+      <div id="proTbl"><div class="empty">loading...</div></div>
+    </div>
+
+  </div>
+
+  <h1>:: source health ::</h1>
+  <div class="panel">
+    <div id="srcTbl"><div class="empty">loading...</div></div>
+  </div>
+
+  <h1>:: operator settings ::</h1>
+
+  <div class="panel">
+    <div class="panel-title">API keys</div>
+    <div class="op-hint">Deployment-wide secrets used by the fetcher. Existing values show as <code>********</code> - leave that placeholder to keep them, type a new value to replace.</div>
+
+    <div class="op-form">
+      <div class="op-row">
+        <label>Bluesky identifier</label>
+        <input id="opBskyId" type="text" placeholder="handle.bsky.social">
+      </div>
+      <div class="op-row">
+        <label>Bluesky app password</label>
+        <input id="opBskyPw" type="text" placeholder="xxxx-xxxx-xxxx-xxxx">
+      </div>
+      <button class="op-btn primary" onclick="saveOpBsky()">Save Bluesky</button>
+    </div>
+
+    <div class="op-form">
+      <div class="op-row">
+        <label>MalwareBazaar API key</label>
+        <input id="opBazaarKey" type="text" placeholder="********">
+      </div>
+      <button class="op-btn primary" onclick="saveOpBazaar()">Save MalwareBazaar</button>
+    </div>
+
+    <div class="op-form">
+      <div class="op-row">
+        <label><input id="opGhEnabled" type="checkbox" style="margin-right:6px;vertical-align:middle;"> GitHub Security Advisories enabled</label>
+      </div>
+      <div class="op-row">
+        <label>GitHub personal access token (optional, higher rate limit)</label>
+        <input id="opGhToken" type="text" placeholder="ghp_******** or github_pat_********">
+      </div>
+      <button class="op-btn primary" onclick="saveOpGitHub()">Save GitHub</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Operator-baseline Bluesky watched accounts <span class="count" id="opBskyAcctsCount"></span></div>
+    <div class="op-hint">Handles added here are part of the default feed every user sees, in addition to the editorial curated list. Users can also add their own on top in their Config (c) modal; those are stored per-user and don't show here.</div>
+    <div id="opBskyAcctsList"><div class="empty">loading...</div></div>
+    <div class="op-form" style="margin-top:14px;">
+      <div class="op-row">
+        <label>Add baseline handle</label>
+        <div class="op-add-row">
+          <input id="opBskyNewHandle" type="text" placeholder="researcher.bsky.social" onkeydown="if(event.key==='Enter'){event.preventDefault();addOpBskyAccount();}">
+          <button class="op-btn primary" onclick="addOpBskyAccount()">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-title">Pipeline tests</div>
+    <div class="op-hint">Fire a real digest email or webhook payload from the live workers, on demand. Use this to validate the pipelines end-to-end before a real Pro user is affected.</div>
+
+    <div class="op-form">
+      <div class="op-row">
+        <label>Send digest email to</label>
+        <div class="op-add-row">
+          <input id="testDigestTo" type="text" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestDigest();}">
+          <button class="op-btn primary" onclick="sendTestDigest()">Send now</button>
+        </div>
+      </div>
+      <div id="testDigestStatus" class="op-hint" style="margin-top:6px;"></div>
+    </div>
+
+    <div class="op-form">
+      <div class="op-row">
+        <label>Fire test webhook</label>
+        <div class="op-add-row" style="flex-wrap:wrap;gap:6px;">
+          <select id="testWebhookChannel" style="background:transparent;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:2px;">
+            <option value="discord">Discord</option>
+            <option value="slack">Slack</option>
+            <option value="generic">Generic JSON</option>
+          </select>
+          <select id="testWebhookKind" style="background:transparent;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:2px;">
+            <option value="kev">KEV</option>
+            <option value="keyword">Keyword</option>
+            <option value="cve">CVE</option>
+            <option value="tag">Tag</option>
+          </select>
+          <input id="testWebhookURL" type="text" placeholder="https://discord.com/api/webhooks/..." style="flex:1;min-width:280px;" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestWebhook();}">
+          <button class="op-btn primary" onclick="sendTestWebhook()">Fire</button>
+        </div>
+      </div>
+      <div id="testWebhookStatus" class="op-hint" style="margin-top:6px;"></div>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.op-hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.55;
+  margin-bottom: 14px;
+}
+.op-form { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid rgba(42,51,64,0.5); }
+.op-form:last-child { border-bottom: 0; padding-bottom: 0; }
+.op-row { margin-bottom: 10px; }
+.op-row label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+.op-row input[type=text] {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text-bright);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  outline: none;
+}
+.op-row input[type=text]:focus { border-color: var(--accent-cyan); }
+.op-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  max-width: 520px;
+}
+.op-add-row input { flex: 1; max-width: none; }
+.op-btn {
+  background: rgba(0,229,160,0.10);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 7px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.op-btn:hover { background: rgba(0,229,160,0.2); color: var(--text-bright); }
+.op-bsky-acct {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  margin-bottom: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+.op-bsky-acct .handle { color: var(--text-bright); }
+.op-bsky-acct .rm {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  padding: 3px 8px;
+  border-radius: 2px;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.op-bsky-acct .rm:hover { color: var(--score-crit); border-color: var(--score-crit); }
+</style>
+
+<script>
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+}
+
+function fmtUptime(sec) {
+  if (!sec || sec < 60) return '<1m';
+  const days = Math.floor(sec / 86400);
+  const hours = Math.floor((sec % 86400) / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  if (days > 0) return `${days}d ${hours}h ${mins}m`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${mins}m`;
+}
+
+function fmtDate(iso) {
+  if (!iso) return '-';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '-';
+  return d.toLocaleString();
+}
+
+function fmtAge(iso) {
+  if (!iso) return 'never';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '-';
+  const sec = (Date.now() - d.getTime()) / 1000;
+  if (sec < 60)    return Math.floor(sec) + 's ago';
+  if (sec < 3600)  return Math.floor(sec/60) + 'm ago';
+  if (sec < 86400) return Math.floor(sec/3600) + 'h ago';
+  return Math.floor(sec/86400) + 'd ago';
+}
+
+async function loadStats(forceFlash) {
+  try {
+    const r = await fetch('/api/admin/stats', { credentials: 'same-origin' });
+    if (r.status === 401 || r.status === 403) {
+      location.href = '/login.html?next=/admin';
+      return;
+    }
+    if (!r.ok) {
+      document.getElementById('cTotalUsers').textContent = '!';
+      return;
+    }
+    const d = await r.json();
+    renderCards(d);
+    renderService(d.service);
+    renderSignups(d.recent_signups || []);
+    renderPro(d.pro_users || []);
+    renderSources(d.sources);
+    if (forceFlash) {
+      document.body.style.transition = 'background 200ms';
+      document.body.style.background = '#0d1419';
+      setTimeout(() => { document.body.style.background = ''; }, 220);
+    }
+  } catch (e) {
+    document.getElementById('cTotalUsers').textContent = '!';
+  }
+}
+
+function renderCards(d) {
+  document.getElementById('cTotalUsers').textContent = d.users.total;
+  document.getElementById('cTotalUsersSub').textContent = '+' + d.users.last_7_days + ' in last 7 days';
+  document.getElementById('cPro').textContent = d.users.pro_active;
+  const mrr = (d.users.pro_active * 10).toFixed(0);
+  document.getElementById('cProSub').textContent = '~$' + mrr + ' MRR';
+  document.getElementById('cArt24').textContent = d.articles.last_24h;
+  document.getElementById('cArtTotal').textContent = d.articles.total + ' all time';
+  document.getElementById('cSrcErr').textContent = d.sources.erroring;
+  document.getElementById('cSrcMeta').textContent = d.sources.total + ' total, ' + d.sources.stale + ' stale';
+  document.getElementById('cMagic').textContent = d.users.magic_links_last_24h;
+  document.getElementById('cUptime').textContent = fmtUptime(d.service.uptime_sec);
+  document.getElementById('cUptimeSub').textContent = 'since ' + fmtDate(d.service.started_at);
+
+  // Re-tone the source-error card by severity.
+  const errCard = document.getElementById('cSrcErr').closest('.card');
+  errCard.classList.remove('alert','good');
+  if (d.sources.erroring > 0) errCard.classList.add('alert');
+  else                        errCard.classList.add('good');
+}
+
+function renderService(svc) {
+  document.getElementById('svcStarted').textContent = fmtDate(svc.started_at);
+  document.getElementById('svcGo').textContent = svc.go_version;
+  document.getElementById('svcGoroutines').textContent = svc.goroutines;
+  document.getElementById('svcMem').textContent = svc.mem_mb + ' MB';
+  document.getElementById('svcHosted').textContent = svc.hosted_mode ? 'yes' : 'no';
+}
+
+function providerPill(p) {
+  const c = p === 'google' ? 'google' : p === 'email' ? 'email' : '';
+  return `<span class="pill ${c}">${esc(p || '?')}</span>`;
+}
+
+function renderSignups(rows) {
+  const cnt = document.getElementById('signupsCount');
+  cnt.textContent = rows.length + ' shown';
+  const el = document.getElementById('signupsTbl');
+  if (!rows.length) { el.innerHTML = '<div class="empty">no signups yet</div>'; return; }
+  el.innerHTML = '<table><thead><tr><th>email</th><th>via</th><th>joined</th><th>last seen</th></tr></thead><tbody>' +
+    rows.map(u => `
+      <tr>
+        <td>${esc(u.email)}${u.pro_until ? ' <span class="pill pro">pro</span>' : ''}</td>
+        <td>${providerPill(u.id_provider)}</td>
+        <td class="mono dim" title="${esc(fmtDate(u.created_at))}">${esc(fmtAge(u.created_at))}</td>
+        <td class="mono dim" title="${esc(fmtDate(u.last_seen_at))}">${esc(fmtAge(u.last_seen_at))}</td>
+      </tr>
+    `).join('') +
+    '</tbody></table>';
+}
+
+function renderPro(rows) {
+  const cnt = document.getElementById('proCount');
+  cnt.textContent = rows.length + ' active';
+  const el = document.getElementById('proTbl');
+  if (!rows.length) { el.innerHTML = '<div class="empty">no Pro subscribers yet</div>'; return; }
+  el.innerHTML = '<table><thead><tr><th>email</th><th>via</th><th>renews</th><th>joined</th></tr></thead><tbody>' +
+    rows.map(u => `
+      <tr>
+        <td>${esc(u.email)}</td>
+        <td>${providerPill(u.id_provider)}</td>
+        <td class="mono dim">${esc(fmtDate(u.pro_until))}</td>
+        <td class="mono dim">${esc(fmtAge(u.created_at))}</td>
+      </tr>
+    `).join('') +
+    '</tbody></table>';
+}
+
+function renderSources(s) {
+  const el = document.getElementById('srcTbl');
+  if (!s.per_source || !s.per_source.length) { el.innerHTML = '<div class="empty">no source telemetry yet</div>'; return; }
+  const rows = s.per_source.slice().sort((a, b) => {
+    // Errors first, then stale, then by name.
+    const aErr = !!a.last_error, bErr = !!b.last_error;
+    if (aErr !== bErr) return aErr ? -1 : 1;
+    return (a.name || '').localeCompare(b.name || '');
+  });
+  el.innerHTML = '<table><thead><tr><th></th><th>source</th><th>type</th><th>items</th><th>last fetch</th><th>error</th></tr></thead><tbody>' +
+    rows.map(src => {
+      let cls = 'ok';
+      if (src.last_error)        cls = 'err';
+      else if (!src.last_fetch)  cls = 'stale';
+      else {
+        const ageMin = (Date.now() - new Date(src.last_fetch).getTime()) / 60000;
+        if (ageMin > 30) cls = 'stale';
+      }
+      const err = src.last_error ? '<span style="color:var(--score-crit);font-family:JetBrains Mono,monospace;font-size:11px;">' + esc(src.last_error) + '</span>' : '<span class="dim">-</span>';
+      return `
+        <tr>
+          <td><span class="dot ${cls}"></span></td>
+          <td>${esc(src.name)}</td>
+          <td class="mono dim">${esc(src.type || '')}</td>
+          <td class="mono">${src.item_count || 0}</td>
+          <td class="mono dim">${esc(fmtAge(src.last_fetch))}</td>
+          <td>${err}</td>
+        </tr>
+      `;
+    }).join('') +
+    '</tbody></table>';
+}
+
+// --- Operator settings: API keys + baseline Bluesky accounts ---
+
+async function loadOperatorConfig() {
+  try {
+    const r = await fetch('/api/config', { credentials: 'same-origin' });
+    if (!r.ok) return;
+    const cfg = await r.json();
+    document.getElementById('opBskyId').value     = cfg.bluesky?.identifier || '';
+    document.getElementById('opBskyPw').value     = cfg.bluesky?.password ? '********' : '';
+    document.getElementById('opBazaarKey').value  = cfg.malwarebazaar?.api_key ? '********' : '';
+    document.getElementById('opGhEnabled').checked = !!cfg.github?.enabled;
+    document.getElementById('opGhToken').value    = cfg.github?.token ? '********' : '';
+  } catch (e) {}
+}
+
+async function saveOpBsky() {
+  const ident = document.getElementById('opBskyId').value.trim();
+  const pw    = document.getElementById('opBskyPw').value;
+  const payload = { identifier: ident, password: pw === '********' ? '' : pw };
+  // Empty password sent means "keep existing"; non-empty means replace.
+  // We strip the masked sentinel above so the server isn't confused.
+  const r = await fetch('/api/config/bluesky', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  flashSaved(r, 'Bluesky');
+  document.getElementById('opBskyPw').value = ident && pw ? '********' : '';
+}
+
+async function saveOpBazaar() {
+  const k = document.getElementById('opBazaarKey').value;
+  const payload = { api_key: k === '********' ? '' : k };
+  const r = await fetch('/api/config/bazaar', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  flashSaved(r, 'MalwareBazaar');
+  document.getElementById('opBazaarKey').value = k ? '********' : '';
+}
+
+async function saveOpGitHub() {
+  const enabled = document.getElementById('opGhEnabled').checked;
+  const t       = document.getElementById('opGhToken').value;
+  const payload = { enabled, token: t === '********' ? '' : t };
+  const r = await fetch('/api/config/github', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  flashSaved(r, 'GitHub');
+  document.getElementById('opGhToken').value = t ? '********' : '';
+}
+
+function flashSaved(resp, label) {
+  // Tiny visual nudge - find the closest .op-btn we just clicked and
+  // briefly flip its text. Cheaper than wiring a full toast lib here.
+  const ok = resp.ok || resp.status === 200;
+  const btns = document.querySelectorAll('.op-btn');
+  btns.forEach(b => {
+    if (b.textContent.includes(label)) {
+      const orig = b.textContent;
+      b.textContent = ok ? 'saved' : 'failed';
+      b.style.background = ok ? 'rgba(0,229,160,0.25)' : 'rgba(255,77,106,0.2)';
+      setTimeout(() => { b.textContent = orig; b.style.background = ''; }, 1400);
+    }
+  });
+}
+
+async function loadOpBskyAccounts() {
+  const el = document.getElementById('opBskyAcctsList');
+  try {
+    const r = await fetch('/api/config/accounts', { credentials: 'same-origin' });
+    if (!r.ok) { el.innerHTML = '<div class="empty">failed to load (' + r.status + ')</div>'; return; }
+    const handles = await r.json();
+    renderOpBskyAccounts(handles || []);
+  } catch (e) {
+    el.innerHTML = '<div class="empty">failed to load</div>';
+  }
+}
+
+function renderOpBskyAccounts(handles) {
+  const el = document.getElementById('opBskyAcctsList');
+  const cnt = document.getElementById('opBskyAcctsCount');
+  if (cnt) cnt.textContent = handles.length + ' baseline';
+  if (!handles.length) {
+    el.innerHTML = '<div class="empty">no operator-baseline handles - the curated list (107) is still applied automatically.</div>';
+    return;
+  }
+  el.innerHTML = handles.map(h => `
+    <div class="op-bsky-acct">
+      <span class="handle">@${esc(h)}</span>
+      <button type="button" class="rm" onclick="removeOpBskyAccount('${esc(h)}')">remove</button>
+    </div>
+  `).join('');
+}
+
+async function addOpBskyAccount() {
+  const input = document.getElementById('opBskyNewHandle');
+  const handle = (input.value || '').trim().replace(/^@/, '');
+  if (!handle) return;
+  const r = await fetch('/api/config/accounts', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'add', handle }),
+  });
+  if (r.ok) {
+    input.value = '';
+    const body = await r.json();
+    renderOpBskyAccounts(body.accounts || []);
+  }
+}
+
+async function removeOpBskyAccount(handle) {
+  const r = await fetch('/api/config/accounts', {
+    method: 'POST', credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ action: 'remove', handle }),
+  });
+  if (r.ok) {
+    const body = await r.json();
+    renderOpBskyAccounts(body.accounts || []);
+  }
+}
+
+async function sendTestDigest() {
+  const input = document.getElementById('testDigestTo');
+  const status = document.getElementById('testDigestStatus');
+  const to = (input.value || '').trim();
+  if (!to || !to.includes('@')) {
+    status.textContent = 'Enter a valid email first.';
+    status.style.color = 'var(--score-crit)';
+    return;
+  }
+  status.style.color = 'var(--text-dim)';
+  status.textContent = 'Generating digest... (AI call takes 30-60s)';
+  try {
+    const r = await fetch('/api/admin/digest/send-test', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) {
+      status.style.color = 'var(--accent)';
+      status.textContent = 'Sent to ' + (body.sent_to || to) + ' - check the inbox.';
+    } else {
+      status.style.color = 'var(--score-crit)';
+      status.textContent = 'Failed: ' + (body.error || ('HTTP ' + r.status));
+    }
+  } catch (e) {
+    status.style.color = 'var(--score-crit)';
+    status.textContent = 'Failed: ' + e.message;
+  }
+}
+
+async function sendTestWebhook() {
+  const url = (document.getElementById('testWebhookURL').value || '').trim();
+  const channel = document.getElementById('testWebhookChannel').value;
+  const kind = document.getElementById('testWebhookKind').value;
+  const status = document.getElementById('testWebhookStatus');
+  if (!url || !url.startsWith('https://')) {
+    status.style.color = 'var(--score-crit)';
+    status.textContent = 'Enter an https:// webhook URL first.';
+    return;
+  }
+  status.style.color = 'var(--text-dim)';
+  status.textContent = 'Firing ' + channel + ' ' + kind.toUpperCase() + ' webhook...';
+  try {
+    const r = await fetch('/api/admin/alert/send-test', {
+      method: 'POST', credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channel, target: url, kind }),
+    });
+    const body = await r.json().catch(() => ({}));
+    if (r.ok) {
+      status.style.color = 'var(--accent)';
+      status.textContent = 'Fired ' + body.channel + ' ' + body.kind.toUpperCase() + ' - check the channel.';
+    } else {
+      status.style.color = 'var(--score-crit)';
+      status.textContent = 'Failed: ' + (body.error || ('HTTP ' + r.status));
+    }
+  } catch (e) {
+    status.style.color = 'var(--score-crit)';
+    status.textContent = 'Failed: ' + e.message;
+  }
+}
+
+loadStats();
+loadOperatorConfig();
+loadOpBskyAccounts();
+// Auto-refresh every 30 seconds so the dashboard stays current without
+// needing the user to hit refresh.
+setInterval(loadStats, 30000);
+</script>
+
+</body>
+</html>

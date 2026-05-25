@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Trending CVEs - oM noM Security Feeds</title>
+<meta name="description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social. KEV status, EPSS percentile, and source breakdown for each.">
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate" type="application/rss+xml" title="oM noM Security Feeds - High signal" href="/feed.xml">
+
+<!-- OG / social preview -->
+<meta property="og:title" content="Trending CVEs - oM noM Security Feeds">
+<meta property="og:description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social. KEV + EPSS for each.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://omnomfeeds.com/trending">
+<meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Trending CVEs - oM noM Security Feeds">
+<meta name="twitter:description" content="Live leaderboard of the most-mentioned CVEs across security news, vendor PSIRTs, threat intel, and social.">
+<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #14191f;
+  --bg-row: #11161d;
+  --border: #2a3340;
+  --border-hi: #3a4555;
+  --text: #e6ecf5;
+  --text-dim: #b8c4d4;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --accent-amber: #ffb547;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.55;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { color: var(--accent); }
+code, .mono { font-family: 'JetBrains Mono', monospace; }
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-card);
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.brand {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-bright);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .worm-sprite {
+  width: 32px; height: 25px; flex-shrink: 0; vertical-align: middle;
+  animation: worm-bob 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
+}
+.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
+.brand .worm-sprite .seg.s3 { opacity: 0.35; }
+.brand .worm-sprite .seg.s2 { opacity: 0.6; }
+.brand .worm-sprite .seg.s1 { opacity: 0.85; }
+.brand .worm-sprite .eye   { fill: var(--bg); }
+.brand .worm-sprite .glint { fill: var(--accent-cyan); }
+.brand .worm-sprite .mouth { fill: var(--bg); }
+@keyframes worm-bob {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-1.5px); }
+}
+.brand .tag {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  background: rgba(0,229,160,0.12);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  padding: 1px 6px;
+  border-radius: 2px;
+  margin-left: 6px;
+}
+nav.top-nav {
+  display: flex;
+  gap: 18px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+nav.top-nav a { color: var(--text-dim); }
+nav.top-nav a:hover { color: var(--accent-cyan); }
+
+.wrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.hero {
+  margin-bottom: 26px;
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.6px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  margin-bottom: 10px;
+}
+.eyebrow .pulse {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  margin-right: 8px;
+  vertical-align: middle;
+  animation: live-pulse 1.8s ease-in-out infinite;
+}
+@keyframes live-pulse {
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.55); }
+  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(0,229,160,0); }
+}
+h1 {
+  font-size: 36px;
+  line-height: 1.15;
+  letter-spacing: -0.4px;
+  color: var(--text-bright);
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+.lead {
+  font-size: 16px;
+  color: var(--text-dim);
+  max-width: 720px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  align-items: center;
+  margin: 22px 0 18px;
+  padding: 12px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+.controls .label {
+  text-transform: uppercase;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+  margin-right: 4px;
+}
+.window-group {
+  display: flex;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.window-btn {
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 6px 12px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: inherit;
+}
+.window-btn:last-child { border-right: none; }
+.window-btn:hover { color: var(--text); background: rgba(86,226,255,0.05); }
+.window-btn.active {
+  background: rgba(0,229,160,0.12);
+  color: var(--accent);
+  font-weight: 600;
+}
+.meta {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.meta .refresh-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  padding: 4px 10px;
+  margin-left: 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: inherit;
+  text-transform: inherit;
+}
+.meta .refresh-btn:hover { color: var(--accent); border-color: var(--accent); }
+
+.tbl-wrap {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.18);
+  font-weight: 600;
+}
+td {
+  padding: 14px 14px;
+  border-bottom: 1px solid var(--bg-row);
+  vertical-align: middle;
+}
+tr:hover td { background: rgba(86,226,255,0.025); }
+tr:last-child td { border-bottom: none; }
+td.rank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--text-dim);
+  width: 56px;
+  text-align: center;
+}
+td.rank .num {
+  display: inline-block;
+  min-width: 28px;
+  padding: 4px 8px;
+  background: var(--bg-row);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+}
+td.rank.top-1 .num { background: rgba(255,77,106,0.12); border-color: var(--score-crit); color: var(--score-crit); }
+td.rank.top-2 .num { background: rgba(255,181,71,0.12); border-color: var(--accent-amber); color: var(--accent-amber); }
+td.rank.top-3 .num { background: rgba(0,229,160,0.12); border-color: var(--accent); color: var(--accent); }
+td.cve {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+td.cve a { color: var(--accent-cyan); }
+td.cve a:hover { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,229,160,0.3); }
+.chips {
+  display: inline-flex;
+  gap: 6px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.chip {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-weight: 600;
+}
+.chip.kev {
+  background: rgba(255,77,106,0.15);
+  border: 1px solid var(--score-crit);
+  color: var(--score-crit);
+}
+.chip.epss {
+  background: rgba(255,181,71,0.10);
+  border: 1px solid rgba(255,181,71,0.50);
+  color: var(--accent-amber);
+}
+td.mentions {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 600;
+  text-align: right;
+  width: 96px;
+}
+td.mentions .label {
+  display: block;
+  font-size: 9px;
+  color: var(--text-dim);
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-weight: 400;
+  margin-top: 2px;
+}
+td.latest {
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1.4;
+}
+td.latest .ti {
+  color: var(--text);
+  display: block;
+  margin-bottom: 2px;
+  max-width: 540px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+td.latest .src {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--accent-cyan);
+  letter-spacing: 0.4px;
+}
+td.latest .ago {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: 6px;
+}
+td.latest .ago::before { content: "· "; }
+
+.empty {
+  padding: 60px 20px;
+  text-align: center;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.loading {
+  padding: 40px 20px;
+  text-align: center;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.loading .dots::after {
+  content: '';
+  animation: loading-dots 1.6s steps(4, end) infinite;
+}
+@keyframes loading-dots {
+  0%   { content: ''; }
+  25%  { content: '.'; }
+  50%  { content: '..'; }
+  75%  { content: '...'; }
+  100% { content: ''; }
+}
+
+.cta-strip {
+  margin-top: 28px;
+  padding: 16px 20px;
+  background: linear-gradient(180deg, rgba(0,229,160,0.04), rgba(0,229,160,0.01));
+  border: 1px solid rgba(0,229,160,0.22);
+  border-left: 2px solid var(--accent);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cta-strip .cs-msg { color: var(--text); font-size: 14px; line-height: 1.5; }
+.cta-strip .cs-msg strong { color: var(--text-bright); }
+.cta-strip .cs-actions { display: flex; gap: 10px; align-items: center; }
+.cta-strip a.btn {
+  display: inline-flex;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  padding: 8px 16px;
+  border-radius: 3px;
+  font-weight: 600;
+  transition: all 0.12s;
+}
+.cta-strip a.btn-primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.cta-strip a.btn-primary:hover { background: var(--accent-cyan); }
+.cta-strip a.btn-secondary {
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+.cta-strip a.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+footer {
+  margin-top: 48px;
+  padding-top: 22px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 0.4px;
+}
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent-cyan); }
+
+@media (max-width: 720px) {
+  .wrap { padding: 22px 14px 60px; }
+  h1 { font-size: 26px; }
+  .lead { font-size: 14px; }
+  th { padding: 8px 8px; font-size: 9px; }
+  td { padding: 10px 8px; font-size: 12px; }
+  td.rank { width: 44px; }
+  td.rank .num { padding: 3px 6px; }
+  td.mentions { width: 70px; font-size: 13px; }
+  td.cve { font-size: 12px; }
+  td.latest { font-size: 11px; }
+  td.latest .ti { max-width: 220px; }
+  .controls { font-size: 10px; }
+}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand">
+    <svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
+    oM noM Security Feeds
+    <span class="tag">trending</span>
+  </div>
+  <nav class="top-nav">
+    <a href="/">about</a>
+    <a href="/pre-kev">pre-kev</a>
+    <a href="/live">live ticker</a>
+    <a href="/app">reader</a>
+    <a href="/pro">pro</a>
+  </nav>
+</div>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow"><span class="pulse"></span>:: live leaderboard ::</div>
+    <h1>Trending CVEs</h1>
+    <p class="lead">The CVE-IDs being talked about most across security news, vendor PSIRTs, threat intel research, and the security-side of Bluesky and Mastodon. Updated every 15 minutes. KEV status and EPSS percentile inline.</p>
+  </div>
+
+  <div class="controls">
+    <span class="label">Window:</span>
+    <div class="window-group" id="windowGroup">
+      <button class="window-btn"       data-hours="24">24h</button>
+      <button class="window-btn active" data-hours="72">72h</button>
+      <button class="window-btn"       data-hours="168">7d</button>
+      <button class="window-btn"       data-hours="336">14d</button>
+    </div>
+    <span class="meta" id="genMeta">loading...</span>
+    <button class="refresh-btn" onclick="loadTrending(true)" title="force a refresh now">refresh</button>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:56px;">#</th>
+          <th>CVE</th>
+          <th style="width:96px;text-align:right;">Mentions</th>
+          <th>Latest mention</th>
+        </tr>
+      </thead>
+      <tbody id="rows">
+        <tr><td colspan="4" class="loading">querying the feed<span class="dots"></span></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="cta-strip">
+    <div class="cs-msg">
+      Want this list in your inbox each morning, plus webhook alerts for KEV pops? <strong>Pro is $10/mo.</strong>
+    </div>
+    <div class="cs-actions">
+      <a class="btn btn-secondary" href="/app">Open reader</a>
+      <a class="btn btn-primary" href="/pro">See Pro →</a>
+    </div>
+  </div>
+
+  <footer>
+    <span>oM noM Security Feeds · MIT licensed · self-host or hosted</span>
+    <span>
+      <a href="/feed.xml">RSS</a> ·
+      <a href="https://github.com/RMS2D/omnomfeeds">GitHub</a> ·
+      <a href="/privacy">Privacy</a> ·
+      <a href="/terms">Terms</a>
+    </span>
+  </footer>
+
+</div>
+
+<script>
+let CURRENT_HOURS = 72;
+let lastFetchAt = 0;
+
+document.querySelectorAll('.window-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.window-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    CURRENT_HOURS = parseInt(b.dataset.hours, 10) || 72;
+    loadTrending(true);
+  });
+});
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// safeHref returns an HTML-escaped URL safe for href=, or "#" if the
+// scheme is anything other than http/https. Storage rejects bad URLs at
+// ingest but this is the render-time defence-in-depth.
+function safeHref(raw) {
+  if (!raw) return '#';
+  try {
+    const u = new URL(raw, window.location.origin);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return '#';
+    return esc(raw);
+  } catch (e) { return '#'; }
+}
+function timeAgo(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const sec = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (sec < 0)      return 'soon';
+  if (sec < 60)     return 'just now';
+  if (sec < 3600)   return Math.floor(sec / 60) + 'm ago';
+  if (sec < 86400)  return Math.floor(sec / 3600) + 'h ago';
+  return Math.floor(sec / 86400) + 'd ago';
+}
+function fmtPercentile(p) {
+  if (typeof p !== 'number' || p <= 0) return null;
+  const pct = p * 100;
+  if (pct >= 99) return '99%+';
+  if (pct >= 10) return Math.round(pct) + '%';
+  return pct.toFixed(1) + '%';
+}
+
+async function loadTrending(showLoading) {
+  // Throttle hand-clicks: if we already fired in the last 2s, skip.
+  const now = Date.now();
+  if (!showLoading && now - lastFetchAt < 1500) return;
+  lastFetchAt = now;
+
+  const tbody = document.getElementById('rows');
+  const meta = document.getElementById('genMeta');
+  if (showLoading) {
+    tbody.innerHTML = '<tr><td colspan="4" class="loading">querying the feed<span class="dots"></span></td></tr>';
+  }
+  meta.textContent = 'loading...';
+
+  let r;
+  try {
+    r = await fetch('/api/cves/hottest?hours=' + CURRENT_HOURS + '&limit=50', { credentials: 'same-origin' });
+  } catch (e) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">fetch failed - try refresh in a moment</td></tr>';
+    meta.textContent = 'fetch failed';
+    return;
+  }
+  if (!r.ok) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">server returned ' + r.status + '</td></tr>';
+    meta.textContent = 'HTTP ' + r.status;
+    return;
+  }
+
+  const data = await r.json();
+  const rows = data.rows || [];
+
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">no CVE mentions in this window yet. try a longer one.</td></tr>';
+    meta.textContent = 'no data';
+    return;
+  }
+
+  tbody.innerHTML = rows.map((row, i) => {
+    const rank = i + 1;
+    const rankClass = rank === 1 ? 'top-1' : rank === 2 ? 'top-2' : rank === 3 ? 'top-3' : '';
+    const chips = [];
+    if (row.kev) chips.push('<span class="chip kev" title="In the CISA KEV catalog. Actively exploited.">KEV</span>');
+    const epssPct = fmtPercentile(row.epss_percentile);
+    if (epssPct) chips.push('<span class="chip epss" title="EPSS exploit prediction percentile (0-100%)">EPSS ' + esc(epssPct) + '</span>');
+
+    const latestTitle = esc(row.latest_title || '');
+    const latestSrc   = esc(row.latest_source || '');
+    const latestURL   = row.latest_url || '#';
+    const ago = timeAgo(row.latest_at);
+
+    // CVE-ID links to the in-app modal (which is the deepest enrichment
+    // view we offer); the latest-mention title links to the source's
+    // original article so credit flows back to publishers.
+    return '' +
+      '<tr>' +
+      '<td class="rank ' + rankClass + '"><span class="num">' + rank + '</span></td>' +
+      '<td class="cve">' +
+        '<a href="/cve/' + encodeURIComponent(row.cve) + '" title="Full CVE detail page">' + esc(row.cve) + '</a>' +
+        '<span class="chips">' + chips.join('') + '</span>' +
+      '</td>' +
+      '<td class="mentions">' + row.mentions + '<span class="label">across sources</span></td>' +
+      '<td class="latest">' +
+        '<a href="' + safeHref(latestURL) + '" target="_blank" rel="noopener"><span class="ti">' + latestTitle + '</span></a>' +
+        '<span class="src">' + latestSrc + '</span><span class="ago">' + ago + '</span>' +
+      '</td>' +
+      '</tr>';
+  }).join('');
+
+  const stamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  meta.textContent = data.window_hours + 'h window · ' + rows.length + ' rows · updated ' + stamp;
+}
+
+loadTrending(true);
+// Refresh every 60s. Cheap on the server (15-min server cache on the
+// hottest-CVEs endpoint).
+setInterval(() => loadTrending(false), 60000);
+</script>
+</body>
+</html>

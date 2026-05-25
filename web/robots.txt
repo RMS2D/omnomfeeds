@@ -1,0 +1,17 @@
+User-agent: *
+Allow: /
+Allow: /pro
+Allow: /live
+Allow: /trending
+Allow: /pre-kev
+Allow: /api
+Allow: /cve/
+Allow: /privacy
+Allow: /terms
+Disallow: /admin
+Disallow: /api/
+Disallow: /login.html
+Disallow: /app
+
+Sitemap: https://omnomfeeds.com/sitemap.xml
+Sitemap: https://omnomfeeds.com/sitemap-cves.xml

@@ -1,0 +1,63 @@
+# Caddy config for omnomfeeds.com - production reference.
+#
+# Caddy terminates TLS (Let's Encrypt) and reverse-proxies to the Go
+# binary on localhost:8080. Cloudflare proxies traffic to this box
+# from its edge, so the client's real IP arrives via the standard
+# X-Forwarded-For header that CF populates.
+#
+# DO NOT add `header_up X-Forwarded-For {remote_host}` to the
+# reverse_proxy block. CF already populates X-Forwarded-For with the
+# real client IP; overriding it overwrites the real IP with the CF
+# edge IP, which breaks per-IP rate limiting in the Go binary. Caddy's
+# default behavior is to APPEND remote_host to the incoming chain, so
+# leaving it out means the leftmost token in X-Forwarded-For is the
+# real client IP (which the Go binary's clientIP() reads).
+#
+# Mirrors /etc/caddy/Caddyfile on the production droplet.
+
+omnomfeeds.com {
+    encode gzip zstd
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "interest-cohort=()"
+        # Strip the proxy chain Via header Caddy adds by default. CF's
+        # public-facing response already hides the origin via "Server:
+        # cloudflare"; leaving "Via: 1.1 Caddy" intact would tell anyone
+        # poking the response which reverse proxy we run and invite a
+        # version-CVE scan. No functional impact.
+        -Via
+        # CSP. Defense-in-depth against any XSS that slipped past
+        # safeHref() / escapeHTML(). Constraints driven by the actual
+        # surface:
+        #   - script-src 'unsafe-inline' because the app ships large
+        #     inline <script> blocks. Refactoring to nonces would be a
+        #     bigger change than the launch budget allows.
+        #   - style-src 'unsafe-inline' because the app uses many inline
+        #     style="..." attributes and inline <style> blocks.
+        #   - fonts.googleapis.com (stylesheet) + fonts.gstatic.com
+        #     (woff/woff2) are the only off-origin resources both
+        #     landing.html and index.html load.
+        #   - frame-ancestors 'none' is the CSP version of X-Frame-Options
+        #     DENY above; modern browsers prefer it. Keep both.
+        #   - form-action 'self' blocks form submissions to off-origin
+        #     targets - useful if any future XSS tries to exfil via form.
+        #   - object-src 'none' kills Flash / applet plugins outright.
+        #   - upgrade-insecure-requests catches stray http:// references
+        #     in user-rendered content (e.g. article links) and rewrites
+        #     to https:// before requesting.
+        Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'; upgrade-insecure-requests"
+        -Server
+    }
+
+    reverse_proxy localhost:8080 {
+        header_up X-Forwarded-Proto https
+    }
+}
+
+www.omnomfeeds.com {
+    redir https://omnomfeeds.com{uri} permanent
+}

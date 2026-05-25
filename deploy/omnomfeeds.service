@@ -1,0 +1,46 @@
+[Unit]
+Description=oM noM Security Feeds
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=omnom
+Group=omnom
+WorkingDirectory=/opt/omnomfeeds
+ExecStart=/opt/omnomfeeds/bin/omnomfeeds
+EnvironmentFile=-/opt/omnomfeeds/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/var/log/omnomfeeds/app.log
+StandardError=append:/var/log/omnomfeeds/app.log
+LimitNOFILE=65535
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+ReadWritePaths=/opt/omnomfeeds /var/log/omnomfeeds
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

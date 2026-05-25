@@ -1,0 +1,91 @@
+version: 2
+
+project_name: omnomfeeds
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: secfeed
+    main: .
+    binary: secfeed
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
+
+archives:
+  - id: secfeed
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_
+      {{- if eq .Os "darwin" }}macos{{ else }}{{ .Os }}{{ end }}_
+      {{- if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end }}
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+      - README.md
+      - LICENSE
+      - examples/**/*
+
+checksum:
+  name_template: "checksums.txt"
+  algorithm: sha256
+
+# Cosign keyless signing via the GitHub OIDC token. Verifies provenance back to
+# the workflow that produced the artefact; no key material to manage.
+signs:
+  - cmd: cosign
+    signature: "${artifact}.sig"
+    certificate: "${artifact}.pem"
+    args:
+      - sign-blob
+      - "--yes"
+      - "--output-signature=${signature}"
+      - "--output-certificate=${certificate}"
+      - "${artifact}"
+    artifacts: checksum
+    output: true
+
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  use: github
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"
+      - "^ci:"
+      - Merge pull request
+      - Merge branch
+
+release:
+  github:
+    owner: RMS2D
+    name: omnomfeeds
+  draft: false
+  prerelease: auto
+  header: |
+    ## oM noM Security Feeds {{ .Tag }}
+
+    A security-research news terminal. See [README](https://github.com/RMS2D/omnomfeeds#install) for install instructions.
+  footer: |
+    ---
+    Privacy: everything runs locally. No telemetry, no proxy. All API calls go direct from your machine to the source.

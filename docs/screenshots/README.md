@@ -1,4 +1,4 @@
-# Screenshots and demos referenced by the main README
+# Screenshots referenced by the main README
 
 The main README links these files. Capture them locally before tagging
 the v1.0.0 release so they're present in the published archive.
@@ -7,16 +7,15 @@ the v1.0.0 release so they're present in the published archive.
 
 | File | What | How to capture |
 |------|------|----------------|
-| `tui.png` | TUI hero shot, list + reader pane, KEV-listed CVE selected, score column visible, source-type colours showing | Run `./secfeed tui`, navigate to a KEV-tagged article, take screenshot at a wide terminal (200+ cols, 50+ rows). PNG, dark theme. |
-| `tui-demo.gif` | 20-30s asciinema-cast-to-gif of TUI usage: list nav, search, open a CVE modal, exit | Record with `asciinema rec tui.cast`, convert with [agg](https://github.com/asciinema/agg): `agg --theme=monokai --speed=1.5 tui.cast tui-demo.gif`. Trim to <2 MB. |
+| `tui.png` | TUI hero shot: list pane on the left, reader pane on the right, a KEV-tagged CVE selected, "ACTIVELY EXPLOITED" red banner visible in the reader pane, mix of source types and score tiers in the list | Run `./secfeed tui` against a populated DB, scroll to a KEV-tagged article (red 100 chip), take screenshot at a wide terminal (~200 cols x 50 rows). PNG, dark theme. Optimise under 400 KB. |
 
 ## Optional but high-leverage
 
 | File | What |
 |------|------|
-| `web-reader.png` | The two-pane web reader at typical width, showing a CVE chip with EPSS percentile |
-| `cve-modal.png` | The CVE deep-dive modal with KEV pulse banner |
-| `mitre-coverage.png` | MITRE ATT&CK technique-mention frequency view (the `T` modal) |
+| `cve-modal.png` | The CVE deep-dive modal with KEV pulse banner, CVSS, CWE, EPSS percentile visible. Press `c` on the hero shot's selected article to open. |
+| `web-reader.png` | The two-pane web reader at typical width, showing a CVE chip with EPSS percentile expanded. |
+| `mitre-coverage.png` | MITRE ATT&CK technique-mention frequency view (the `T` modal). |
 
 Keep each PNG under 400 KB. WebP is fine if you'd rather, just update
 the README references.

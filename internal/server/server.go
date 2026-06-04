@@ -1884,10 +1884,16 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 			continue
 		}
 		windowCount := raw.WindowCounts[tid]
-		// Pick the first listed tactic as the dashboard placement.
+		// Pick the first listed tactic, normalised through the alias map so
+		// MITRE's "stealth" / "defense-impairment" land in defense-evasion.
 		tactic := ""
-		if len(t.Tactics) > 0 {
-			tactic = t.Tactics[0]
+		for _, raw := range t.Tactics {
+			if norm := mitre.NormalizeTactic(raw); norm != "" {
+				if _, known := mitre.TacticDisplay[norm]; known {
+					tactic = norm
+					break
+				}
+			}
 		}
 		windowRate := float64(windowCount) / float64(hours)
 		baselineRate := float64(baselineCount) / baselineHours

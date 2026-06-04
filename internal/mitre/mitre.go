@@ -39,6 +39,24 @@ var TacticOrder = []string{
 	"impact",
 }
 
+// tacticAlias normalises MITRE's older / parallel phase names onto the
+// canonical 14 tactics. Their published bundle still uses "stealth" instead
+// of "defense-evasion" and "defense-impairment" for the disable-defenses
+// subset; both fold into defense-evasion for dashboard placement.
+var tacticAlias = map[string]string{
+	"stealth":            "defense-evasion",
+	"defense-impairment": "defense-evasion",
+}
+
+// NormalizeTactic returns the canonical tactic name for any phase string
+// MITRE has used. Empty input returns empty.
+func NormalizeTactic(t string) string {
+	if a, ok := tacticAlias[t]; ok {
+		return a
+	}
+	return t
+}
+
 // TacticDisplay maps the kill-chain phase name to a human-readable label.
 var TacticDisplay = map[string]string{
 	"reconnaissance":       "Reconnaissance",

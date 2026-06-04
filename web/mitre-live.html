@@ -189,9 +189,11 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
 }
 .controls .btn:hover { color: var(--text); border-color: var(--border-hi); }
 .controls .btn.active {
-  background: rgba(0, 229, 160, 0.08);
+  background: var(--accent);
   border-color: var(--accent);
-  color: var(--accent);
+  color: #0a0e14;
+  font-weight: 600;
+  box-shadow: 0 0 12px -2px rgba(0, 229, 160, 0.5);
 }
 .controls .meta {
   margin-left: auto;
@@ -223,6 +225,95 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
   font-size: 10px;
   color: var(--text-dim);
   margin-left: auto;
+}
+
+/* Hot-right-now: the featured surging/fresh band above the kill chain. Larger
+   cards than the per-tactic grid so the operator's eye lands here first. */
+.hot-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 10px;
+}
+.hot-row .hot {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  display: block;
+}
+.hot-row .hot:hover { background: var(--bg-row); border-color: var(--border-hi); }
+.hot-row .hot.is-surging {
+  border-color: var(--score-crit);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(255, 77, 106, 0.12) 100%);
+  animation: pulse-surge 2.4s ease-in-out infinite;
+}
+.hot-row .hot.is-fresh {
+  border-color: var(--accent);
+  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0, 229, 160, 0.08) 100%);
+}
+.hot-row .hot-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.hot-row .hot-tid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-bright);
+  letter-spacing: 0.4px;
+}
+.hot-row .hot-mw {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.hot-row .hot.is-surging .hot-mw { color: var(--score-crit); }
+.hot-row .hot-name {
+  font-size: 13px;
+  color: var(--text);
+  margin-top: 4px;
+  line-height: 1.35;
+}
+.hot-row .hot-meta {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.hot-row .hot-tactic {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+}
+.hot-row .hot-badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.hot-row .hot-badge.surge { background: var(--score-crit); color: var(--text-bright); }
+.hot-row .hot-badge.fresh { background: var(--accent); color: #0a0e14; }
+.hot-row .empty-pane { grid-column: 1 / -1; }
+
+/* Ungrouped row: techniques whose tactic our enrichment doesn't carry. */
+.other-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
 }
 
 /* The kill chain: 14 fixed columns; horizontal scroll on narrow screens.
@@ -500,12 +591,26 @@ footer a:hover { color: var(--accent); }
   </div>
 
   <div class="section-head">
+    <h2>:: hot right now ::</h2>
+    <span class="hint">surging or fresh techniques across the corpus, regardless of tactic. click to open the latest article.</span>
+  </div>
+  <div class="hot-row" id="hotRow">
+    <div class="empty-pane">loading...</div>
+  </div>
+
+  <div class="section-head">
     <h2>:: kill chain ::</h2>
     <span class="hint">click a technique to open its latest article. red = surging vs baseline. green = first seen in last 7d.</span>
   </div>
   <div class="kill-chain" id="killChain">
     <div class="empty-pane">loading...</div>
   </div>
+
+  <div class="section-head" id="otherHead" style="display:none;">
+    <h2>:: ungrouped ::</h2>
+    <span class="hint">techniques in the corpus whose tactic isn't mapped in the ATT&amp;CK enrichment data</span>
+  </div>
+  <div class="other-row" id="otherRow"></div>
 
   <div class="section-head">
     <h2>:: latest mentions ::</h2>
@@ -566,7 +671,9 @@ async function load() {
     if (!r.ok) { renderError('HTTP ' + r.status); return; }
     const d = await r.json();
     renderStats(d);
+    renderHotRow(d);
     renderKillChain(d);
+    renderOther(d);
     renderTicker(d);
     document.getElementById('metaLine').textContent =
       'window: last ' + d.window_hours + 'h · baseline: ' + d.baseline_days + 'd · generated ' + relTime(d.generated_at) + ' ago';
@@ -588,10 +695,7 @@ function renderStats(d) {
   document.getElementById('kWindowSub').textContent   = 'across all techniques in last ' + d.window_hours + 'h';
 }
 
-function renderKillChain(d) {
-  const root = document.getElementById('killChain');
-  // Bucket techniques by tactic. Untagged ones go to "other" so they don't
-  // disappear (T1218 sometimes lacks a tactic on its parent technique).
+function bucketByTactic(d) {
   const buckets = {};
   for (const tactic of TACTIC_ORDER) buckets[tactic] = [];
   const other = [];
@@ -599,8 +703,57 @@ function renderKillChain(d) {
     if (t.tactic && buckets[t.tactic]) buckets[t.tactic].push(t);
     else other.push(t);
   }
+  return { buckets, other };
+}
 
-  // Build the 14 canonical columns; append "other" at the end if non-empty.
+function renderHotRow(d) {
+  const root = document.getElementById('hotRow');
+  // Pick surging + fresh techniques, sorted by surge desc then mentions desc.
+  // Hard cap at 6 cards so the band stays visually punchy; surplus falls
+  // through to the kill chain anyway.
+  const hot = d.techniques
+    .filter(t => t.is_surging || t.is_fresh)
+    .sort((a, b) => {
+      if (a.is_surging !== b.is_surging) return a.is_surging ? -1 : 1;
+      if (a.surge_ratio !== b.surge_ratio) return b.surge_ratio - a.surge_ratio;
+      return b.mentions_window - a.mentions_window;
+    })
+    .slice(0, 6);
+  if (hot.length === 0) {
+    root.innerHTML = '<div class="empty-pane">nothing surging in this window. baseline corpus running at steady-state.</div>';
+    return;
+  }
+  let html = '';
+  for (const t of hot) {
+    const classes = ['hot'];
+    if (t.is_surging) classes.push('is-surging');
+    else if (t.is_fresh) classes.push('is-fresh');
+    const surgeRatio = t.surge_ratio >= 99 ? '∞' : t.surge_ratio.toFixed(1);
+    const href = t.latest_article_url || t.url || '#';
+    let badges = '';
+    if (t.is_surging) badges += `<span class="hot-badge surge">SURGE ${surgeRatio}x</span> `;
+    if (t.is_fresh)   badges += `<span class="hot-badge fresh">FRESH</span>`;
+    const tacticLabel = t.tactic_display || 'ungrouped';
+    html += `
+      <a class="${classes.join(' ')}" href="${esc(href)}" target="_blank" rel="noopener">
+        <div class="hot-head">
+          <span class="hot-tid">${esc(t.tid)}</span>
+          <span class="hot-mw">${fmt(t.mentions_window)}</span>
+        </div>
+        <div class="hot-name">${esc(t.name)}</div>
+        <div class="hot-meta">
+          <span class="hot-tactic">${esc(tacticLabel)}</span>
+          <span>${fmt(t.mentions_baseline)} in 30d</span>
+        </div>
+        <div style="margin-top:6px;">${badges}</div>
+      </a>`;
+  }
+  root.innerHTML = html;
+}
+
+function renderKillChain(d) {
+  const root = document.getElementById('killChain');
+  const { buckets } = bucketByTactic(d);
   const tacticMeta = {};
   for (const row of d.tactics) tacticMeta[row.tactic] = row;
   let html = '';
@@ -618,7 +771,6 @@ function renderKillChain(d) {
     if (techs.length === 0) {
       html += `<div style="color:var(--text-dim); font-size:10px; font-family:'JetBrains Mono', monospace; text-align:center; padding:14px 0;">no activity</div>`;
     } else {
-      // Top-5 visible per column; others hidden behind a "+N more" toggle if needed.
       for (const t of techs.slice(0, 8)) {
         html += techCard(t);
       }
@@ -628,14 +780,21 @@ function renderKillChain(d) {
     }
     html += `</div></div>`;
   }
-  if (other.length > 0) {
-    html += `<div class="tactic other-bucket">`;
-    html += `<div class="tactic-head"><div class="tac-name">Other</div>`;
-    html += `<div class="tac-stats">${other.length} techs without mapped tactic</div></div>`;
-    html += `<div class="techs">`;
-    for (const t of other.slice(0, 8)) html += techCard(t);
-    html += `</div></div>`;
+  root.innerHTML = html;
+}
+
+function renderOther(d) {
+  const root = document.getElementById('otherRow');
+  const head = document.getElementById('otherHead');
+  const { other } = bucketByTactic(d);
+  if (other.length === 0) {
+    head.style.display = 'none';
+    root.innerHTML = '';
+    return;
   }
+  head.style.display = '';
+  let html = '';
+  for (const t of other) html += techCard(t);
   root.innerHTML = html;
 }
 

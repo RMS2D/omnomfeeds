@@ -60,9 +60,14 @@ func New(db *sql.DB) *Analytics {
 
 // Emit writes one event. Failures are logged, never returned - analytics must
 // never break a user-facing request. ipHash may be nil (server-to-server
-// events). userAgent may be empty.
+// events). userAgent may be empty. Events from IPs listed in
+// ANALYTICS_EXCLUDE_IPS are dropped at the write boundary so operator
+// activity never enters the dashboard.
 func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []byte, userAgent string) {
 	if a == nil || a.db == nil || event == "" {
+		return
+	}
+	if isExcludedIPHash(ipHash) {
 		return
 	}
 	var metaStr sql.NullString
@@ -147,6 +152,39 @@ func remoteIsTrusted(addr string) bool {
 		}
 	}
 	return false
+}
+
+// excludedIPHashes is the parsed ANALYTICS_EXCLUDE_IPS list, hex-encoded for
+// O(1) lookup. Populated lazily on first call so test code can set the env
+// var before constructing an Analytics instance.
+var (
+	excludedIPHashes     map[string]struct{}
+	excludedIPHashesOnce sync.Once
+)
+
+func loadExcludedIPHashes() {
+	raw := os.Getenv("ANALYTICS_EXCLUDE_IPS")
+	if raw == "" {
+		return
+	}
+	excludedIPHashes = map[string]struct{}{}
+	for _, ip := range strings.Split(raw, ",") {
+		ip = strings.TrimSpace(ip)
+		if ip == "" {
+			continue
+		}
+		sum := sha256.Sum256([]byte(ip))
+		excludedIPHashes[hex.EncodeToString(sum[:])] = struct{}{}
+	}
+}
+
+func isExcludedIPHash(h []byte) bool {
+	excludedIPHashesOnce.Do(loadExcludedIPHashes)
+	if len(excludedIPHashes) == 0 || len(h) == 0 {
+		return false
+	}
+	_, ok := excludedIPHashes[hex.EncodeToString(h)]
+	return ok
 }
 
 // HashIPFromRequest returns the SHA-256 of the originating IP. Honours

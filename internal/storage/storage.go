@@ -1200,11 +1200,13 @@ func (s *Store) TTPFrequencyForBookmarks(userID string) (map[string]int, error) 
 type MitreRawCounts struct {
 	WindowHours    int
 	BaselineDays   int
-	WindowCounts   map[string]int           // tid -> mention count in last windowHours
-	BaselineCounts map[string]int           // tid -> mention count in last baselineDays
-	FirstSeen      map[string]time.Time     // tid -> first time seen within baseline window
-	LatestArticle  map[string]*MitreArtRef  // tid -> most recent article mentioning it
-	Latest         []MitreLatestMention     // newest 60 articles with any T-code (window only)
+	WindowCounts   map[string]int          // tid -> mention count in last windowHours
+	PreviousCounts map[string]int          // tid -> mention count in window before that (delta math)
+	BaselineCounts map[string]int          // tid -> mention count in last baselineDays
+	DailyBuckets   map[string][]int        // tid -> 7 daily counts, oldest-first (sparkline)
+	FirstSeen      map[string]time.Time    // tid -> first time seen within baseline window
+	LatestArticle  map[string]*MitreArtRef // tid -> most recent article mentioning it
+	Latest         []MitreLatestMention    // newest 60 articles with any T-code (window only)
 }
 
 // MitreArtRef is the trimmed article reference attached to each T-code.
@@ -1243,7 +1245,9 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		WindowHours:    windowHours,
 		BaselineDays:   baselineDays,
 		WindowCounts:   map[string]int{},
+		PreviousCounts: map[string]int{},
 		BaselineCounts: map[string]int{},
+		DailyBuckets:   map[string][]int{},
 		FirstSeen:      map[string]time.Time{},
 		LatestArticle:  map[string]*MitreArtRef{},
 	}
@@ -1260,7 +1264,13 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		return nil, err
 	}
 	defer rows.Close()
-	windowCutoff := time.Now().UTC().Add(-time.Duration(windowHours) * time.Hour)
+	now := time.Now().UTC()
+	windowCutoff := now.Add(-time.Duration(windowHours) * time.Hour)
+	previousCutoff := now.Add(-time.Duration(2*windowHours) * time.Hour)
+	// Daily series anchors on today (UTC). Bucket 6 = today; bucket 0 =
+	// 6 days ago. Anything older than 6 days falls outside the sparkline
+	// (still counted in baseline).
+	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	for rows.Next() {
 		var title, url, source, tagsJSON string
 		var publishedAt time.Time
@@ -1282,10 +1292,23 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		}
 		publishedAtUTC := publishedAt.UTC()
 		inWindow := publishedAtUTC.After(windowCutoff)
+		inPrevious := !inWindow && publishedAtUTC.After(previousCutoff)
+		// Day delta from today (in days). 0 = today, 6 = 6 days ago. Negative
+		// = future (shouldn't happen but guarded), 7+ = out of sparkline range.
+		dayDelta := int(today.Sub(time.Date(publishedAtUTC.Year(), publishedAtUTC.Month(), publishedAtUTC.Day(), 0, 0, 0, 0, time.UTC)).Hours() / 24)
+		inSparkline := dayDelta >= 0 && dayDelta <= 6
 		for _, tid := range tids {
 			out.BaselineCounts[tid]++
 			if inWindow {
 				out.WindowCounts[tid]++
+			} else if inPrevious {
+				out.PreviousCounts[tid]++
+			}
+			if inSparkline {
+				if _, ok := out.DailyBuckets[tid]; !ok {
+					out.DailyBuckets[tid] = make([]int, 7)
+				}
+				out.DailyBuckets[tid][6-dayDelta]++
 			}
 			// rows come in newest-first; we record the FIRST occurrence per
 			// TID as "latest article" since that's the freshest mention.
@@ -1308,6 +1331,106 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		}
 	}
 	return out, rows.Err()
+}
+
+// MitreTechniqueCoMentions returns the top CVEs, threat actors, and malware
+// families that appear in the same articles as a given T-code. Backs the
+// "co-mentioned with" panel in the per-technique modal. Limit caps each list.
+type MitreCoMentions struct {
+	CVEs    []MitreCoRef
+	Actors  []MitreCoRef
+	Malware []MitreCoRef
+}
+type MitreCoRef struct {
+	Slug  string
+	Count int
+}
+
+func (s *Store) MitreTechniqueCoMentions(tid string, hours, limit int) (*MitreCoMentions, error) {
+	tid = strings.ToUpper(strings.TrimSpace(tid))
+	ttpRe := regexp.MustCompile(`^T\d{4}(\.\d{3})?$`)
+	if !ttpRe.MatchString(tid) {
+		return nil, fmt.Errorf("invalid technique id")
+	}
+	if hours <= 0 {
+		hours = 24
+	}
+	if limit <= 0 || limit > 20 {
+		limit = 6
+	}
+	cveRe := regexp.MustCompile(`^CVE-\d{4}-\d{4,7}$`)
+	rows, err := s.db.Query(`
+		SELECT tags
+		  FROM articles
+		 WHERE published_at >= datetime('now', ?)
+		   AND duplicate_of IS NULL
+		   AND tags LIKE ?
+	`, fmt.Sprintf("-%d hours", hours), "%"+tid+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	cveCounts := map[string]int{}
+	actorCounts := map[string]int{}
+	malwareCounts := map[string]int{}
+	for rows.Next() {
+		var tagsJSON string
+		if err := rows.Scan(&tagsJSON); err != nil {
+			continue
+		}
+		var tags []string
+		if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+			continue
+		}
+		hasTID := false
+		for _, t := range tags {
+			if t == tid {
+				hasTID = true
+				break
+			}
+		}
+		if !hasTID {
+			continue
+		}
+		for _, t := range tags {
+			switch {
+			case cveRe.MatchString(t):
+				cveCounts[t]++
+			case strings.HasPrefix(t, "actor:"):
+				actorCounts[strings.TrimPrefix(t, "actor:")]++
+			case strings.HasPrefix(t, "malware:"):
+				malwareCounts[strings.TrimPrefix(t, "malware:")]++
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := &MitreCoMentions{}
+	out.CVEs = topMitreCo(cveCounts, limit)
+	out.Actors = topMitreCo(actorCounts, limit)
+	out.Malware = topMitreCo(malwareCounts, limit)
+	return out, nil
+}
+
+func topMitreCo(counts map[string]int, limit int) []MitreCoRef {
+	if len(counts) == 0 {
+		return nil
+	}
+	out := make([]MitreCoRef, 0, len(counts))
+	for k, v := range counts {
+		out = append(out, MitreCoRef{Slug: k, Count: v})
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].Count != out[j].Count {
+			return out[i].Count > out[j].Count
+		}
+		return out[i].Slug < out[j].Slug
+	})
+	if len(out) > limit {
+		out = out[:limit]
+	}
+	return out
 }
 
 // ArticlesForTechnique returns unique articles tagged with the exact T-code

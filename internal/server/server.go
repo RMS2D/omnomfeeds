@@ -180,6 +180,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	// Enrichment endpoints
 	mux.HandleFunc("/api/mitre", s.handleMitreMap)
 	mux.HandleFunc("/api/mitre/live", s.handleMitreLive)
+	mux.HandleFunc("/api/mitre/navigator", s.handleMitreNavigator)
 	mux.HandleFunc("/api/mitre/articles/", s.handleMitreTechniqueArticles)
 	mux.HandleFunc("/api/mitre/", s.handleMitreTechnique)
 	mux.HandleFunc("/api/cve/", s.handleCVE)
@@ -1790,11 +1791,14 @@ type MitreLiveTechniqueRow struct {
 	TacticDisplay      string  `json:"tactic_display"`
 	URL                string  `json:"url"`
 	MentionsWindow     int     `json:"mentions_window"`
+	MentionsPrevious   int     `json:"mentions_previous"` // same-size window immediately before
 	MentionsBaseline   int     `json:"mentions_baseline"`
+	DeltaPercent       float64 `json:"delta_percent"` // (window-prev)/prev*100; 0 if no prev
 	SurgeRatio         float64 `json:"surge_ratio"`
 	IsFresh            bool    `json:"is_fresh"`
 	IsSurging          bool    `json:"is_surging"`
 	FirstSeenAt        string  `json:"first_seen_at"`
+	Spark              []int   `json:"spark"` // 7 daily counts, oldest -> newest
 	LatestArticleTitle string  `json:"latest_article_title"`
 	LatestArticleURL   string  `json:"latest_article_url"`
 	LatestArticleSrc   string  `json:"latest_article_source"`
@@ -1928,6 +1932,14 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		// suppress the badge to avoid noise.
 		isSurging := hours <= 168 && surge >= 3.0 && windowCount >= 3
 
+		previousCount := raw.PreviousCounts[tid]
+		var deltaPct float64
+		switch {
+		case previousCount > 0:
+			deltaPct = (float64(windowCount-previousCount) / float64(previousCount)) * 100
+		case windowCount > 0:
+			deltaPct = 999 // sentinel for "infinite" - was zero, now non-zero
+		}
 		row := MitreLiveTechniqueRow{
 			TID:              tid,
 			Name:             t.Name,
@@ -1935,10 +1947,13 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 			TacticDisplay:    mitre.TacticDisplay[tactic],
 			URL:              t.URL,
 			MentionsWindow:   windowCount,
+			MentionsPrevious: previousCount,
 			MentionsBaseline: baselineCount,
+			DeltaPercent:     deltaPct,
 			SurgeRatio:       surge,
 			IsFresh:          isFresh,
 			IsSurging:        isSurging,
+			Spark:            raw.DailyBuckets[tid],
 		}
 		if !first.IsZero() {
 			row.FirstSeenAt = first.Format(time.RFC3339)
@@ -2050,19 +2065,188 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 			Summary:     summary,
 		})
 	}
-	var techName string
+	var techName, techURL string
 	if t := s.enrich.MITRE[tid]; t != nil {
 		techName = t.Name
+		techURL = t.URL
 	}
+
+	// Co-mentions: CVEs, threat actors, malware families that show up in the
+	// same articles as this T-code. Fail-soft: empty if the query errors.
+	co, _ := s.store.MitreTechniqueCoMentions(tid, hours, 6)
+	type coRef struct {
+		Slug  string `json:"slug"`
+		Count int    `json:"count"`
+	}
+	conv := func(in []storage.MitreCoRef) []coRef {
+		if len(in) == 0 {
+			return nil
+		}
+		out := make([]coRef, len(in))
+		for i, r := range in {
+			out[i] = coRef{Slug: r.Slug, Count: r.Count}
+		}
+		return out
+	}
+
+	// Sub-technique breakdown: if this is a parent technique (no dot in the
+	// TID), find its sub-techniques (TID.001, .002, ...) and grab their
+	// window counts from the same MitreRawCounts cache shape. Simpler: just
+	// list any sub-TIDs we know about from the ATT&CK map and report counts.
+	type subTech struct {
+		TID            string `json:"tid"`
+		Name           string `json:"name"`
+		MentionsWindow int    `json:"mentions_window"`
+	}
+	var subs []subTech
+	if !strings.Contains(tid, ".") {
+		// Parent technique. Look up sub-techniques and their counts.
+		baselineDays := 30
+		if hours > 168 {
+			baselineDays = (hours / 24) * 2
+			if baselineDays > 180 {
+				baselineDays = 180
+			}
+		}
+		if raw, rerr := s.store.MitreRawCounts(hours, baselineDays); rerr == nil {
+			for childID, child := range s.enrich.MITRE {
+				if !child.IsSubTech {
+					continue
+				}
+				if !strings.HasPrefix(childID, tid+".") {
+					continue
+				}
+				count := raw.WindowCounts[childID]
+				if count == 0 {
+					continue
+				}
+				subs = append(subs, subTech{TID: childID, Name: child.Name, MentionsWindow: count})
+			}
+			sort.Slice(subs, func(i, j int) bool {
+				if subs[i].MentionsWindow != subs[j].MentionsWindow {
+					return subs[i].MentionsWindow > subs[j].MentionsWindow
+				}
+				return subs[i].TID < subs[j].TID
+			})
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=60")
 	json.NewEncoder(w).Encode(map[string]any{
-		"tid":          tid,
-		"name":         techName,
-		"window_hours": hours,
-		"count":        len(out),
-		"articles":     out,
+		"tid":           tid,
+		"name":          techName,
+		"url":           techURL,
+		"window_hours":  hours,
+		"count":         len(out),
+		"articles":      out,
+		"cves":          conv(coRefList(co, "cves")),
+		"actors":        conv(coRefList(co, "actors")),
+		"malware":       conv(coRefList(co, "malware")),
+		"subtechniques": subs,
 	})
+}
+
+// coRefList extracts one of the three co-mention lists, nil-safe.
+func coRefList(co *storage.MitreCoMentions, which string) []storage.MitreCoRef {
+	if co == nil {
+		return nil
+	}
+	switch which {
+	case "cves":
+		return co.CVEs
+	case "actors":
+		return co.Actors
+	case "malware":
+		return co.Malware
+	}
+	return nil
+}
+
+// handleMitreNavigator builds an ATT&CK Navigator v4.5 layer JSON from the
+// current window's technique mentions. The downloaded file imports cleanly at
+// attack-navigator.mitre.org. Score = mention count in window; colour scale
+// runs from no-activity (transparent) through #ffe07a to #ff4470 at the max.
+func (s *Server) handleMitreNavigator(w http.ResponseWriter, r *http.Request) {
+	if s.enrich == nil || s.enrich.MITRE == nil {
+		writeJSON(w, 503, map[string]string{"error": "mitre not loaded"})
+		return
+	}
+	hours := 24
+	if v := r.URL.Query().Get("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 2160 {
+			hours = n
+		}
+	}
+	baselineDays := 30
+	if hours > 168 {
+		baselineDays = (hours / 24) * 2
+		if baselineDays > 180 {
+			baselineDays = 180
+		}
+	}
+	raw, err := s.store.MitreRawCounts(hours, baselineDays)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	maxCount := 0
+	for _, n := range raw.WindowCounts {
+		if n > maxCount {
+			maxCount = n
+		}
+	}
+	type techEntry struct {
+		TechniqueID string `json:"techniqueID"`
+		Score       int    `json:"score"`
+		Color       string `json:"color,omitempty"`
+		Comment     string `json:"comment,omitempty"`
+	}
+	techniques := make([]techEntry, 0, len(raw.WindowCounts))
+	for tid, count := range raw.WindowCounts {
+		if count == 0 {
+			continue
+		}
+		entry := techEntry{TechniqueID: tid, Score: count}
+		if t := s.enrich.MITRE[tid]; t != nil {
+			entry.Comment = t.Name
+		}
+		techniques = append(techniques, entry)
+	}
+	sort.Slice(techniques, func(i, j int) bool {
+		if techniques[i].Score != techniques[j].Score {
+			return techniques[i].Score > techniques[j].Score
+		}
+		return techniques[i].TechniqueID < techniques[j].TechniqueID
+	})
+	windowLabel := fmt.Sprintf("%dh", hours)
+	if hours >= 24 && hours%24 == 0 {
+		windowLabel = fmt.Sprintf("%dd", hours/24)
+	}
+	layer := map[string]any{
+		"name":        fmt.Sprintf("omnomfeeds mitre-live (last %s)", windowLabel),
+		"versions":    map[string]string{"attack": "14", "navigator": "4.9", "layer": "4.5"},
+		"domain":      "enterprise-attack",
+		"description": fmt.Sprintf("Per-technique mention counts across the omnomfeeds corpus, last %s. Generated %s.", windowLabel, time.Now().UTC().Format(time.RFC3339)),
+		"filters":     map[string]any{"platforms": []string{"Linux", "macOS", "Windows", "Network", "PRE", "Containers", "Office 365", "SaaS", "Google Workspace", "IaaS", "Azure AD"}},
+		"sorting":     3,
+		"layout": map[string]any{
+			"layout":        "side",
+			"aggregateFunc": "average",
+			"showID":        false,
+			"showName":      true,
+			"showAggregate": false,
+		},
+		"hideDisabled":  false,
+		"techniques":    techniques,
+		"gradient":      map[string]any{"colors": []string{"#ffe07a", "#ff4470"}, "minValue": 0, "maxValue": maxCount},
+		"selectTechniquesAcrossTactics": true,
+	}
+	filename := fmt.Sprintf("omnomfeeds-mitre-%s.json", windowLabel)
+	w.Header().Set("Content-Type", "application/json; charset=utf-8")
+	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="%s"`, filename))
+	w.Header().Set("Cache-Control", "no-cache")
+	_ = json.NewEncoder(w).Encode(layer)
 }
 
 // handleMitreTechnique returns the full technique record for a single T-code.

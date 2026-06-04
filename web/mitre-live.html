@@ -452,73 +452,159 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
 /* "Other" bucket for techniques whose tactic isn't mapped in our enrichment. */
 .tactic.other-bucket .tac-name { color: var(--text-dim); }
 
-/* Live ticker section */
-.ticker-shell {
+/* Per-technique article modal (lazy-loaded on click) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 7, 9, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 60px 20px 20px;
+  z-index: 200;
+  animation: backdrop-in 0.18s ease-out;
+}
+.modal-backdrop[hidden] { display: none; }
+@keyframes backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal {
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  max-height: 480px;
+  border: 1px solid var(--border-hi);
+  border-radius: 6px;
+  width: 100%;
+  max-width: 900px;
+  max-height: calc(100vh - 100px);
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(86, 226, 255, 0.08);
+  animation: modal-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.modal-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+}
+.modal-tid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+.modal-name {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-bright);
+  margin-bottom: 6px;
+}
+.modal-sub {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.modal-sub .accent { color: var(--accent-cyan); }
+.modal-sub .crit   { color: var(--score-crit); font-weight: 600; }
+.modal-close {
+  background: transparent;
+  border: none;
+  color: var(--text-dim);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.15s;
+}
+.modal-close:hover { color: var(--text-bright); }
+.modal-body {
+  flex: 1;
   overflow-y: auto;
+  padding: 8px 0;
   scrollbar-color: var(--border) var(--bg-card);
   scrollbar-width: thin;
 }
-.ticker-shell::-webkit-scrollbar { width: 8px; }
-.ticker-shell::-webkit-scrollbar-track { background: var(--bg-card); }
-.ticker-shell::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.modal-body::-webkit-scrollbar { width: 8px; }
+.modal-body::-webkit-scrollbar-track { background: var(--bg-card); }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-.tick {
-  padding: 8px 14px;
+.art {
+  display: block;
+  padding: 10px 22px;
   border-bottom: 1px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.12s;
+}
+.art:hover {
+  background: var(--bg-row);
+  text-decoration: none;
+}
+.art:last-child { border-bottom: none; }
+.art-head {
   display: flex;
+  justify-content: space-between;
+  align-items: baseline;
   gap: 14px;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
+  margin-bottom: 3px;
 }
-.tick:hover { background: var(--bg-row); }
-.tick.new {
-  animation: tick-flash 1.8s ease-out;
+.art-title {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--text-bright);
+  flex: 1;
+  line-height: 1.4;
 }
-@keyframes tick-flash {
-  0%   { background: rgba(0, 229, 160, 0.18); }
-  100% { background: transparent; }
-}
-.tick .when {
-  color: var(--text-dim);
-  flex-shrink: 0;
-  width: 64px;
-}
-.tick .tids {
+.art-meta {
   display: flex;
-  gap: 4px;
-  flex-wrap: wrap;
+  gap: 10px;
+  align-items: baseline;
   flex-shrink: 0;
-  width: 200px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
 }
-.tick .tid-chip {
-  background: rgba(86, 226, 255, 0.1);
-  color: var(--accent-cyan);
+.art-meta .score {
+  display: inline-block;
   padding: 1px 6px;
   border-radius: 2px;
-  font-size: 10px;
   font-weight: 600;
 }
-.tick .title {
-  color: var(--text);
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 12.5px;
-}
-.tick .title a { color: var(--text); }
-.tick .title a:hover { color: var(--accent-cyan); }
-.tick .src {
+.art-meta .score.high { background: var(--accent); color: #0a0e14; }
+.art-meta .score.mid  { background: rgba(255, 181, 71, 0.18); color: var(--accent-amber); }
+.art-meta .score.lo   { background: rgba(255, 255, 255, 0.06); color: var(--text-dim); }
+.art-summary {
+  font-size: 12px;
   color: var(--text-dim);
-  flex-shrink: 0;
-  font-size: 10px;
+  line-height: 1.45;
+  margin-top: 3px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
+.art-foot {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  display: flex;
+  gap: 12px;
+}
+.art-foot .src { color: var(--accent-cyan); }
 
 /* Status footer */
 footer {
@@ -582,11 +668,12 @@ footer a:hover { color: var(--accent); }
   </div>
 
   <div class="controls">
-    <span class="label">Surge window</span>
-    <button class="btn"        data-hours="6">6h</button>
+    <span class="label">Window</span>
     <button class="btn active" data-hours="24">24h</button>
     <button class="btn"        data-hours="72">72h</button>
     <button class="btn"        data-hours="168">7d</button>
+    <button class="btn"        data-hours="720">30d</button>
+    <button class="btn"        data-hours="2160">90d</button>
     <span class="meta" id="metaLine">-</span>
   </div>
 
@@ -612,24 +699,33 @@ footer a:hover { color: var(--accent); }
   </div>
   <div class="other-row" id="otherRow"></div>
 
-  <div class="section-head">
-    <h2>:: latest mentions ::</h2>
-    <span class="hint">newest articles in window with at least one mapped T-code</span>
-  </div>
-  <div class="ticker-shell" id="ticker">
-    <div class="empty-pane">loading...</div>
+  <!-- Modal for per-technique article list (lazy-loaded on click). -->
+  <div class="modal-backdrop" id="modal" hidden>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+      <header class="modal-head">
+        <div>
+          <div class="modal-tid" id="modalTid">-</div>
+          <div class="modal-name" id="modalName">-</div>
+          <div class="modal-sub" id="modalSub">-</div>
+        </div>
+        <button class="modal-close" id="modalClose" aria-label="close">&times;</button>
+      </header>
+      <div class="modal-body" id="modalBody">
+        <div class="empty-pane">loading...</div>
+      </div>
+    </div>
   </div>
 
   <footer>
-    <span>data refreshed every 30s</span>
+    <span>data refreshes every 30s</span>
     <span>tactics &amp; T-codes from <a href="https://attack.mitre.org/" target="_blank" rel="noopener">attack.mitre.org</a></span>
-    <span>scope: articles in the last 30 days</span>
+    <span>baseline scales with window: 30d up to 7d, 60d at 30d, 180d at 90d</span>
   </footer>
 </div>
 
 <script>
 let CURRENT_HOURS = 24;
-let LAST_TIDS = new Set(); // for highlighting newly-arrived ticker rows
+let LAST_TECH_MAP = {}; // tid -> tech row from latest fetch; for modal context
 
 const TACTIC_ORDER = [
   "reconnaissance","resource-development","initial-access","execution","persistence",
@@ -642,9 +738,17 @@ document.querySelectorAll('.btn[data-hours]').forEach(b => {
     document.querySelectorAll('.btn[data-hours]').forEach(x => x.classList.remove('active'));
     b.classList.add('active');
     CURRENT_HOURS = parseInt(b.dataset.hours, 10) || 24;
-    LAST_TIDS.clear(); // reset so all rows render as new on window flip
     load();
   });
+});
+
+// Modal wiring: backdrop click and Esc both close.
+document.getElementById('modalClose').addEventListener('click', closeModal);
+document.getElementById('modal').addEventListener('click', e => {
+  if (e.target.id === 'modal') closeModal();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
 });
 
 function esc(s) {
@@ -670,11 +774,13 @@ async function load() {
     const r = await fetch('/api/mitre/live?hours=' + CURRENT_HOURS, { credentials: 'same-origin' });
     if (!r.ok) { renderError('HTTP ' + r.status); return; }
     const d = await r.json();
+    // Cache the technique rows by TID so the modal can pull window context.
+    LAST_TECH_MAP = {};
+    for (const t of (d.techniques || [])) LAST_TECH_MAP[t.tid] = t;
     renderStats(d);
     renderHotRow(d);
     renderKillChain(d);
     renderOther(d);
-    renderTicker(d);
     document.getElementById('metaLine').textContent =
       'window: last ' + d.window_hours + 'h · baseline: ' + d.baseline_days + 'd · generated ' + relTime(d.generated_at) + ' ago';
   } catch (e) {
@@ -684,7 +790,7 @@ async function load() {
 
 function renderError(msg) {
   document.getElementById('killChain').innerHTML = '<div class="empty-pane">' + esc(msg) + '</div>';
-  document.getElementById('ticker').innerHTML = '<div class="empty-pane">' + esc(msg) + '</div>';
+  document.getElementById('hotRow').innerHTML   = '<div class="empty-pane">' + esc(msg) + '</div>';
 }
 
 function renderStats(d) {
@@ -729,13 +835,14 @@ function renderHotRow(d) {
     if (t.is_surging) classes.push('is-surging');
     else if (t.is_fresh) classes.push('is-fresh');
     const surgeRatio = t.surge_ratio >= 99 ? '∞' : t.surge_ratio.toFixed(1);
-    const href = t.latest_article_url || t.url || '#';
     let badges = '';
     if (t.is_surging) badges += `<span class="hot-badge surge">SURGE ${surgeRatio}x</span> `;
     if (t.is_fresh)   badges += `<span class="hot-badge fresh">FRESH</span>`;
     const tacticLabel = t.tactic_display || 'ungrouped';
     html += `
-      <a class="${classes.join(' ')}" href="${esc(href)}" target="_blank" rel="noopener">
+      <div class="${classes.join(' ')}" role="button" tabindex="0"
+           onclick="openModal('${esc(t.tid)}')"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal('${esc(t.tid)}')}">
         <div class="hot-head">
           <span class="hot-tid">${esc(t.tid)}</span>
           <span class="hot-mw">${fmt(t.mentions_window)}</span>
@@ -743,10 +850,10 @@ function renderHotRow(d) {
         <div class="hot-name">${esc(t.name)}</div>
         <div class="hot-meta">
           <span class="hot-tactic">${esc(tacticLabel)}</span>
-          <span>${fmt(t.mentions_baseline)} in 30d</span>
+          <span>${fmt(t.mentions_baseline)} in baseline</span>
         </div>
         <div style="margin-top:6px;">${badges}</div>
-      </a>`;
+      </div>`;
   }
   root.innerHTML = html;
 }
@@ -802,48 +909,99 @@ function techCard(t) {
   const classes = ['tech'];
   if (t.is_surging) classes.push('is-surging');
   else if (t.is_fresh) classes.push('is-fresh');
-  const href = t.latest_article_url || t.url || '#';
   const surgeRatio = t.surge_ratio >= 99 ? '∞' : t.surge_ratio.toFixed(1);
   let badges = '';
   if (t.is_surging) badges += `<span class="badge surge">SURGE ${surgeRatio}x</span> `;
   if (t.is_fresh)   badges += `<span class="badge fresh">FRESH</span>`;
   return `
-    <a class="${classes.join(' ')}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(t.name)} - ${t.mentions_window} in window, ${t.mentions_baseline} in baseline">
+    <div class="${classes.join(' ')}" role="button" tabindex="0"
+         onclick="openModal('${esc(t.tid)}')"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal('${esc(t.tid)}')}"
+         title="${esc(t.name)} - ${t.mentions_window} in window, ${t.mentions_baseline} in baseline">
       <div class="tech-head">
         <span class="tid">${esc(t.tid)}</span>
         <span class="count">${fmt(t.mentions_window)}</span>
       </div>
       <div class="name">${esc(t.name)}</div>
       ${badges ? `<div>${badges}</div>` : ''}
-    </a>`;
+    </div>`;
 }
 
-function renderTicker(d) {
-  const el = document.getElementById('ticker');
-  if (!d.latest_mentions || d.latest_mentions.length === 0) {
-    el.innerHTML = '<div class="empty-pane">no T-coded articles in this window yet</div>';
-    LAST_TIDS = new Set();
+// Modal: lazy-fetches the article list for one technique. The fetch is
+// scoped to the currently-selected window so a 24h click shows only the
+// 24h articles, a 90d click shows 90d.
+async function openModal(tid) {
+  const modal = document.getElementById('modal');
+  const body  = document.getElementById('modalBody');
+  const tidEl  = document.getElementById('modalTid');
+  const nameEl = document.getElementById('modalName');
+  const subEl  = document.getElementById('modalSub');
+
+  const ctx = LAST_TECH_MAP[tid] || {};
+  tidEl.textContent  = tid;
+  nameEl.textContent = ctx.name || '';
+
+  // Sub-line: "tactic · window mentions · surge / fresh badge".
+  const tactic = ctx.tactic_display || 'ungrouped';
+  let subHtml = `<span class="accent">${esc(tactic)}</span>`;
+  subHtml += ` · ${fmt(ctx.mentions_window || 0)} mentions in window`;
+  subHtml += ` · ${fmt(ctx.mentions_baseline || 0)} in baseline`;
+  if (ctx.is_surging) {
+    const r = ctx.surge_ratio >= 99 ? '∞' : ctx.surge_ratio.toFixed(1);
+    subHtml += ` · <span class="crit">SURGE ${r}x</span>`;
+  }
+  if (ctx.is_fresh) subHtml += ` · <span class="crit">FRESH</span>`;
+  subEl.innerHTML = subHtml;
+
+  body.innerHTML = '<div class="empty-pane">loading...</div>';
+  modal.hidden = false;
+  document.body.style.overflow = 'hidden';
+
+  try {
+    const r = await fetch(`/api/mitre/articles/${encodeURIComponent(tid)}?hours=${CURRENT_HOURS}`, { credentials: 'same-origin' });
+    if (!r.ok) { body.innerHTML = '<div class="empty-pane">HTTP ' + r.status + '</div>'; return; }
+    const d = await r.json();
+    renderModalArticles(d);
+  } catch (e) {
+    body.innerHTML = '<div class="empty-pane">fetch failed</div>';
+  }
+}
+
+function closeModal() {
+  document.getElementById('modal').hidden = true;
+  document.body.style.overflow = '';
+}
+
+function renderModalArticles(d) {
+  const body = document.getElementById('modalBody');
+  if (!d.articles || d.articles.length === 0) {
+    body.innerHTML = '<div class="empty-pane">no articles in this window yet. extend the time range to see more.</div>';
     return;
   }
-  const seen = new Set();
   let html = '';
-  for (const m of d.latest_mentions) {
-    // Track article URL as the "have we seen this row before" identity.
-    const id = m.url + '|' + m.ts;
-    seen.add(id);
-    const isNew = !LAST_TIDS.has(id);
-    const tidChips = (m.tids || []).slice(0, 6).map(t => `<span class="tid-chip">${esc(t)}</span>`).join('');
-    const extraTids = m.tids.length > 6 ? ` <span style="color:var(--text-dim); font-size:10px;">+${m.tids.length - 6}</span>` : '';
+  for (const a of d.articles) {
+    const scoreClass = a.score >= 60 ? 'high' : (a.score >= 30 ? 'mid' : 'lo');
+    const when = relTime(a.published_at);
     html += `
-      <div class="tick ${isNew ? 'new' : ''}">
-        <span class="when">${esc(relTime(m.ts))} ago</span>
-        <span class="tids">${tidChips}${extraTids}</span>
-        <span class="title"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title)}</a></span>
-        <span class="src">${esc(m.source)}</span>
-      </div>`;
+      <a class="art" href="${esc(a.url)}" target="_blank" rel="noopener">
+        <div class="art-head">
+          <span class="art-title">${esc(a.title)}</span>
+          <span class="art-meta">
+            <span class="score ${scoreClass}">${a.score}</span>
+            <span>${esc(when)} ago</span>
+          </span>
+        </div>
+        ${a.summary ? `<div class="art-summary">${esc(a.summary)}</div>` : ''}
+        <div class="art-foot">
+          <span class="src">${esc(a.source)}</span>
+          <span>${esc(a.source_type)}</span>
+        </div>
+      </a>`;
   }
-  el.innerHTML = html;
-  LAST_TIDS = seen;
+  if (d.articles.length >= 100) {
+    html += `<div class="empty-pane">showing first 100. <a href="/app?search=${encodeURIComponent(d.tid)}" target="_blank">open the reader filtered to ${esc(d.tid)}</a> for the full set.</div>`;
+  }
+  body.innerHTML = html;
 }
 
 load();

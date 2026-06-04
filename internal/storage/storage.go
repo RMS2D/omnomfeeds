@@ -1310,6 +1310,62 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 	return out, rows.Err()
 }
 
+// ArticlesForTechnique returns unique articles tagged with the exact T-code
+// within the last `hours` hours, newest first, capped at 100. Powers the
+// per-technique modal on /mitre-live. SQL pre-filters with LIKE (so the
+// index helps); a Go-side check on the JSON tag array catches T1234 vs
+// T12340 substring collisions.
+func (s *Store) ArticlesForTechnique(tid string, hours int) ([]models.Article, error) {
+	tid = strings.ToUpper(strings.TrimSpace(tid))
+	ttpRe := regexp.MustCompile(`^T\d{4}(\.\d{3})?$`)
+	if !ttpRe.MatchString(tid) {
+		return nil, fmt.Errorf("invalid technique id")
+	}
+	if hours <= 0 {
+		hours = 24
+	}
+	rows, err := s.db.Query(`
+		SELECT id, title, url, source, source_type, COALESCE(summary,''), score, tags, published_at, fetched_at
+		  FROM articles
+		 WHERE published_at >= datetime('now', ?)
+		   AND duplicate_of IS NULL
+		   AND tags LIKE ?
+		 ORDER BY published_at DESC
+		 LIMIT 200
+	`, fmt.Sprintf("-%d hours", hours), "%"+tid+"%")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []models.Article
+	for rows.Next() {
+		var a models.Article
+		var tagsJSON string
+		if err := rows.Scan(&a.ID, &a.Title, &a.URL, &a.Source, &a.SourceType, &a.Summary, &a.Score, &tagsJSON, &a.PublishedAt, &a.FetchedAt); err != nil {
+			continue
+		}
+		if err := json.Unmarshal([]byte(tagsJSON), &a.Tags); err != nil {
+			continue
+		}
+		// Exact-match check; LIKE '%T1234%' matches T12340 too.
+		hit := false
+		for _, t := range a.Tags {
+			if t == tid {
+				hit = true
+				break
+			}
+		}
+		if !hit {
+			continue
+		}
+		out = append(out, a)
+		if len(out) >= 100 {
+			break
+		}
+	}
+	return out, rows.Err()
+}
+
 // PreKEVCandidates returns CVE -> distinct-source-count for CVEs mentioned in
 // the last `hours` with at least minSources distinct sources. Caller filters KEV.
 func (s *Store) PreKEVCandidates(hours, minSources int) (map[string]int, error) {

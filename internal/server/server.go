@@ -180,6 +180,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	// Enrichment endpoints
 	mux.HandleFunc("/api/mitre", s.handleMitreMap)
 	mux.HandleFunc("/api/mitre/live", s.handleMitreLive)
+	mux.HandleFunc("/api/mitre/articles/", s.handleMitreTechniqueArticles)
 	mux.HandleFunc("/api/mitre/", s.handleMitreTechnique)
 	mux.HandleFunc("/api/cve/", s.handleCVE)
 	// Server-Sent Events stream for real-time refresh notifications
@@ -1807,9 +1808,11 @@ type MitreLiveLatestRow struct {
 	Source string   `json:"source"`
 }
 
-// handleMitreLive serves the dashboard payload. ?hours=N picks the surge
-// window (default 24, max 168); baseline is fixed at 30d so the surge math
-// has enough denominator. Response is cached for 30s.
+// handleMitreLive serves the dashboard payload. ?hours=N picks the window
+// (1, 72, 168, 720, 2160 → 24h, 3d, 7d, 30d, 90d). Baseline scales with the
+// window so surge math has enough denominator: short windows compare against
+// 30d, long windows compare against 3x window or 180d, whichever is smaller.
+// Response is cached for 30s.
 func (s *Server) handleMitreLive(w http.ResponseWriter, r *http.Request) {
 	if s.enrich == nil || s.enrich.MITRE == nil {
 		writeJSON(w, 503, map[string]string{"error": "mitre not loaded"})
@@ -1817,11 +1820,21 @@ func (s *Server) handleMitreLive(w http.ResponseWriter, r *http.Request) {
 	}
 	hours := 24
 	if v := r.URL.Query().Get("hours"); v != "" {
-		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 168 {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 2160 {
 			hours = n
 		}
 	}
-	cacheKey := fmt.Sprintf("h=%d", hours)
+	// Baseline scaling: at <= 7d window, 30d baseline (current behaviour).
+	// At 30d window, 60d. At 90d, 180d. Cap at 180d so the SQL scan stays
+	// bounded.
+	baselineDays := 30
+	if hours > 168 {
+		baselineDays = (hours / 24) * 2
+		if baselineDays > 180 {
+			baselineDays = 180
+		}
+	}
+	cacheKey := fmt.Sprintf("h=%d_b=%d", hours, baselineDays)
 	mitreLiveCacheMu.Lock()
 	cached, ok := mitreLiveCache[cacheKey]
 	if ok && time.Since(cached.at) < mitreLiveCacheTTL {
@@ -1834,7 +1847,6 @@ func (s *Server) handleMitreLive(w http.ResponseWriter, r *http.Request) {
 	}
 	mitreLiveCacheMu.Unlock()
 
-	const baselineDays = 30
 	raw, err := s.store.MitreRawCounts(hours, baselineDays)
 	if err != nil {
 		writeJSON(w, 500, map[string]string{"error": err.Error()})
@@ -1866,15 +1878,15 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 	baselineHours := float64(baselineDays * 24)
 	freshCutoff := time.Now().UTC().Add(-7 * 24 * time.Hour)
 
-	// Per-tactic accumulator. Initialised in TacticOrder so output is stable.
+	// Per-tactic accumulator stored as a map so taking pointers stays safe
+	// regardless of how the technique loop below adds entries. The map's
+	// values are materialised into resp.Tactics in TacticOrder at the end.
 	tacticByID := map[string]*MitreLiveTacticRow{}
 	for _, tactic := range mitre.TacticOrder {
-		row := &MitreLiveTacticRow{
+		tacticByID[tactic] = &MitreLiveTacticRow{
 			Tactic:      tactic,
 			DisplayName: mitre.TacticDisplay[tactic],
 		}
-		resp.Tactics = append(resp.Tactics, *row)
-		tacticByID[tactic] = &resp.Tactics[len(resp.Tactics)-1]
 	}
 
 	for tid, baselineCount := range raw.BaselineCounts {
@@ -1911,7 +1923,10 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		}
 		first := raw.FirstSeen[tid]
 		isFresh := !first.IsZero() && first.After(freshCutoff) && windowCount >= 1
-		isSurging := surge >= 3.0 && windowCount >= 3
+		// Surge math only makes sense when the window is materially shorter
+		// than the baseline. At 30d/90d windows the comparison degenerates;
+		// suppress the badge to avoid noise.
+		isSurging := hours <= 168 && surge >= 3.0 && windowCount >= 3
 
 		row := MitreLiveTechniqueRow{
 			TID:              tid,
@@ -1971,6 +1986,14 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		return a.SurgeRatio > b.SurgeRatio
 	})
 
+	// Materialise the per-tactic accumulator in canonical kill-chain order.
+	resp.Tactics = make([]MitreLiveTacticRow, 0, len(mitre.TacticOrder))
+	for _, tactic := range mitre.TacticOrder {
+		if row, ok := tacticByID[tactic]; ok {
+			resp.Tactics = append(resp.Tactics, *row)
+		}
+	}
+
 	for _, m := range raw.Latest {
 		resp.LatestMentions = append(resp.LatestMentions, MitreLiveLatestRow{
 			TS:     m.TS.Format(time.RFC3339),
@@ -1981,6 +2004,65 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		})
 	}
 	return resp
+}
+
+// handleMitreTechniqueArticles returns the article list for a T-code in the
+// given window. Powers the technique-detail modal on /mitre-live. Cached for
+// 60s per (tid, hours) - the modal is opened on demand so cache hit-rate is
+// modest, but the dedup query is fast enough.
+func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Request) {
+	tid := strings.ToUpper(strings.TrimSpace(strings.TrimPrefix(r.URL.Path, "/api/mitre/articles/")))
+	if tid == "" {
+		writeJSON(w, 400, map[string]string{"error": "technique id required"})
+		return
+	}
+	hours := 24
+	if v := r.URL.Query().Get("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 2160 {
+			hours = n
+		}
+	}
+	articles, err := s.store.ArticlesForTechnique(tid, hours)
+	if err != nil {
+		writeJSON(w, 400, map[string]string{"error": err.Error()})
+		return
+	}
+	type articleRow struct {
+		ID          int64  `json:"id"`
+		Title       string `json:"title"`
+		URL         string `json:"url"`
+		Source      string `json:"source"`
+		SourceType  string `json:"source_type"`
+		Score       int    `json:"score"`
+		PublishedAt string `json:"published_at"`
+		Summary     string `json:"summary,omitempty"`
+	}
+	out := make([]articleRow, 0, len(articles))
+	for _, a := range articles {
+		summary := a.Summary
+		if len(summary) > 220 {
+			summary = summary[:220] + "..."
+		}
+		out = append(out, articleRow{
+			ID: a.ID, Title: a.Title, URL: a.URL, Source: a.Source,
+			SourceType: a.SourceType, Score: a.Score,
+			PublishedAt: a.PublishedAt.UTC().Format(time.RFC3339),
+			Summary:     summary,
+		})
+	}
+	var techName string
+	if t := s.enrich.MITRE[tid]; t != nil {
+		techName = t.Name
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=60")
+	json.NewEncoder(w).Encode(map[string]any{
+		"tid":          tid,
+		"name":         techName,
+		"window_hours": hours,
+		"count":        len(out),
+		"articles":     out,
+	})
 }
 
 // handleMitreTechnique returns the full technique record for a single T-code.

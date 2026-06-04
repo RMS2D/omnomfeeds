@@ -565,7 +565,7 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 	if err := a.fillTopPaths(s, days, ef); err != nil {
 		return nil, err
 	}
-	if err := a.fillHourly(s, ef); err != nil {
+	if err := a.fillHourly(s, days, ef); err != nil {
 		return nil, err
 	}
 	if err := a.fillSinceLaunch(s, ef); err != nil {
@@ -948,18 +948,19 @@ func (a *Analytics) fillTopPaths(s *Summary, days int, ef *excludeFilter) error 
 }
 
 // fillHourly returns a 24-bucket histogram of event counts grouped by
-// UTC hour of day, over the last 7 days. With only a day or two of data
-// it still tells you when your users hit; with more data the shape
-// stabilises into a daily rhythm.
-func (a *Analytics) fillHourly(s *Summary, ef *excludeFilter) error {
+// UTC hour of day, over the selected window. With only a day of data
+// each bucket has one sample; with more, the shape stabilises into a
+// daily rhythm.
+func (a *Analytics) fillHourly(s *Summary, days int, ef *excludeFilter) error {
 	buckets := make(map[int]int, 24)
+	since := fmt.Sprintf("-%d days", days)
 	q := `
 		SELECT CAST(strftime('%H', ts) AS INTEGER) AS hr, COUNT(*)
 		FROM events
-		WHERE ts >= datetime('now', '-7 days')` + ef.Clause("") + `
+		WHERE ts >= datetime('now', ?)` + ef.Clause("") + `
 		GROUP BY hr
 	`
-	rows, err := a.db.Query(q)
+	rows, err := a.db.Query(q, since)
 	if err != nil {
 		return err
 	}
@@ -1165,8 +1166,14 @@ func (a *Analytics) topByEvent(event, since string, limit int, ef *excludeFilter
 
 func (a *Analytics) fillDailyVolume(s *Summary, days int, ef *excludeFilter) error {
 	since := fmt.Sprintf("-%d days", days)
+	// At 24h, use hour buckets so the chart isn't just 1-2 fat bars; for
+	// longer windows the daily bar makes more sense.
+	bucket := "date(ts)"
+	if days <= 1 {
+		bucket = "strftime('%Y-%m-%d %H:00', ts)"
+	}
 	q := `
-		SELECT date(ts) AS d, COUNT(*) FROM events
+		SELECT ` + bucket + ` AS d, COUNT(*) FROM events
 		WHERE ts >= datetime('now', ?)` + ef.Clause("") + `
 		GROUP BY d ORDER BY d ASC
 	`

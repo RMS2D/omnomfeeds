@@ -347,10 +347,10 @@ tr:last-child td { border-bottom: none; }
       <div class="bars-axis" id="volAxis"><span>-</span><span>-</span></div>
     </div>
     <div class="panel">
-      <div class="panel-title">Hourly activity (UTC, last 7d)</div>
+      <div class="panel-title">Hourly activity (UTC) <span class="count" id="hourTitleWindow"></span></div>
       <div class="bars" id="hourBars"></div>
       <div class="bars-axis" id="hourAxis"><span>00</span><span>06</span><span>12</span><span>18</span><span>23</span></div>
-      <div class="subtle" style="margin-top:10px;">When real activity is hitting the box. Helps decide when to deploy without breaking anything.</div>
+      <div class="subtle" style="margin-top:10px;">When real activity is hitting the box. Buckets by hour-of-day over the selected window.</div>
     </div>
   </div>
 
@@ -487,6 +487,15 @@ function renderTopTable(rows, hrefBuilder) {
   return html;
 }
 
+// trimBucketLabel hides the date prefix when the bucket already carries a
+// time component (24h window emits "YYYY-MM-DD HH:00") so the axis stays
+// readable. Day buckets ("YYYY-MM-DD") pass through unchanged.
+function trimBucketLabel(s) {
+  if (!s) return '';
+  const m = String(s).match(/^\d{4}-\d{2}-\d{2} (\d{2}:\d{2})$/);
+  return m ? m[1] + ' UTC' : s;
+}
+
 function renderBars(containerId, axisId, series) {
   const el = document.getElementById(containerId);
   const ax = document.getElementById(axisId);
@@ -498,9 +507,9 @@ function renderBars(containerId, axisId, series) {
   const max = Math.max(...series.map(d => d.count), 1);
   el.innerHTML = series.map(d => {
     const h = (d.count / max) * 100;
-    return `<div class="b" style="height:${h}%" title="${d.date}: ${d.count}"></div>`;
+    return `<div class="b" style="height:${h}%" title="${esc(d.date)}: ${d.count}"></div>`;
   }).join('');
-  ax.innerHTML = `<span>${esc(series[0].date)}</span><span>max ${fmt(max)}</span><span>${esc(series[series.length-1].date)}</span>`;
+  ax.innerHTML = `<span>${esc(trimBucketLabel(series[0].date))}</span><span>max ${fmt(max)}</span><span>${esc(trimBucketLabel(series[series.length-1].date))}</span>`;
 }
 
 function renderBotSignals(bs) {
@@ -693,6 +702,9 @@ async function load() {
   renderBars('volBars', 'volAxis', s.daily_volume);
   renderBars('attBars', 'attAxis', s.attack_exports_daily);
   renderHourly(s.hourly_24);
+  // Show the active window beside the hourly chart title.
+  const hourLbl = CURRENT_DAYS === 1 ? 'last 24h' : ('last ' + CURRENT_DAYS + 'd');
+  document.getElementById('hourTitleWindow').textContent = hourLbl;
 
   // Top tables
   document.getElementById('topArt').innerHTML   = renderTopTable(s.top_articles, null);

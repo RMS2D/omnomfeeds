@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MITRE Live - oM noM Security Feeds</title>
+<meta name="description" content="Live ATT&CK technique heat map. What TTPs the security community is talking about right now, across 55+ sources, mapped to the kill chain. Surge detection and first-seen flags on top.">
+
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<link rel="alternate" type="application/rss+xml" title="oM noM Security Feeds" href="/feed.xml">
+
+<meta property="og:title" content="MITRE Live - oM noM Security Feeds">
+<meta property="og:description" content="Live ATT&CK technique heat map across 55+ security sources. Surge and first-seen detection on the kill chain.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://omnomfeeds.com/mitre-live">
+<meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MITRE Live - oM noM Security Feeds">
+<meta name="twitter:description" content="Live ATT&CK technique heat map. What TTPs are being talked about right now.">
+<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+:root {
+  --bg: #0a0e14;
+  --bg-card: #11161d;
+  --bg-row: #161c25;
+  --border: #2a3340;
+  --border-hi: #3a4555;
+  --text: #e6ecf5;
+  --text-dim: #8a96a8;
+  --text-bright: #ffffff;
+  --accent: #00e5a0;
+  --accent-cyan: #56e2ff;
+  --accent-amber: #ffb547;
+  --score-crit: #ff4d6a;
+}
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  min-height: 100vh;
+}
+a { color: var(--accent-cyan); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* Subtle CRT scanline overlay: thin horizontal lines for the hackerish feel
+   without making text unreadable. Pointer events off so it never blocks
+   clicks. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(0, 229, 160, 0) 0px,
+    rgba(0, 229, 160, 0) 2px,
+    rgba(0, 229, 160, 0.02) 3px,
+    rgba(0, 229, 160, 0) 4px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+header {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 22px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(180deg, #11161d 0%, var(--bg) 100%);
+}
+header .brand {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--text-bright);
+  letter-spacing: 0.2px;
+}
+header .stage-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-dim);
+}
+header .stage-chip .live-dot {
+  width: 6px; height: 6px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 6px 1px var(--accent);
+  animation: pulse-dot 1.6s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.4; transform: scale(0.7); }
+}
+header nav { margin-left: auto; display: flex; gap: 18px; }
+header nav a {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  border-bottom: 1px solid transparent;
+  padding-bottom: 2px;
+}
+header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
+
+.wrap { max-width: 1800px; margin: 0 auto; padding: 18px 22px 40px; }
+
+/* Status strip across the top: 4 stat cards summarising the window */
+.status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.status-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  position: relative;
+  overflow: hidden;
+}
+.status-card .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.status-card .value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-bright);
+  line-height: 1;
+}
+.status-card .value.accent { color: var(--accent); }
+.status-card .value.cyan   { color: var(--accent-cyan); }
+.status-card .value.amber  { color: var(--accent-amber); }
+.status-card .value.crit   { color: var(--score-crit); }
+.status-card .sub {
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Window selector */
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.controls .label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.controls .btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.controls .btn:hover { color: var(--text); border-color: var(--border-hi); }
+.controls .btn.active {
+  background: rgba(0, 229, 160, 0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.controls .meta {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+/* Section heading. Matches the ":: SECTION ::" convention from the
+   self-host TUI / admin dashboard for cross-surface consistency. */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin: 22px 0 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+.section-head h2 {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--accent-cyan);
+  font-weight: 600;
+}
+.section-head .hint {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  margin-left: auto;
+}
+
+/* The kill chain: 14 fixed columns; horizontal scroll on narrow screens.
+   Each column is one ATT&CK tactic. Empty tactics dim out. */
+.kill-chain {
+  display: grid;
+  grid-template-columns: repeat(14, minmax(130px, 1fr));
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  /* Custom scrollbar so it doesn't look like default browser chrome */
+  scrollbar-color: var(--border) var(--bg);
+  scrollbar-width: thin;
+}
+.kill-chain::-webkit-scrollbar { height: 8px; }
+.kill-chain::-webkit-scrollbar-track { background: var(--bg); }
+.kill-chain::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.tactic {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 8px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+}
+.tactic.idle {
+  opacity: 0.4;
+}
+.tactic.hot {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 24px -8px rgba(0, 229, 160, 0.18);
+}
+.tactic-head {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.tac-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text);
+  font-weight: 600;
+  line-height: 1.3;
+  margin-bottom: 3px;
+}
+.tac-stats {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+}
+.tac-stats .n { color: var(--accent); }
+.techs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.tech {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 5px 7px;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+}
+.tech:hover {
+  background: var(--bg-row);
+  border-color: var(--border-hi);
+}
+.tech .tech-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
+}
+.tech .tid {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-bright);
+  letter-spacing: 0.3px;
+}
+.tech .count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.tech .name {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  line-height: 1.3;
+  margin-top: 2px;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.tech .badge {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.8px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 2px;
+  margin-top: 4px;
+}
+.tech.is-surging {
+  border-color: var(--score-crit);
+  background: linear-gradient(90deg, var(--bg) 60%, rgba(255, 77, 106, 0.12) 100%);
+  animation: pulse-surge 2.4s ease-in-out infinite;
+}
+.tech.is-surging .badge.surge {
+  background: var(--score-crit);
+  color: var(--text-bright);
+}
+.tech.is-surging .count { color: var(--score-crit); }
+.tech.is-fresh {
+  border-color: var(--accent);
+}
+.tech.is-fresh .badge.fresh {
+  background: var(--accent);
+  color: #0a0e14;
+}
+@keyframes pulse-surge {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 106, 0); }
+  50%      { box-shadow: 0 0 10px 2px rgba(255, 77, 106, 0.45); }
+}
+
+/* "Other" bucket for techniques whose tactic isn't mapped in our enrichment. */
+.tactic.other-bucket .tac-name { color: var(--text-dim); }
+
+/* Live ticker section */
+.ticker-shell {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  max-height: 480px;
+  overflow-y: auto;
+  scrollbar-color: var(--border) var(--bg-card);
+  scrollbar-width: thin;
+}
+.ticker-shell::-webkit-scrollbar { width: 8px; }
+.ticker-shell::-webkit-scrollbar-track { background: var(--bg-card); }
+.ticker-shell::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.tick {
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+}
+.tick:hover { background: var(--bg-row); }
+.tick.new {
+  animation: tick-flash 1.8s ease-out;
+}
+@keyframes tick-flash {
+  0%   { background: rgba(0, 229, 160, 0.18); }
+  100% { background: transparent; }
+}
+.tick .when {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  width: 64px;
+}
+.tick .tids {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  width: 200px;
+}
+.tick .tid-chip {
+  background: rgba(86, 226, 255, 0.1);
+  color: var(--accent-cyan);
+  padding: 1px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 600;
+}
+.tick .title {
+  color: var(--text);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12.5px;
+}
+.tick .title a { color: var(--text); }
+.tick .title a:hover { color: var(--accent-cyan); }
+.tick .src {
+  color: var(--text-dim);
+  flex-shrink: 0;
+  font-size: 10px;
+}
+
+/* Status footer */
+footer {
+  margin-top: 30px;
+  padding: 18px 0 0;
+  border-top: 1px solid var(--border);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--text-dim);
+  display: flex;
+  gap: 18px;
+}
+footer a { color: var(--text-dim); }
+footer a:hover { color: var(--accent); }
+
+.empty-pane {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+</style>
+</head>
+<body>
+<header>
+  <span class="brand">oM noM Security Feeds</span>
+  <span class="stage-chip"><span class="live-dot"></span>MITRE LIVE</span>
+  <nav>
+    <a href="/">home</a>
+    <a href="/live">live ticker</a>
+    <a href="/trending">trending CVEs</a>
+    <a href="/pre-kev">pre-KEV</a>
+    <a href="/app">reader</a>
+  </nav>
+</header>
+
+<div class="wrap">
+
+  <div class="status-strip">
+    <div class="status-card">
+      <div class="label">Window mentions</div>
+      <div class="value accent" id="kWindowTotal">-</div>
+      <div class="sub" id="kWindowSub">across all techniques</div>
+    </div>
+    <div class="status-card">
+      <div class="label">Distinct techniques</div>
+      <div class="value cyan" id="kDistinct">-</div>
+      <div class="sub">at least 1 mention in baseline</div>
+    </div>
+    <div class="status-card">
+      <div class="label">Surging</div>
+      <div class="value crit" id="kSurging">-</div>
+      <div class="sub">&ge;3x baseline rate, &ge;3 mentions</div>
+    </div>
+    <div class="status-card">
+      <div class="label">Fresh</div>
+      <div class="value amber" id="kFresh">-</div>
+      <div class="sub">first seen in last 7 days</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <span class="label">Surge window</span>
+    <button class="btn"        data-hours="6">6h</button>
+    <button class="btn active" data-hours="24">24h</button>
+    <button class="btn"        data-hours="72">72h</button>
+    <button class="btn"        data-hours="168">7d</button>
+    <span class="meta" id="metaLine">-</span>
+  </div>
+
+  <div class="section-head">
+    <h2>:: kill chain ::</h2>
+    <span class="hint">click a technique to open its latest article. red = surging vs baseline. green = first seen in last 7d.</span>
+  </div>
+  <div class="kill-chain" id="killChain">
+    <div class="empty-pane">loading...</div>
+  </div>
+
+  <div class="section-head">
+    <h2>:: latest mentions ::</h2>
+    <span class="hint">newest articles in window with at least one mapped T-code</span>
+  </div>
+  <div class="ticker-shell" id="ticker">
+    <div class="empty-pane">loading...</div>
+  </div>
+
+  <footer>
+    <span>data refreshed every 30s</span>
+    <span>tactics &amp; T-codes from <a href="https://attack.mitre.org/" target="_blank" rel="noopener">attack.mitre.org</a></span>
+    <span>scope: articles in the last 30 days</span>
+  </footer>
+</div>
+
+<script>
+let CURRENT_HOURS = 24;
+let LAST_TIDS = new Set(); // for highlighting newly-arrived ticker rows
+
+const TACTIC_ORDER = [
+  "reconnaissance","resource-development","initial-access","execution","persistence",
+  "privilege-escalation","defense-evasion","credential-access","discovery",
+  "lateral-movement","collection","command-and-control","exfiltration","impact"
+];
+
+document.querySelectorAll('.btn[data-hours]').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.btn[data-hours]').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    CURRENT_HOURS = parseInt(b.dataset.hours, 10) || 24;
+    LAST_TIDS.clear(); // reset so all rows render as new on window flip
+    load();
+  });
+});
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+}
+function fmt(n) {
+  if (n == null) return '-';
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+function relTime(iso) {
+  if (!iso) return '';
+  const t = new Date(iso).getTime();
+  if (!t) return '';
+  const s = (Date.now() - t) / 1000;
+  if (s < 60)  return Math.round(s) + 's';
+  if (s < 3600) return Math.round(s / 60) + 'm';
+  if (s < 86400) return Math.round(s / 3600) + 'h';
+  return Math.round(s / 86400) + 'd';
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/mitre/live?hours=' + CURRENT_HOURS, { credentials: 'same-origin' });
+    if (!r.ok) { renderError('HTTP ' + r.status); return; }
+    const d = await r.json();
+    renderStats(d);
+    renderKillChain(d);
+    renderTicker(d);
+    document.getElementById('metaLine').textContent =
+      'window: last ' + d.window_hours + 'h · baseline: ' + d.baseline_days + 'd · generated ' + relTime(d.generated_at) + ' ago';
+  } catch (e) {
+    renderError('fetch failed');
+  }
+}
+
+function renderError(msg) {
+  document.getElementById('killChain').innerHTML = '<div class="empty-pane">' + esc(msg) + '</div>';
+  document.getElementById('ticker').innerHTML = '<div class="empty-pane">' + esc(msg) + '</div>';
+}
+
+function renderStats(d) {
+  document.getElementById('kWindowTotal').textContent = fmt(d.window_total);
+  document.getElementById('kDistinct').textContent    = fmt(d.distinct_tids);
+  document.getElementById('kSurging').textContent     = fmt(d.surging_count);
+  document.getElementById('kFresh').textContent       = fmt(d.fresh_count);
+  document.getElementById('kWindowSub').textContent   = 'across all techniques in last ' + d.window_hours + 'h';
+}
+
+function renderKillChain(d) {
+  const root = document.getElementById('killChain');
+  // Bucket techniques by tactic. Untagged ones go to "other" so they don't
+  // disappear (T1218 sometimes lacks a tactic on its parent technique).
+  const buckets = {};
+  for (const tactic of TACTIC_ORDER) buckets[tactic] = [];
+  const other = [];
+  for (const t of d.techniques) {
+    if (t.tactic && buckets[t.tactic]) buckets[t.tactic].push(t);
+    else other.push(t);
+  }
+
+  // Build the 14 canonical columns; append "other" at the end if non-empty.
+  const tacticMeta = {};
+  for (const row of d.tactics) tacticMeta[row.tactic] = row;
+  let html = '';
+  for (const tactic of TACTIC_ORDER) {
+    const meta = tacticMeta[tactic] || { display_name: tactic, mentions: 0, techniques: 0 };
+    const techs = buckets[tactic];
+    const hot = meta.mentions >= 20;
+    const idle = meta.mentions === 0;
+    html += `<div class="tactic ${hot ? 'hot' : ''} ${idle ? 'idle' : ''}">`;
+    html += `<div class="tactic-head">`;
+    html += `<div class="tac-name">${esc(meta.display_name)}</div>`;
+    html += `<div class="tac-stats"><span class="n">${fmt(meta.mentions)}</span> mentions · ${meta.techniques} techs</div>`;
+    html += `</div>`;
+    html += `<div class="techs">`;
+    if (techs.length === 0) {
+      html += `<div style="color:var(--text-dim); font-size:10px; font-family:'JetBrains Mono', monospace; text-align:center; padding:14px 0;">no activity</div>`;
+    } else {
+      // Top-5 visible per column; others hidden behind a "+N more" toggle if needed.
+      for (const t of techs.slice(0, 8)) {
+        html += techCard(t);
+      }
+      if (techs.length > 8) {
+        html += `<div style="color:var(--text-dim); font-size:10px; font-family:'JetBrains Mono', monospace; text-align:center; padding:4px 0;">+${techs.length - 8} more</div>`;
+      }
+    }
+    html += `</div></div>`;
+  }
+  if (other.length > 0) {
+    html += `<div class="tactic other-bucket">`;
+    html += `<div class="tactic-head"><div class="tac-name">Other</div>`;
+    html += `<div class="tac-stats">${other.length} techs without mapped tactic</div></div>`;
+    html += `<div class="techs">`;
+    for (const t of other.slice(0, 8)) html += techCard(t);
+    html += `</div></div>`;
+  }
+  root.innerHTML = html;
+}
+
+function techCard(t) {
+  const classes = ['tech'];
+  if (t.is_surging) classes.push('is-surging');
+  else if (t.is_fresh) classes.push('is-fresh');
+  const href = t.latest_article_url || t.url || '#';
+  const surgeRatio = t.surge_ratio >= 99 ? '∞' : t.surge_ratio.toFixed(1);
+  let badges = '';
+  if (t.is_surging) badges += `<span class="badge surge">SURGE ${surgeRatio}x</span> `;
+  if (t.is_fresh)   badges += `<span class="badge fresh">FRESH</span>`;
+  return `
+    <a class="${classes.join(' ')}" href="${esc(href)}" target="_blank" rel="noopener" title="${esc(t.name)} - ${t.mentions_window} in window, ${t.mentions_baseline} in baseline">
+      <div class="tech-head">
+        <span class="tid">${esc(t.tid)}</span>
+        <span class="count">${fmt(t.mentions_window)}</span>
+      </div>
+      <div class="name">${esc(t.name)}</div>
+      ${badges ? `<div>${badges}</div>` : ''}
+    </a>`;
+}
+
+function renderTicker(d) {
+  const el = document.getElementById('ticker');
+  if (!d.latest_mentions || d.latest_mentions.length === 0) {
+    el.innerHTML = '<div class="empty-pane">no T-coded articles in this window yet</div>';
+    LAST_TIDS = new Set();
+    return;
+  }
+  const seen = new Set();
+  let html = '';
+  for (const m of d.latest_mentions) {
+    // Track article URL as the "have we seen this row before" identity.
+    const id = m.url + '|' + m.ts;
+    seen.add(id);
+    const isNew = !LAST_TIDS.has(id);
+    const tidChips = (m.tids || []).slice(0, 6).map(t => `<span class="tid-chip">${esc(t)}</span>`).join('');
+    const extraTids = m.tids.length > 6 ? ` <span style="color:var(--text-dim); font-size:10px;">+${m.tids.length - 6}</span>` : '';
+    html += `
+      <div class="tick ${isNew ? 'new' : ''}">
+        <span class="when">${esc(relTime(m.ts))} ago</span>
+        <span class="tids">${tidChips}${extraTids}</span>
+        <span class="title"><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.title)}</a></span>
+        <span class="src">${esc(m.source)}</span>
+      </div>`;
+  }
+  el.innerHTML = html;
+  LAST_TIDS = seen;
+}
+
+load();
+setInterval(load, 30000);
+</script>
+</body>
+</html>

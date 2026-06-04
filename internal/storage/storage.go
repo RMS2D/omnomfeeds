@@ -1194,6 +1194,122 @@ func (s *Store) TTPFrequencyForBookmarks(userID string) (map[string]int, error) 
 	return out, nil
 }
 
+// MitreRawCounts is the per-T-code aggregation backing /mitre-live. The
+// server handler joins this against the loaded ATT&CK map to add names,
+// tactics, URLs, and surge math; storage stays MITRE-package-agnostic.
+type MitreRawCounts struct {
+	WindowHours    int
+	BaselineDays   int
+	WindowCounts   map[string]int           // tid -> mention count in last windowHours
+	BaselineCounts map[string]int           // tid -> mention count in last baselineDays
+	FirstSeen      map[string]time.Time     // tid -> first time seen within baseline window
+	LatestArticle  map[string]*MitreArtRef  // tid -> most recent article mentioning it
+	Latest         []MitreLatestMention     // newest 60 articles with any T-code (window only)
+}
+
+// MitreArtRef is the trimmed article reference attached to each T-code.
+type MitreArtRef struct {
+	Title       string
+	URL         string
+	Source      string
+	PublishedAt time.Time
+}
+
+// MitreLatestMention is a row on the live ticker.
+type MitreLatestMention struct {
+	TS     time.Time
+	TIDs   []string
+	Title  string
+	URL    string
+	Source string
+}
+
+// MitreRawCounts walks the last baselineDays of tagged articles, builds
+// per-TID counts in both the window and the baseline, and captures the
+// newest 60 articles in the window for the live ticker. JSON tag parsing
+// happens in Go because SQLite GROUP BY can't reach into a JSON array.
+func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, error) {
+	if windowHours <= 0 {
+		windowHours = 24
+	}
+	if baselineDays <= 0 {
+		baselineDays = 30
+	}
+	if windowHours > baselineDays*24 {
+		windowHours = baselineDays * 24
+	}
+	ttpRe := regexp.MustCompile(`^T\d{4}(\.\d{3})?$`)
+	out := &MitreRawCounts{
+		WindowHours:    windowHours,
+		BaselineDays:   baselineDays,
+		WindowCounts:   map[string]int{},
+		BaselineCounts: map[string]int{},
+		FirstSeen:      map[string]time.Time{},
+		LatestArticle:  map[string]*MitreArtRef{},
+	}
+	rows, err := s.db.Query(
+		`SELECT title, url, source, tags, published_at
+		   FROM articles
+		  WHERE published_at >= datetime('now', ?)
+		    AND duplicate_of IS NULL
+		    AND tags LIKE '%T1%'
+		  ORDER BY published_at DESC`,
+		fmt.Sprintf("-%d days", baselineDays),
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	windowCutoff := time.Now().UTC().Add(-time.Duration(windowHours) * time.Hour)
+	for rows.Next() {
+		var title, url, source, tagsJSON string
+		var publishedAt time.Time
+		if err := rows.Scan(&title, &url, &source, &tagsJSON, &publishedAt); err != nil {
+			continue
+		}
+		var tags []string
+		if err := json.Unmarshal([]byte(tagsJSON), &tags); err != nil {
+			continue
+		}
+		var tids []string
+		for _, t := range tags {
+			if ttpRe.MatchString(t) {
+				tids = append(tids, t)
+			}
+		}
+		if len(tids) == 0 {
+			continue
+		}
+		publishedAtUTC := publishedAt.UTC()
+		inWindow := publishedAtUTC.After(windowCutoff)
+		for _, tid := range tids {
+			out.BaselineCounts[tid]++
+			if inWindow {
+				out.WindowCounts[tid]++
+			}
+			// rows come in newest-first; we record the FIRST occurrence per
+			// TID as "latest article" since that's the freshest mention.
+			if _, ok := out.LatestArticle[tid]; !ok {
+				out.LatestArticle[tid] = &MitreArtRef{
+					Title: title, URL: url, Source: source, PublishedAt: publishedAtUTC,
+				}
+			}
+			// FirstSeen tracks the OLDEST occurrence in the baseline window.
+			// We're walking newest-first so we overwrite each time we see an
+			// older one. After the loop completes, this is the oldest seen.
+			if existing, ok := out.FirstSeen[tid]; !ok || publishedAtUTC.Before(existing) {
+				out.FirstSeen[tid] = publishedAtUTC
+			}
+		}
+		if inWindow && len(out.Latest) < 60 {
+			out.Latest = append(out.Latest, MitreLatestMention{
+				TS: publishedAtUTC, TIDs: tids, Title: title, URL: url, Source: source,
+			})
+		}
+	}
+	return out, rows.Err()
+}
+
 // PreKEVCandidates returns CVE -> distinct-source-count for CVEs mentioned in
 // the last `hours` with at least minSources distinct sources. Caller filters KEV.
 func (s *Store) PreKEVCandidates(hours, minSources int) (map[string]int, error) {

@@ -20,6 +20,43 @@ const (
 	cacheTTL            = 30 * 24 * time.Hour
 )
 
+// TacticOrder is the kill-chain sequence used by the ATT&CK matrix.
+// Left-to-right is the order shown on the live dashboard.
+var TacticOrder = []string{
+	"reconnaissance",
+	"resource-development",
+	"initial-access",
+	"execution",
+	"persistence",
+	"privilege-escalation",
+	"defense-evasion",
+	"credential-access",
+	"discovery",
+	"lateral-movement",
+	"collection",
+	"command-and-control",
+	"exfiltration",
+	"impact",
+}
+
+// TacticDisplay maps the kill-chain phase name to a human-readable label.
+var TacticDisplay = map[string]string{
+	"reconnaissance":       "Reconnaissance",
+	"resource-development": "Resource Development",
+	"initial-access":       "Initial Access",
+	"execution":            "Execution",
+	"persistence":          "Persistence",
+	"privilege-escalation": "Privilege Escalation",
+	"defense-evasion":      "Defense Evasion",
+	"credential-access":    "Credential Access",
+	"discovery":            "Discovery",
+	"lateral-movement":     "Lateral Movement",
+	"collection":           "Collection",
+	"command-and-control":  "Command and Control",
+	"exfiltration":         "Exfiltration",
+	"impact":               "Impact",
+}
+
 // Technique is the trimmed ATT&CK record we keep cached.
 type Technique struct {
 	ID          string   `json:"id"` // T1190 or T1190.001

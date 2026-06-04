@@ -179,6 +179,7 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 	mux.HandleFunc("/api/malware/", s.handleMalwareLookup)
 	// Enrichment endpoints
 	mux.HandleFunc("/api/mitre", s.handleMitreMap)
+	mux.HandleFunc("/api/mitre/live", s.handleMitreLive)
 	mux.HandleFunc("/api/mitre/", s.handleMitreTechnique)
 	mux.HandleFunc("/api/cve/", s.handleCVE)
 	// Server-Sent Events stream for real-time refresh notifications
@@ -306,6 +307,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 			case r.URL.Path == "/pre-kev":
 				s.emit(w, r, analytics.EvPageView, "/pre-kev", nil)
 				serveEmbeddedFile(w, r, webFS, "pre-kev.html")
+			case r.URL.Path == "/mitre-live":
+				s.emit(w, r, analytics.EvPageView, "/mitre-live", nil)
+				serveEmbeddedFile(w, r, webFS, "mitre-live.html")
 			case strings.HasPrefix(r.URL.Path, "/cve/"):
 				s.handleCVEPage(w, r, webFS)
 			case r.URL.Path == "/sitemap-cves.xml":
@@ -347,6 +351,9 @@ func New(store *storage.Store, srcs []sources.Source, fastSrcs []sources.Source,
 		})
 		mux.HandleFunc("/pre-kev", func(w http.ResponseWriter, r *http.Request) {
 			serveEmbeddedFile(w, r, webFS, "pre-kev.html")
+		})
+		mux.HandleFunc("/mitre-live", func(w http.ResponseWriter, r *http.Request) {
+			serveEmbeddedFile(w, r, webFS, "mitre-live.html")
 		})
 		mux.HandleFunc("/cve/", func(w http.ResponseWriter, r *http.Request) {
 			s.handleCVEPage(w, r, webFS)
@@ -1734,6 +1741,240 @@ func (s *Server) handleMitreMap(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, 200, s.enrich.MITRE.CompactNames())
+}
+
+// mitreLiveCache and friends back a small in-memory cache so the polling
+// dashboard doesn't slam the DB. 30s TTL is short enough that the dashboard
+// feels live, long enough that 1000 concurrent viewers cost one query.
+type mitreLiveCacheEntry struct {
+	body []byte
+	at   time.Time
+}
+
+var (
+	mitreLiveCacheMu sync.Mutex
+	mitreLiveCache   = map[string]*mitreLiveCacheEntry{}
+)
+
+const mitreLiveCacheTTL = 30 * time.Second
+
+// MitreLiveResponse is the JSON shape served at /api/mitre/live.
+type MitreLiveResponse struct {
+	GeneratedAt     string                  `json:"generated_at"`
+	WindowHours     int                     `json:"window_hours"`
+	BaselineDays    int                     `json:"baseline_days"`
+	WindowTotal     int                     `json:"window_total"`
+	BaselineTotal   int                     `json:"baseline_total"`
+	DistinctTIDs    int                     `json:"distinct_tids"`
+	FreshCount      int                     `json:"fresh_count"`
+	SurgingCount    int                     `json:"surging_count"`
+	Tactics         []MitreLiveTacticRow    `json:"tactics"`
+	Techniques      []MitreLiveTechniqueRow `json:"techniques"`
+	LatestMentions  []MitreLiveLatestRow    `json:"latest_mentions"`
+}
+
+type MitreLiveTacticRow struct {
+	Tactic        string `json:"tactic"`
+	DisplayName   string `json:"display_name"`
+	Mentions      int    `json:"mentions"`
+	Techniques    int    `json:"techniques"`
+	Surging       int    `json:"surging"`
+	Fresh         int    `json:"fresh"`
+}
+
+type MitreLiveTechniqueRow struct {
+	TID                string  `json:"tid"`
+	Name               string  `json:"name"`
+	Tactic             string  `json:"tactic"`
+	TacticDisplay      string  `json:"tactic_display"`
+	URL                string  `json:"url"`
+	MentionsWindow     int     `json:"mentions_window"`
+	MentionsBaseline   int     `json:"mentions_baseline"`
+	SurgeRatio         float64 `json:"surge_ratio"`
+	IsFresh            bool    `json:"is_fresh"`
+	IsSurging          bool    `json:"is_surging"`
+	FirstSeenAt        string  `json:"first_seen_at"`
+	LatestArticleTitle string  `json:"latest_article_title"`
+	LatestArticleURL   string  `json:"latest_article_url"`
+	LatestArticleSrc   string  `json:"latest_article_source"`
+}
+
+type MitreLiveLatestRow struct {
+	TS     string   `json:"ts"`
+	TIDs   []string `json:"tids"`
+	Title  string   `json:"title"`
+	URL    string   `json:"url"`
+	Source string   `json:"source"`
+}
+
+// handleMitreLive serves the dashboard payload. ?hours=N picks the surge
+// window (default 24, max 168); baseline is fixed at 30d so the surge math
+// has enough denominator. Response is cached for 30s.
+func (s *Server) handleMitreLive(w http.ResponseWriter, r *http.Request) {
+	if s.enrich == nil || s.enrich.MITRE == nil {
+		writeJSON(w, 503, map[string]string{"error": "mitre not loaded"})
+		return
+	}
+	hours := 24
+	if v := r.URL.Query().Get("hours"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 168 {
+			hours = n
+		}
+	}
+	cacheKey := fmt.Sprintf("h=%d", hours)
+	mitreLiveCacheMu.Lock()
+	cached, ok := mitreLiveCache[cacheKey]
+	if ok && time.Since(cached.at) < mitreLiveCacheTTL {
+		body := cached.body
+		mitreLiveCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=30")
+		w.Write(body)
+		return
+	}
+	mitreLiveCacheMu.Unlock()
+
+	const baselineDays = 30
+	raw, err := s.store.MitreRawCounts(hours, baselineDays)
+	if err != nil {
+		writeJSON(w, 500, map[string]string{"error": err.Error()})
+		return
+	}
+	resp := s.buildMitreLiveResponse(raw, hours, baselineDays)
+	body, _ := json.Marshal(resp)
+
+	mitreLiveCacheMu.Lock()
+	mitreLiveCache[cacheKey] = &mitreLiveCacheEntry{body: body, at: time.Now()}
+	mitreLiveCacheMu.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=30")
+	w.Write(body)
+}
+
+// buildMitreLiveResponse enriches raw counts with technique names/tactics from
+// the loaded ATT&CK map and computes surge ratios + fresh flags.
+func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, baselineDays int) *MitreLiveResponse {
+	resp := &MitreLiveResponse{
+		GeneratedAt:  time.Now().UTC().Format(time.RFC3339),
+		WindowHours:  hours,
+		BaselineDays: baselineDays,
+	}
+	// Surge math: per-hour rate in window vs per-hour rate over the baseline.
+	// We compare (window/hours) against (baseline/baseline_hours). A surge ratio
+	// of 1.0 means "steady"; >=3.0 means "currently 3x its 30-day-average rate".
+	baselineHours := float64(baselineDays * 24)
+	freshCutoff := time.Now().UTC().Add(-7 * 24 * time.Hour)
+
+	// Per-tactic accumulator. Initialised in TacticOrder so output is stable.
+	tacticByID := map[string]*MitreLiveTacticRow{}
+	for _, tactic := range mitre.TacticOrder {
+		row := &MitreLiveTacticRow{
+			Tactic:      tactic,
+			DisplayName: mitre.TacticDisplay[tactic],
+		}
+		resp.Tactics = append(resp.Tactics, *row)
+		tacticByID[tactic] = &resp.Tactics[len(resp.Tactics)-1]
+	}
+
+	for tid, baselineCount := range raw.BaselineCounts {
+		t := s.enrich.MITRE[tid]
+		if t == nil {
+			// Unknown / revoked / typo'd T-code; skip rather than show "unknown".
+			continue
+		}
+		windowCount := raw.WindowCounts[tid]
+		// Pick the first listed tactic as the dashboard placement.
+		tactic := ""
+		if len(t.Tactics) > 0 {
+			tactic = t.Tactics[0]
+		}
+		windowRate := float64(windowCount) / float64(hours)
+		baselineRate := float64(baselineCount) / baselineHours
+		var surge float64
+		switch {
+		case baselineRate == 0 && windowRate > 0:
+			surge = 99.0 // brand new; treat as max
+		case baselineRate == 0:
+			surge = 0
+		default:
+			surge = windowRate / baselineRate
+			if surge > 99 {
+				surge = 99
+			}
+		}
+		first := raw.FirstSeen[tid]
+		isFresh := !first.IsZero() && first.After(freshCutoff) && windowCount >= 1
+		isSurging := surge >= 3.0 && windowCount >= 3
+
+		row := MitreLiveTechniqueRow{
+			TID:              tid,
+			Name:             t.Name,
+			Tactic:           tactic,
+			TacticDisplay:    mitre.TacticDisplay[tactic],
+			URL:              t.URL,
+			MentionsWindow:   windowCount,
+			MentionsBaseline: baselineCount,
+			SurgeRatio:       surge,
+			IsFresh:          isFresh,
+			IsSurging:        isSurging,
+		}
+		if !first.IsZero() {
+			row.FirstSeenAt = first.Format(time.RFC3339)
+		}
+		if a := raw.LatestArticle[tid]; a != nil {
+			row.LatestArticleTitle = a.Title
+			row.LatestArticleURL = a.URL
+			row.LatestArticleSrc = a.Source
+		}
+		resp.Techniques = append(resp.Techniques, row)
+		resp.BaselineTotal += baselineCount
+		resp.WindowTotal += windowCount
+		if isFresh {
+			resp.FreshCount++
+		}
+		if isSurging {
+			resp.SurgingCount++
+		}
+		if tactic != "" {
+			if agg, ok := tacticByID[tactic]; ok {
+				agg.Mentions += windowCount
+				agg.Techniques++
+				if isFresh {
+					agg.Fresh++
+				}
+				if isSurging {
+					agg.Surging++
+				}
+			}
+		}
+	}
+	resp.DistinctTIDs = len(resp.Techniques)
+
+	// Sort techniques: surging first, then by window mentions desc, then by
+	// surge ratio desc as a tiebreaker. Front-loaded list = most interesting
+	// stuff is what the operator sees first.
+	sort.Slice(resp.Techniques, func(i, j int) bool {
+		a, b := resp.Techniques[i], resp.Techniques[j]
+		if a.IsSurging != b.IsSurging {
+			return a.IsSurging
+		}
+		if a.MentionsWindow != b.MentionsWindow {
+			return a.MentionsWindow > b.MentionsWindow
+		}
+		return a.SurgeRatio > b.SurgeRatio
+	})
+
+	for _, m := range raw.Latest {
+		resp.LatestMentions = append(resp.LatestMentions, MitreLiveLatestRow{
+			TS:     m.TS.Format(time.RFC3339),
+			TIDs:   m.TIDs,
+			Title:  m.Title,
+			URL:    m.URL,
+			Source: m.Source,
+		})
+	}
+	return resp
 }
 
 // handleMitreTechnique returns the full technique record for a single T-code.

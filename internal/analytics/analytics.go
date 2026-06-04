@@ -263,6 +263,7 @@ type SurfaceRow struct {
 	Path                string `json:"path"`
 	Views               int    `json:"views"`
 	BrowserViews        int    `json:"browser_views"`
+	CapturedUAViews     int    `json:"captured_ua_views"` // denominator for browser_share
 	DistinctSessions    int    `json:"distinct_sessions"`
 	DistinctIPs         int    `json:"distinct_ips"`
 	ViewsPerSession     string `json:"views_per_session"`
@@ -274,6 +275,7 @@ type SurfaceRow struct {
 // distinguish IPs without surfacing reversible identifiers.
 type BotSignals struct {
 	WindowEvents      int        `json:"window_events"`
+	CapturedUAEvents  int        `json:"captured_ua_events"` // events in window with non-NULL user_agent
 	DistinctIPs       int        `json:"distinct_ips"`
 	EventsFromTopN    int        `json:"events_from_top_n"` // events accounted for by TopIPs
 	SingleSessionIPs  int        `json:"single_session_ips"`
@@ -555,12 +557,24 @@ func (a *Analytics) fillBotSignals(s *Summary, days int, ef *excludeFilter) erro
 	since := fmt.Sprintf("-%d days", days)
 	excl := ef.Clause("")
 
-	// Window totals + UA family breakdown.
+	// Total event count in the window. Includes pre-migration rows so the
+	// "of N total events, X% have UA captured" callout works.
+	totalQ := `SELECT COUNT(*) FROM events WHERE ts >= datetime('now', ?)` + excl
+	if err := a.db.QueryRow(totalQ, since).Scan(&s.BotSignals.WindowEvents); err != nil {
+		return err
+	}
+
+	// UA family breakdown - only over events that HAVE a UA captured. The
+	// NULL/empty rows are a migration artifact (pre-deploy events), not a
+	// real "empty UA" signal, so we exclude them from this breakdown to
+	// keep the dashboard honest.
 	uaQ := `
-		SELECT COALESCE(user_agent, ''), COUNT(*)
+		SELECT user_agent, COUNT(*)
 		FROM events
-		WHERE ts >= datetime('now', ?)` + excl + `
-		GROUP BY COALESCE(user_agent, '')
+		WHERE ts >= datetime('now', ?)
+		  AND user_agent IS NOT NULL
+		  AND user_agent != ''` + excl + `
+		GROUP BY user_agent
 	`
 	uaRows, err := a.db.Query(uaQ, since)
 	if err != nil {
@@ -576,10 +590,8 @@ func (a *Analytics) fillBotSignals(s *Summary, days int, ef *excludeFilter) erro
 		}
 		fam := uaFamily(ua)
 		famCounts[fam] += n
-		s.BotSignals.WindowEvents += n
+		s.BotSignals.CapturedUAEvents += n
 		switch {
-		case fam == "empty":
-			s.BotSignals.EmptyUAEvents += n
 		case isBotFamily(fam):
 			s.BotSignals.BotUAEvents += n
 		case isBrowserFamily(fam):
@@ -587,6 +599,9 @@ func (a *Analytics) fillBotSignals(s *Summary, days int, ef *excludeFilter) erro
 		}
 	}
 	uaRows.Close()
+	// EmptyUAEvents is the migration-artifact gap: total window events that
+	// don't yet have a UA. Useful as a "fraction we can classify" signal.
+	s.BotSignals.EmptyUAEvents = s.BotSignals.WindowEvents - s.BotSignals.CapturedUAEvents
 	for fam, n := range famCounts {
 		s.BotSignals.UAFamilies = append(s.BotSignals.UAFamilies, UARow{Family: fam, Events: n})
 	}
@@ -1061,15 +1076,20 @@ func (a *Analytics) fillPublicSurfaces(s *Summary, days int, ef *excludeFilter) 
 			return err
 		}
 
-		var browser int
+		// Browser share is computed over events that HAVE a UA only.
+		// Pre-migration rows (NULL UA) are excluded so the denominator
+		// reflects what we can actually classify.
+		var browser, captured int
 		if views > 0 {
 			uaQ := `
-				SELECT COALESCE(user_agent, ''), COUNT(*)
+				SELECT user_agent, COUNT(*)
 				FROM events
 				WHERE event = 'page_view'
 				  AND ` + where + `
-				  AND ts >= datetime('now', ?)` + excl + `
-				GROUP BY COALESCE(user_agent, '')
+				  AND ts >= datetime('now', ?)
+				  AND user_agent IS NOT NULL
+				  AND user_agent != ''` + excl + `
+				GROUP BY user_agent
 			`
 			uaRows, err := a.db.Query(uaQ, args...)
 			if err != nil {
@@ -1082,6 +1102,7 @@ func (a *Analytics) fillPublicSurfaces(s *Summary, days int, ef *excludeFilter) 
 					uaRows.Close()
 					return err
 				}
+				captured += n
 				if isBrowserFamily(uaFamily(ua)) {
 					browser += n
 				}
@@ -1094,13 +1115,14 @@ func (a *Analytics) fillPublicSurfaces(s *Summary, days int, ef *excludeFilter) 
 			vps = fmt.Sprintf("%.1f", float64(views)/float64(sessions))
 		}
 		share := "-"
-		if views > 0 {
-			share = fmt.Sprintf("%.0f%%", 100.0*float64(browser)/float64(views))
+		if captured > 0 {
+			share = fmt.Sprintf("%.0f%%", 100.0*float64(browser)/float64(captured))
 		}
 		s.PublicSurfaces = append(s.PublicSurfaces, SurfaceRow{
 			Path:                sp.Label,
 			Views:               views,
 			BrowserViews:        browser,
+			CapturedUAViews:     captured,
 			DistinctSessions:    sessions,
 			DistinctIPs:         ips,
 			ViewsPerSession:     vps,

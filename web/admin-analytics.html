@@ -375,9 +375,9 @@ tr:last-child td { border-bottom: none; }
 
   <div class="row-2col">
     <div class="panel">
-      <div class="panel-title">User-Agent family breakdown</div>
+      <div class="panel-title">User-Agent family breakdown <span class="count" id="uaCapNote"></span></div>
       <div id="uaFams"><div class="empty">loading...</div></div>
-      <div class="subtle" style="margin-top:10px;">If "bot" + "empty" dominate, it's crawlers. "chrome" / "firefox" / "safari" = humans.</div>
+      <div class="subtle" style="margin-top:10px;">Only events with a captured UA are counted. If "bot" dominates, it's crawlers. "chrome" / "firefox" / "safari" / "edge" = humans.</div>
     </div>
     <div class="panel">
       <div class="panel-title">Sessions per IP</div>
@@ -495,13 +495,25 @@ function renderBotSignals(bs) {
   document.getElementById('kBotTopShare').textContent =
     bs.window_events ? pct(bs.events_from_top_n, bs.window_events) : '-';
 
+  // UA-family note: how much of the window has UA captured
+  const noteEl = document.getElementById('uaCapNote');
+  if (bs.window_events) {
+    noteEl.textContent = `${fmt(bs.captured_ua_events)} of ${fmt(bs.window_events)} events have UA`;
+  } else {
+    noteEl.textContent = '';
+  }
+
   const uaEl = document.getElementById('uaFams');
   if (!bs.ua_families || !bs.ua_families.length) {
-    uaEl.innerHTML = '<div class="empty">no events in window</div>';
+    if (bs.window_events && !bs.captured_ua_events) {
+      uaEl.innerHTML = '<div class="empty">no UA captured yet (events pre-date the migration). Wait for new traffic.</div>';
+    } else {
+      uaEl.innerHTML = '<div class="empty">no events in window</div>';
+    }
   } else {
     let h = '<table><thead><tr><th>Family</th><th class="n">Events</th><th class="n">Share</th></tr></thead><tbody>';
     for (const r of bs.ua_families) {
-      h += `<tr><td class="mono">${esc(r.family)}</td><td class="n">${fmt(r.events)}</td><td class="n">${pct(r.events, bs.window_events)}</td></tr>`;
+      h += `<tr><td class="mono">${esc(r.family)}</td><td class="n">${fmt(r.events)}</td><td class="n">${pct(r.events, bs.captured_ua_events)}</td></tr>`;
     }
     uaEl.innerHTML = h + '</tbody></table>';
   }

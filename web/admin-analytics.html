@@ -394,6 +394,18 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <h1>:: public surface engagement ::</h1>
+  <div class="row-2col">
+    <div class="panel" style="grid-column:1/-1;">
+      <div class="panel-title">Per-path views, sessions, and humans-vs-bots</div>
+      <div id="publicSurfaces"><div class="empty">loading...</div></div>
+      <div class="subtle" style="margin-top:10px;">
+        Browser % = views from a Chrome/Firefox/Safari/Edge UA family. Views/session &gt; 2 with high Browser % = real engagement.
+        High views with single-digit sessions and low Browser % = crawler hammering.
+      </div>
+    </div>
+  </div>
+
   <h1>:: what people use ::</h1>
   <div class="row-2col">
     <div class="panel">
@@ -532,6 +544,33 @@ function renderBotSignals(bs) {
   }
 }
 
+function renderPublicSurfaces(rows) {
+  const el = document.getElementById('publicSurfaces');
+  if (!rows || !rows.length) {
+    el.innerHTML = '<div class="empty">no data in window</div>';
+    return;
+  }
+  let h = '<table><thead><tr>'
+    + '<th>Path</th>'
+    + '<th class="n">Views</th>'
+    + '<th class="n">Sessions</th>'
+    + '<th class="n">Distinct IPs</th>'
+    + '<th class="n">Views / session</th>'
+    + '<th class="n">Browser %</th>'
+    + '</tr></thead><tbody>';
+  for (const r of rows) {
+    h += `<tr>`
+      + `<td class="mono">${esc(r.path)}</td>`
+      + `<td class="n">${fmt(r.views)}</td>`
+      + `<td class="n">${fmt(r.distinct_sessions)}</td>`
+      + `<td class="n">${fmt(r.distinct_ips)}</td>`
+      + `<td class="n">${esc(r.views_per_session)}</td>`
+      + `<td class="n">${esc(r.browser_share)}</td>`
+      + `</tr>`;
+  }
+  el.innerHTML = h + '</tbody></table>';
+}
+
 function renderEventCounts(map) {
   if (!map || !Object.keys(map).length) {
     document.getElementById('eventCounts').innerHTML = '<div class="empty">no events recorded</div>';
@@ -605,6 +644,9 @@ async function load() {
 
   // Bot signals
   renderBotSignals(s.bot_signals || {});
+
+  // Public surface engagement
+  renderPublicSurfaces(s.public_surfaces || []);
 
   // Event counts
   renderEventCounts(s.event_counts);

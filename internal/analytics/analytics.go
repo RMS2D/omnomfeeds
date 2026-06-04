@@ -251,8 +251,22 @@ type Summary struct {
 	AttackExports []DayCount        `json:"attack_exports_daily"`
 	DailyVolume   []DayCount        `json:"daily_volume"`
 	Hourly        []HourCount       `json:"hourly_24"`    // last 7d, bucketed by UTC hour
-	SinceLaunch   SinceLaunchTotals `json:"since_launch"` // raw totals so sparse windows still tell a story
-	BotSignals    BotSignals        `json:"bot_signals"`  // distinct-IP + UA-family breakdown
+	SinceLaunch    SinceLaunchTotals `json:"since_launch"`    // raw totals so sparse windows still tell a story
+	BotSignals     BotSignals        `json:"bot_signals"`     // distinct-IP + UA-family breakdown
+	PublicSurfaces []SurfaceRow      `json:"public_surfaces"` // engagement per public/free page
+}
+
+// SurfaceRow is a per-path engagement slice. Browser-shaped views filters
+// out the bot UAs surfaced in BotSignals so the human-traffic number is
+// directly comparable across surfaces.
+type SurfaceRow struct {
+	Path                string `json:"path"`
+	Views               int    `json:"views"`
+	BrowserViews        int    `json:"browser_views"`
+	DistinctSessions    int    `json:"distinct_sessions"`
+	DistinctIPs         int    `json:"distinct_ips"`
+	ViewsPerSession     string `json:"views_per_session"`
+	BrowserSharePercent string `json:"browser_share"`
 }
 
 // BotSignals exposes the abuse-detection slice of the events table. All
@@ -478,6 +492,9 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 		return nil, err
 	}
 	if err := a.fillBotSignals(s, days, ef); err != nil {
+		return nil, err
+	}
+	if err := a.fillPublicSurfaces(s, days, ef); err != nil {
 		return nil, err
 	}
 	return s, nil
@@ -986,4 +1003,109 @@ func (a *Analytics) fillAttackExports(s *Summary, days int, ef *excludeFilter) e
 		s.AttackExports = append(s.AttackExports, DayCount{Date: d, Count: n})
 	}
 	return rows.Err()
+}
+
+// surfacePaths drives the public-engagement view. Two flavours:
+//   - exact: one row per literal path (e.g. /live, /trending)
+//   - cve:   one aggregated row across every /cve/<id> hit
+//
+// Add a surface here when a new public-facing route gets meaningful
+// traffic; remove when it stops mattering.
+var surfacePaths = []struct {
+	Label  string
+	Match  string // either "exact" or "cve" - cve uses LIKE '/cve/%'
+	Source string // SQL literal for the matcher
+}{
+	{Label: "/", Match: "exact", Source: "/"},
+	{Label: "/live", Match: "exact", Source: "/live"},
+	{Label: "/trending", Match: "exact", Source: "/trending"},
+	{Label: "/pre-kev", Match: "exact", Source: "/pre-kev"},
+	{Label: "/api", Match: "exact", Source: "/api"},
+	{Label: "/cve/*", Match: "cve", Source: ""},
+	{Label: "/app", Match: "exact", Source: "/app"},
+	{Label: "/pro", Match: "exact", Source: "/pro"},
+}
+
+// fillPublicSurfaces computes per-path engagement. Browser-shaped views
+// uses the same UA bucketer as BotSignals so the two views agree on
+// "is this human traffic". Sessions and IPs are distinct counts.
+func (a *Analytics) fillPublicSurfaces(s *Summary, days int, ef *excludeFilter) error {
+	since := fmt.Sprintf("-%d days", days)
+	excl := ef.Clause("")
+
+	for _, sp := range surfacePaths {
+		var where string
+		var args []any
+		if sp.Match == "cve" {
+			where = "ref LIKE '/cve/%'"
+		} else {
+			where = "ref = ?"
+			args = append(args, sp.Source)
+		}
+		args = append(args, since)
+
+		// One pass collects total + distinct counts; second pass collects
+		// per-row UAs so we can classify browser vs bot views consistently
+		// with BotSignals. Total path event count is bounded so streaming
+		// the rows for UA bucketing is acceptable.
+		q := `
+			SELECT COUNT(*),
+			       COUNT(DISTINCT session),
+			       COUNT(DISTINCT ip_hash)
+			FROM events
+			WHERE event = 'page_view'
+			  AND ` + where + `
+			  AND ts >= datetime('now', ?)` + excl
+		var views, sessions, ips int
+		if err := a.db.QueryRow(q, args...).Scan(&views, &sessions, &ips); err != nil {
+			return err
+		}
+
+		var browser int
+		if views > 0 {
+			uaQ := `
+				SELECT COALESCE(user_agent, ''), COUNT(*)
+				FROM events
+				WHERE event = 'page_view'
+				  AND ` + where + `
+				  AND ts >= datetime('now', ?)` + excl + `
+				GROUP BY COALESCE(user_agent, '')
+			`
+			uaRows, err := a.db.Query(uaQ, args...)
+			if err != nil {
+				return err
+			}
+			for uaRows.Next() {
+				var ua string
+				var n int
+				if err := uaRows.Scan(&ua, &n); err != nil {
+					uaRows.Close()
+					return err
+				}
+				if isBrowserFamily(uaFamily(ua)) {
+					browser += n
+				}
+			}
+			uaRows.Close()
+		}
+
+		vps := "-"
+		if sessions > 0 {
+			vps = fmt.Sprintf("%.1f", float64(views)/float64(sessions))
+		}
+		share := "-"
+		if views > 0 {
+			share = fmt.Sprintf("%.0f%%", 100.0*float64(browser)/float64(views))
+		}
+		s.PublicSurfaces = append(s.PublicSurfaces, SurfaceRow{
+			Path:                sp.Label,
+			Views:               views,
+			BrowserViews:        browser,
+			DistinctSessions:    sessions,
+			DistinctIPs:         ips,
+			ViewsPerSession:     vps,
+			BrowserSharePercent: share,
+		})
+	}
+	return nil
 }

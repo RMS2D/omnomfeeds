@@ -365,6 +365,35 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <h1>:: bot signals ::</h1>
+  <div class="cards">
+    <div class="card"><div class="label">Distinct IPs</div>     <div class="value accent" id="kBotIPs">-</div><div class="sub">since ip_hash migration</div></div>
+    <div class="card"><div class="label">Single-session IPs</div><div class="value amber"  id="kBotSingle">-</div><div class="sub">no cookie = bot-shaped</div></div>
+    <div class="card"><div class="label">Browser-shaped IPs</div><div class="value cyan"   id="kBotMulti">-</div><div class="sub">2+ sessions per IP</div></div>
+    <div class="card"><div class="label">Top 25 IPs = ?% events</div><div class="value"   id="kBotTopShare">-</div><div class="sub">heavier = more concentrated</div></div>
+  </div>
+
+  <div class="row-2col">
+    <div class="panel">
+      <div class="panel-title">User-Agent family breakdown</div>
+      <div id="uaFams"><div class="empty">loading...</div></div>
+      <div class="subtle" style="margin-top:10px;">If "bot" + "empty" dominate, it's crawlers. "chrome" / "firefox" / "safari" = humans.</div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">Sessions per IP</div>
+      <div id="sessDist"><div class="empty">loading...</div></div>
+      <div class="subtle" style="margin-top:10px;">Bucket "1" = hits with no persistent cookie (bot-shaped). Multi-bucket = browser-shaped.</div>
+    </div>
+  </div>
+
+  <div class="row-2col" style="margin-top:16px;">
+    <div class="panel" style="grid-column:1/-1;">
+      <div class="panel-title">Top 25 IPs by event count <span class="count" id="topIPCount"></span></div>
+      <div id="topIPs"><div class="empty">loading...</div></div>
+      <div class="subtle" style="margin-top:10px;">Hash prefix = first 12 hex chars of SHA-256(IP). Same prefix across rows = same source.</div>
+    </div>
+  </div>
+
   <h1>:: what people use ::</h1>
   <div class="row-2col">
     <div class="panel">
@@ -447,6 +476,62 @@ function renderBars(containerId, axisId, series) {
   ax.innerHTML = `<span>${esc(series[0].date)}</span><span>max ${fmt(max)}</span><span>${esc(series[series.length-1].date)}</span>`;
 }
 
+function renderBotSignals(bs) {
+  document.getElementById('kBotIPs').textContent    = fmt(bs.distinct_ips);
+  document.getElementById('kBotSingle').textContent = fmt(bs.single_session_ips);
+  document.getElementById('kBotMulti').textContent  = fmt(bs.multi_session_ips);
+  document.getElementById('kBotTopShare').textContent =
+    bs.window_events ? pct(bs.events_from_top_n, bs.window_events) : '-';
+
+  const uaEl = document.getElementById('uaFams');
+  if (!bs.ua_families || !bs.ua_families.length) {
+    uaEl.innerHTML = '<div class="empty">no events in window</div>';
+  } else {
+    let h = '<table><thead><tr><th>Family</th><th class="n">Events</th><th class="n">Share</th></tr></thead><tbody>';
+    for (const r of bs.ua_families) {
+      h += `<tr><td class="mono">${esc(r.family)}</td><td class="n">${fmt(r.events)}</td><td class="n">${pct(r.events, bs.window_events)}</td></tr>`;
+    }
+    uaEl.innerHTML = h + '</tbody></table>';
+  }
+
+  const sdEl = document.getElementById('sessDist');
+  if (!bs.sessions_per_ip || !bs.sessions_per_ip.length) {
+    sdEl.innerHTML = '<div class="empty">no IPs in window</div>';
+  } else {
+    let h = '<table><thead><tr><th>Sessions per IP</th><th class="n">IPs</th><th class="n">Share</th></tr></thead><tbody>';
+    for (const r of bs.sessions_per_ip) {
+      h += `<tr><td class="mono">${esc(r.bucket)}</td><td class="n">${fmt(r.ips)}</td><td class="n">${pct(r.ips, bs.distinct_ips)}</td></tr>`;
+    }
+    sdEl.innerHTML = h + '</tbody></table>';
+  }
+
+  const ipEl = document.getElementById('topIPs');
+  if (!bs.top_ips || !bs.top_ips.length) {
+    ipEl.innerHTML = '<div class="empty">no IPs in window (ip_hash captures begin at the first event after the migration)</div>';
+  } else {
+    let h = '<table><thead><tr>'
+      + '<th>Hash prefix</th>'
+      + '<th>UA family</th>'
+      + '<th class="n">Events</th>'
+      + '<th class="n">Sessions</th>'
+      + '<th>First seen</th>'
+      + '<th>Last seen</th>'
+      + '</tr></thead><tbody>';
+    for (const r of bs.top_ips) {
+      h += `<tr>`
+        + `<td class="mono">${esc(r.id_prefix)}</td>`
+        + `<td class="mono">${esc(r.ua_family)}</td>`
+        + `<td class="n">${fmt(r.events)}</td>`
+        + `<td class="n">${fmt(r.sessions)}</td>`
+        + `<td class="mono subtle">${esc((r.first_seen || '').slice(0, 19))}</td>`
+        + `<td class="mono subtle">${esc((r.last_seen || '').slice(0, 19))}</td>`
+        + `</tr>`;
+    }
+    ipEl.innerHTML = h + '</tbody></table>';
+    document.getElementById('topIPCount').textContent = bs.top_ips.length;
+  }
+}
+
 function renderEventCounts(map) {
   if (!map || !Object.keys(map).length) {
     document.getElementById('eventCounts').innerHTML = '<div class="empty">no events recorded</div>';
@@ -517,6 +602,9 @@ async function load() {
   document.getElementById('topMalCount').textContent   = s.top_malware ? s.top_malware.length : '0';
   document.getElementById('topPath').innerHTML  = renderTopTable(s.top_paths, null);
   document.getElementById('topPathCount').textContent  = s.top_paths ? s.top_paths.length : '0';
+
+  // Bot signals
+  renderBotSignals(s.bot_signals || {});
 
   // Event counts
   renderEventCounts(s.event_counts);

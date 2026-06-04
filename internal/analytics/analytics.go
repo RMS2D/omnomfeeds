@@ -1,18 +1,25 @@
-// Package analytics is the in-house event log: no third-party JS, no IPs, no UAs.
-// Anonymous traffic dedupes via session cookie; signed-in users join by user_id.
+// Package analytics is the in-house event log. Anonymous traffic dedupes via
+// session cookie; signed-in users join by user_id. ip_hash + user_agent are
+// captured per event for admin-only abuse / bot-detection views; never
+// displayed in plaintext.
 package analytics
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"os"
 	"regexp"
+	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -51,10 +58,10 @@ func New(db *sql.DB) *Analytics {
 	return &Analytics{db: db}
 }
 
-// Emit writes one event. Failures are logged, never returned to the caller -
-// analytics must never break a user-facing request. meta may be nil, a
-// string, or any JSON-serialisable value; non-string values are marshalled.
-func (a *Analytics) Emit(userID, session, event, ref string, meta any) {
+// Emit writes one event. Failures are logged, never returned - analytics must
+// never break a user-facing request. ipHash may be nil (server-to-server
+// events). userAgent may be empty.
+func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []byte, userAgent string) {
 	if a == nil || a.db == nil || event == "" {
 		return
 	}
@@ -72,7 +79,7 @@ func (a *Analytics) Emit(userID, session, event, ref string, meta any) {
 			metaStr = sql.NullString{String: string(b), Valid: true}
 		}
 	}
-	var userIDArg, sessionArg, refArg sql.NullString
+	var userIDArg, sessionArg, refArg, uaArg sql.NullString
 	if userID != "" {
 		userIDArg = sql.NullString{String: userID, Valid: true}
 	}
@@ -82,13 +89,94 @@ func (a *Analytics) Emit(userID, session, event, ref string, meta any) {
 	if ref != "" {
 		refArg = sql.NullString{String: ref, Valid: true}
 	}
+	if userAgent != "" {
+		if len(userAgent) > 400 {
+			userAgent = userAgent[:400]
+		}
+		uaArg = sql.NullString{String: userAgent, Valid: true}
+	}
+	var ipArg any
+	if len(ipHash) > 0 {
+		ipArg = ipHash
+	}
 	_, err := a.db.Exec(
-		`INSERT INTO events (user_id, session, event, ref, meta) VALUES (?, ?, ?, ?, ?)`,
-		userIDArg, sessionArg, event, refArg, metaStr,
+		`INSERT INTO events (user_id, session, event, ref, meta, ip_hash, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+		userIDArg, sessionArg, event, refArg, metaStr, ipArg, uaArg,
 	)
 	if err != nil {
 		log.Printf("[analytics] emit %s: %v", event, err)
 	}
+}
+
+// trustedProxyNets is the parsed TRUSTED_PROXY_CIDR list. Defaults to
+// loopback so XFF from localhost is honoured (dev mode behind Caddy).
+var (
+	trustedProxyOnce sync.Once
+	trustedProxyNets []*net.IPNet
+)
+
+func loadTrustedProxies() {
+	raw := os.Getenv("TRUSTED_PROXY_CIDR")
+	if raw == "" {
+		raw = "127.0.0.0/8,::1/128"
+	}
+	for _, c := range strings.Split(raw, ",") {
+		c = strings.TrimSpace(c)
+		if c == "" {
+			continue
+		}
+		if _, n, err := net.ParseCIDR(c); err == nil {
+			trustedProxyNets = append(trustedProxyNets, n)
+		}
+	}
+}
+
+func remoteIsTrusted(addr string) bool {
+	trustedProxyOnce.Do(loadTrustedProxies)
+	host, _, err := net.SplitHostPort(addr)
+	if err != nil {
+		host = addr
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	for _, n := range trustedProxyNets {
+		if n.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// HashIPFromRequest returns the SHA-256 of the originating IP. Honours
+// X-Forwarded-For only when r.RemoteAddr is in TRUSTED_PROXY_CIDR; otherwise
+// the socket peer wins. Returns nil if no IP can be derived.
+func HashIPFromRequest(r *http.Request) []byte {
+	if r == nil {
+		return nil
+	}
+	var ip string
+	if remoteIsTrusted(r.RemoteAddr) {
+		if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
+			if comma := strings.Index(xff, ","); comma > 0 {
+				xff = xff[:comma]
+			}
+			ip = strings.TrimSpace(xff)
+		}
+	}
+	if ip == "" {
+		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
+			ip = host
+		} else {
+			ip = r.RemoteAddr
+		}
+	}
+	if ip == "" {
+		return nil
+	}
+	sum := sha256.Sum256([]byte(ip))
+	return sum[:]
 }
 
 // EnsureSession reads the omn_sid cookie or sets a fresh one. Returns the
@@ -164,6 +252,43 @@ type Summary struct {
 	DailyVolume   []DayCount        `json:"daily_volume"`
 	Hourly        []HourCount       `json:"hourly_24"`    // last 7d, bucketed by UTC hour
 	SinceLaunch   SinceLaunchTotals `json:"since_launch"` // raw totals so sparse windows still tell a story
+	BotSignals    BotSignals        `json:"bot_signals"`  // distinct-IP + UA-family breakdown
+}
+
+// BotSignals exposes the abuse-detection slice of the events table. All
+// IP rows are reduced to a 12-hex-char hash prefix so the admin view can
+// distinguish IPs without surfacing reversible identifiers.
+type BotSignals struct {
+	WindowEvents      int        `json:"window_events"`
+	DistinctIPs       int        `json:"distinct_ips"`
+	EventsFromTopN    int        `json:"events_from_top_n"` // events accounted for by TopIPs
+	SingleSessionIPs  int        `json:"single_session_ips"`
+	MultiSessionIPs   int        `json:"multi_session_ips"`
+	BotUAEvents       int        `json:"bot_ua_events"`
+	BrowserUAEvents   int        `json:"browser_ua_events"`
+	EmptyUAEvents     int        `json:"empty_ua_events"`
+	TopIPs            []IPRow    `json:"top_ips"`
+	UAFamilies        []UARow    `json:"ua_families"`
+	SessionsPerIP     []DistRow  `json:"sessions_per_ip"`
+}
+
+type IPRow struct {
+	IDPrefix  string `json:"id_prefix"` // 12 hex chars of SHA-256(IP)
+	Events    int    `json:"events"`
+	Sessions  int    `json:"sessions"`
+	UAFamily  string `json:"ua_family"` // dominant family for this IP
+	FirstSeen string `json:"first_seen"`
+	LastSeen  string `json:"last_seen"`
+}
+
+type UARow struct {
+	Family string `json:"family"`
+	Events int    `json:"events"`
+}
+
+type DistRow struct {
+	Bucket string `json:"bucket"` // "1", "2-5", "6-20", "21+"
+	IPs    int    `json:"ips"`
 }
 
 type ActiveCounts struct {
@@ -352,7 +477,224 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 	if err := a.fillSinceLaunch(s, ef); err != nil {
 		return nil, err
 	}
+	if err := a.fillBotSignals(s, days, ef); err != nil {
+		return nil, err
+	}
 	return s, nil
+}
+
+// uaFamily buckets a User-Agent string for the dashboard. The list is
+// intentionally short - we want signal, not a fingerprinting engine.
+func uaFamily(ua string) string {
+	if ua == "" {
+		return "empty"
+	}
+	low := strings.ToLower(ua)
+	// Bots and crawlers first - many include "Mozilla" later in the string
+	// so the bot heuristics have to win the order.
+	botMarkers := []string{
+		"bot", "crawl", "spider", "slurp", "fetch", "monitor",
+		"check_http", "uptimerobot", "pingdom", "statuspage",
+		"semrush", "ahrefs", "mj12", "dotbot", "petalbot",
+		"gptbot", "claudebot", "perplexity", "anthropic", "openai",
+		"bytespider", "amazonbot", "applebot", "yandex", "baidu",
+		"facebook", "twitter", "linkedin", "pinterest", "discord",
+		"telegram", "slack", "whatsapp",
+		"go-http-client", "python-requests", "python-urllib", "scrapy",
+		"curl/", "wget/", "httpie", "okhttp", "axios", "node-fetch",
+		"libwww-perl", "java/", "ruby", "headless",
+	}
+	for _, m := range botMarkers {
+		if strings.Contains(low, m) {
+			return "bot"
+		}
+	}
+	switch {
+	case strings.Contains(low, "firefox"):
+		return "firefox"
+	case strings.Contains(low, "edg/") || strings.Contains(low, "edge/"):
+		return "edge"
+	case strings.Contains(low, "chrome"):
+		return "chrome"
+	case strings.Contains(low, "safari"):
+		return "safari"
+	}
+	return "other"
+}
+
+func isBotFamily(f string) bool { return f == "bot" }
+func isBrowserFamily(f string) bool {
+	switch f {
+	case "firefox", "chrome", "edge", "safari":
+		return true
+	}
+	return false
+}
+
+// fillBotSignals derives the abuse-detection view. Events older than this
+// change have NULL ip_hash so they're naturally excluded from the IP
+// aggregates; total counts reflect the windowed event volume regardless.
+func (a *Analytics) fillBotSignals(s *Summary, days int, ef *excludeFilter) error {
+	since := fmt.Sprintf("-%d days", days)
+	excl := ef.Clause("")
+
+	// Window totals + UA family breakdown.
+	uaQ := `
+		SELECT COALESCE(user_agent, ''), COUNT(*)
+		FROM events
+		WHERE ts >= datetime('now', ?)` + excl + `
+		GROUP BY COALESCE(user_agent, '')
+	`
+	uaRows, err := a.db.Query(uaQ, since)
+	if err != nil {
+		return err
+	}
+	famCounts := map[string]int{}
+	for uaRows.Next() {
+		var ua string
+		var n int
+		if err := uaRows.Scan(&ua, &n); err != nil {
+			uaRows.Close()
+			return err
+		}
+		fam := uaFamily(ua)
+		famCounts[fam] += n
+		s.BotSignals.WindowEvents += n
+		switch {
+		case fam == "empty":
+			s.BotSignals.EmptyUAEvents += n
+		case isBotFamily(fam):
+			s.BotSignals.BotUAEvents += n
+		case isBrowserFamily(fam):
+			s.BotSignals.BrowserUAEvents += n
+		}
+	}
+	uaRows.Close()
+	for fam, n := range famCounts {
+		s.BotSignals.UAFamilies = append(s.BotSignals.UAFamilies, UARow{Family: fam, Events: n})
+	}
+	sort.Slice(s.BotSignals.UAFamilies, func(i, j int) bool {
+		return s.BotSignals.UAFamilies[i].Events > s.BotSignals.UAFamilies[j].Events
+	})
+
+	// Per-IP rollup. ip_hash is NULL for legacy rows; filter those out so
+	// distinct-IP counts mean "since the migration".
+	ipQ := `
+		SELECT ip_hash,
+		       COUNT(*) AS events,
+		       COUNT(DISTINCT session) AS sessions,
+		       MIN(ts) AS first_seen,
+		       MAX(ts) AS last_seen
+		FROM events
+		WHERE ts >= datetime('now', ?)
+		  AND ip_hash IS NOT NULL` + excl + `
+		GROUP BY ip_hash
+		ORDER BY events DESC
+	`
+	rows, err := a.db.Query(ipQ, since)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	const topN = 25
+	rank := 0
+	type ipAgg struct {
+		hash       []byte
+		events     int
+		sessions   int
+		firstSeen  string
+		lastSeen   string
+	}
+	var topIPs []ipAgg
+	sessionsBuckets := map[string]int{"1": 0, "2-5": 0, "6-20": 0, "21+": 0}
+	for rows.Next() {
+		var hash []byte
+		var events, sessions int
+		var first, last string
+		if err := rows.Scan(&hash, &events, &sessions, &first, &last); err != nil {
+			return err
+		}
+		s.BotSignals.DistinctIPs++
+		switch {
+		case sessions <= 1:
+			s.BotSignals.SingleSessionIPs++
+			sessionsBuckets["1"]++
+		case sessions <= 5:
+			s.BotSignals.MultiSessionIPs++
+			sessionsBuckets["2-5"]++
+		case sessions <= 20:
+			s.BotSignals.MultiSessionIPs++
+			sessionsBuckets["6-20"]++
+		default:
+			s.BotSignals.MultiSessionIPs++
+			sessionsBuckets["21+"]++
+		}
+		if rank < topN {
+			topIPs = append(topIPs, ipAgg{
+				hash: append([]byte(nil), hash...), events: events,
+				sessions: sessions, firstSeen: first, lastSeen: last,
+			})
+			s.BotSignals.EventsFromTopN += events
+			rank++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for _, b := range []string{"1", "2-5", "6-20", "21+"} {
+		s.BotSignals.SessionsPerIP = append(s.BotSignals.SessionsPerIP, DistRow{Bucket: b, IPs: sessionsBuckets[b]})
+	}
+
+	// Per-top-IP dominant UA family lookup. One query per IP keeps this
+	// readable; topN=25 so the cost is bounded.
+	for _, ip := range topIPs {
+		fam := a.dominantUAFamily(ip.hash, since, excl)
+		s.BotSignals.TopIPs = append(s.BotSignals.TopIPs, IPRow{
+			IDPrefix:  hex.EncodeToString(ip.hash[:6]),
+			Events:    ip.events,
+			Sessions:  ip.sessions,
+			UAFamily:  fam,
+			FirstSeen: ip.firstSeen,
+			LastSeen:  ip.lastSeen,
+		})
+	}
+	return nil
+}
+
+func (a *Analytics) dominantUAFamily(ipHash []byte, since, excl string) string {
+	q := `
+		SELECT COALESCE(user_agent, ''), COUNT(*) AS n
+		FROM events
+		WHERE ip_hash = ?
+		  AND ts >= datetime('now', ?)` + excl + `
+		GROUP BY COALESCE(user_agent, '')
+		ORDER BY n DESC
+		LIMIT 5
+	`
+	rows, err := a.db.Query(q, ipHash, since)
+	if err != nil {
+		return "unknown"
+	}
+	defer rows.Close()
+	famCounts := map[string]int{}
+	for rows.Next() {
+		var ua string
+		var n int
+		if err := rows.Scan(&ua, &n); err != nil {
+			continue
+		}
+		famCounts[uaFamily(ua)] += n
+	}
+	best := "unknown"
+	bestN := -1
+	for fam, n := range famCounts {
+		if n > bestN {
+			best, bestN = fam, n
+		}
+	}
+	return best
 }
 
 // fillTopPaths breaks down page_view events by the path stashed in ref.

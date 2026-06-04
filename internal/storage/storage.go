@@ -322,27 +322,36 @@ func (s *Store) migrateUserTables() error {
 
 		-- Lightweight, in-house analytics. Captures which features are
 		-- actually used so we know what's worth keeping and what's worth
-		-- killing. No third-party JS, no IPs, no UAs - just an opaque
-		-- session token for anon dedup and the linked user_id when signed
-		-- in. ref is event-specific (article_id, cve_id, actor_slug, etc.)
-		-- and meta is optional JSON for extras (e.g. attack export scope).
+		-- ref is event-specific (article_id, cve_id, actor_slug, etc.);
+		-- meta is optional JSON for extras (e.g. attack export scope).
+		-- ip_hash and user_agent let admin views distinguish real users
+		-- from crawler / scraper traffic; never displayed in plaintext.
 		CREATE TABLE IF NOT EXISTS events (
-			id       INTEGER PRIMARY KEY AUTOINCREMENT,
-			ts       DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			user_id  TEXT,
-			session  TEXT,
-			event    TEXT NOT NULL,
-			ref      TEXT,
-			meta     TEXT
+			id         INTEGER PRIMARY KEY AUTOINCREMENT,
+			ts         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			user_id    TEXT,
+			session    TEXT,
+			event      TEXT NOT NULL,
+			ref        TEXT,
+			meta       TEXT,
+			ip_hash    BLOB,
+			user_agent TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_events_ts     ON events(ts DESC);
 		CREATE INDEX IF NOT EXISTS idx_events_event  ON events(event);
 		CREATE INDEX IF NOT EXISTS idx_events_user   ON events(user_id);
 		CREATE INDEX IF NOT EXISTS idx_events_ref    ON events(event, ref);
+		CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash);
 	`)
 	if err != nil {
 		return err
 	}
+
+	// Idempotent column adds for pre-existing events tables; duplicate
+	// column errors are swallowed by SQLite via Exec without check.
+	s.db.Exec(`ALTER TABLE events ADD COLUMN ip_hash BLOB`)
+	s.db.Exec(`ALTER TABLE events ADD COLUMN user_agent TEXT`)
+	s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_ip ON events(ip_hash)`)
 
 	// Stripe linkage columns added after the initial users table; ALTER
 	// is idempotent enough for SQLite (duplicate-column errors swallowed).

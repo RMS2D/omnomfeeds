@@ -30,7 +30,7 @@ func (s *Server) emit(w http.ResponseWriter, r *http.Request, event, ref string,
 	if session == "" && w != nil {
 		session = s.analytics.EnsureSession(w, r)
 	}
-	s.analytics.Emit(userID, session, event, ref, meta)
+	s.analytics.Emit(userID, session, event, ref, meta, analytics.HashIPFromRequest(r), r.UserAgent())
 }
 
 // handleAdminAnalyticsSummary returns the dashboard's single JSON payload.

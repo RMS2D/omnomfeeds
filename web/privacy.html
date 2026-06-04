@@ -151,7 +151,7 @@ footer {
   <li>No analytics SDK, no Google Analytics, no Meta Pixel, no Mixpanel, no Hotjar.</li>
   <li>No third-party advertising trackers. The site shows no ads.</li>
   <li>No fingerprinting. Browser type is read only from the User-Agent string the browser already sends.</li>
-  <li>No IP address logging in plaintext. IPs are SHA-256 hashed before storage and used only for rate limits.</li>
+  <li>No IP address logging in plaintext. IPs are SHA-256 hashed before storage and used for rate limits plus aggregate abuse / bot detection in an admin-only dashboard (only the 12-hex-char hash prefix is ever displayed).</li>
   <li>No tracking pixels in the magic-link email.</li>
 </ul>
 

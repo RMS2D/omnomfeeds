@@ -341,14 +341,16 @@ func (s *Store) migrateUserTables() error {
 		CREATE INDEX IF NOT EXISTS idx_events_event  ON events(event);
 		CREATE INDEX IF NOT EXISTS idx_events_user   ON events(user_id);
 		CREATE INDEX IF NOT EXISTS idx_events_ref    ON events(event, ref);
-		CREATE INDEX IF NOT EXISTS idx_events_ip     ON events(ip_hash);
 	`)
 	if err != nil {
 		return err
 	}
 
 	// Idempotent column adds for pre-existing events tables; duplicate
-	// column errors are swallowed by SQLite via Exec without check.
+	// column errors are swallowed by SQLite via Exec without check. The
+	// ip_hash index has to come AFTER these so it can reference a column
+	// that exists on both fresh installs (where CREATE TABLE above made
+	// it) and upgrades (where the ALTER below adds it).
 	s.db.Exec(`ALTER TABLE events ADD COLUMN ip_hash BLOB`)
 	s.db.Exec(`ALTER TABLE events ADD COLUMN user_agent TEXT`)
 	s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_ip ON events(ip_hash)`)

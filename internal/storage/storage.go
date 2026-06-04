@@ -327,15 +327,16 @@ func (s *Store) migrateUserTables() error {
 		-- ip_hash and user_agent let admin views distinguish real users
 		-- from crawler / scraper traffic; never displayed in plaintext.
 		CREATE TABLE IF NOT EXISTS events (
-			id         INTEGER PRIMARY KEY AUTOINCREMENT,
-			ts         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-			user_id    TEXT,
-			session    TEXT,
-			event      TEXT NOT NULL,
-			ref        TEXT,
-			meta       TEXT,
-			ip_hash    BLOB,
-			user_agent TEXT
+			id          INTEGER PRIMARY KEY AUTOINCREMENT,
+			ts          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			user_id     TEXT,
+			session     TEXT,
+			event       TEXT NOT NULL,
+			ref         TEXT,
+			meta        TEXT,
+			ip_hash     BLOB,
+			user_agent  TEXT,
+			geo_country TEXT
 		);
 		CREATE INDEX IF NOT EXISTS idx_events_ts     ON events(ts DESC);
 		CREATE INDEX IF NOT EXISTS idx_events_event  ON events(event);
@@ -353,7 +354,9 @@ func (s *Store) migrateUserTables() error {
 	// it) and upgrades (where the ALTER below adds it).
 	s.db.Exec(`ALTER TABLE events ADD COLUMN ip_hash BLOB`)
 	s.db.Exec(`ALTER TABLE events ADD COLUMN user_agent TEXT`)
+	s.db.Exec(`ALTER TABLE events ADD COLUMN geo_country TEXT`)
 	s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_ip ON events(ip_hash)`)
+	s.db.Exec(`CREATE INDEX IF NOT EXISTS idx_events_geo ON events(geo_country)`)
 
 	// Stripe linkage columns added after the initial users table; ALTER
 	// is idempotent enough for SQLite (duplicate-column errors swallowed).

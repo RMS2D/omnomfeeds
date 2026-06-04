@@ -97,7 +97,7 @@ func (h *Handler) handleCheckout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.analytics.Emit(u.ID, analytics.SessionFromRequest(r), analytics.EvProCheckoutStart, sess.ID, nil, analytics.HashIPFromRequest(r), r.UserAgent())
+	h.analytics.Emit(u.ID, analytics.SessionFromRequest(r), analytics.EvProCheckoutStart, sess.ID, nil, analytics.HashIPFromRequest(r), r.UserAgent(), analytics.CountryFromRequest(r))
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]string{"url": sess.URL, "id": sess.ID})
@@ -233,8 +233,8 @@ func (h *Handler) onCheckoutCompleted(r *http.Request, obj json.RawMessage) erro
 	if err := h.store.SetProUntil(s.ClientReferenceID, until); err != nil {
 		return err
 	}
-	// Stripe webhook event - no end-user IP/UA to record.
-	h.analytics.Emit(s.ClientReferenceID, "", analytics.EvProSubscribeSuccess, s.SubscriptionID, nil, nil, "")
+	// Stripe webhook event - no end-user IP/UA/geo to record.
+	h.analytics.Emit(s.ClientReferenceID, "", analytics.EvProSubscribeSuccess, s.SubscriptionID, nil, nil, "", "")
 	return nil
 }
 
@@ -272,8 +272,8 @@ func (h *Handler) onInvoicePaid(r *http.Request, obj json.RawMessage) error {
 	if err := h.store.SetProUntil(user.ID, until); err != nil {
 		return err
 	}
-	// Stripe webhook event - no end-user IP/UA to record.
-	h.analytics.Emit(user.ID, "", analytics.EvProSubscribeRenew, inv.SubscriptionID, nil, nil, "")
+	// Stripe webhook event - no end-user IP/UA/geo to record.
+	h.analytics.Emit(user.ID, "", analytics.EvProSubscribeRenew, inv.SubscriptionID, nil, nil, "", "")
 	return nil
 }
 

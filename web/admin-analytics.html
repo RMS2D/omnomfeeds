@@ -394,6 +394,19 @@ tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <h1>:: geo ::</h1>
+  <div class="row-2col">
+    <div class="panel" style="grid-column:1/-1;">
+      <div class="panel-title">Country breakdown <span class="count" id="geoCapNote"></span></div>
+      <div id="geoTable"><div class="empty">loading...</div></div>
+      <div class="subtle" style="margin-top:10px;">
+        Country comes from Cloudflare's CF-IPCountry edge geo (no IP-to-geo lookup at origin).
+        Browser events = same row but only counting Chrome/Firefox/Safari/Edge UAs.
+        Use that column to answer "where are my real users".
+      </div>
+    </div>
+  </div>
+
   <h1>:: public surface engagement ::</h1>
   <div class="row-2col">
     <div class="panel" style="grid-column:1/-1;">
@@ -556,6 +569,44 @@ function renderBotSignals(bs) {
   }
 }
 
+function renderGeo(geo) {
+  const noteEl = document.getElementById('geoCapNote');
+  if (geo.window_events) {
+    noteEl.textContent = `${fmt(geo.captured_geo_events)} of ${fmt(geo.window_events)} events have country`;
+  } else {
+    noteEl.textContent = '';
+  }
+  const el = document.getElementById('geoTable');
+  if (!geo.countries || !geo.countries.length) {
+    if (geo.window_events && !geo.captured_geo_events) {
+      el.innerHTML = '<div class="empty">no country captured yet (events pre-date the migration or origin not behind Cloudflare). Wait for new traffic.</div>';
+    } else {
+      el.innerHTML = '<div class="empty">no country data in window</div>';
+    }
+    return;
+  }
+  let h = '<table><thead><tr>'
+    + '<th>Country</th>'
+    + '<th class="n">Events</th>'
+    + '<th class="n">Browser events</th>'
+    + '<th class="n">Browser sessions</th>'
+    + '<th class="n">Distinct IPs</th>'
+    + '<th class="n">Browser share</th>'
+    + '</tr></thead><tbody>';
+  for (const r of geo.countries) {
+    const share = r.events > 0 ? Math.round(100 * r.browser_events / r.events) + '%' : '-';
+    h += `<tr>`
+      + `<td class="mono">${esc(r.country)}</td>`
+      + `<td class="n">${fmt(r.events)}</td>`
+      + `<td class="n">${fmt(r.browser_events)}</td>`
+      + `<td class="n">${fmt(r.browser_sessions)}</td>`
+      + `<td class="n">${fmt(r.distinct_ips)}</td>`
+      + `<td class="n">${share}</td>`
+      + `</tr>`;
+  }
+  el.innerHTML = h + '</tbody></table>';
+}
+
 function renderPublicSurfaces(rows) {
   const el = document.getElementById('publicSurfaces');
   if (!rows || !rows.length) {
@@ -656,6 +707,9 @@ async function load() {
 
   // Bot signals
   renderBotSignals(s.bot_signals || {});
+
+  // Geo breakdown
+  renderGeo(s.geo || {});
 
   // Public surface engagement
   renderPublicSurfaces(s.public_surfaces || []);

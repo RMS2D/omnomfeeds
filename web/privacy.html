@@ -152,6 +152,7 @@ footer {
   <li>No third-party advertising trackers. The site shows no ads.</li>
   <li>No fingerprinting. Browser type is read only from the User-Agent string the browser already sends.</li>
   <li>No IP address logging in plaintext. IPs are SHA-256 hashed before storage and used for rate limits plus aggregate abuse / bot detection in an admin-only dashboard (only the 12-hex-char hash prefix is ever displayed).</li>
+  <li>Country-level geolocation (ISO 3166 two-letter code, e.g. "US", "AU") is stored alongside each event when the request arrives through Cloudflare's edge. No city, no region, no IP-to-geo lookup at the origin. The country is shown in aggregate ("X% of last week's events came from Y") on the admin dashboard, never per-user.</li>
   <li>No tracking pixels in the magic-link email.</li>
 </ul>
 

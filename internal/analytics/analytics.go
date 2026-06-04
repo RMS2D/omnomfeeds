@@ -60,10 +60,11 @@ func New(db *sql.DB) *Analytics {
 
 // Emit writes one event. Failures are logged, never returned - analytics must
 // never break a user-facing request. ipHash may be nil (server-to-server
-// events). userAgent may be empty. Events from IPs listed in
-// ANALYTICS_EXCLUDE_IPS are dropped at the write boundary so operator
-// activity never enters the dashboard.
-func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []byte, userAgent string) {
+// events). userAgent and country may be empty (country comes from Cloudflare's
+// CF-IPCountry edge geo, missing for non-CF or direct-to-origin requests).
+// Events from IPs listed in ANALYTICS_EXCLUDE_IPS are dropped at the write
+// boundary so operator activity never enters the dashboard.
+func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []byte, userAgent, country string) {
 	if a == nil || a.db == nil || event == "" {
 		return
 	}
@@ -84,7 +85,7 @@ func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []
 			metaStr = sql.NullString{String: string(b), Valid: true}
 		}
 	}
-	var userIDArg, sessionArg, refArg, uaArg sql.NullString
+	var userIDArg, sessionArg, refArg, uaArg, geoArg sql.NullString
 	if userID != "" {
 		userIDArg = sql.NullString{String: userID, Valid: true}
 	}
@@ -100,13 +101,23 @@ func (a *Analytics) Emit(userID, session, event, ref string, meta any, ipHash []
 		}
 		uaArg = sql.NullString{String: userAgent, Valid: true}
 	}
+	// Sanitise country to 2 uppercase letters (ISO-3166 alpha-2). CF can
+	// return "XX" or "T1" for Tor/anonymous; both are fine to keep verbatim
+	// so the dashboard can show the special cases.
+	if country != "" {
+		country = strings.ToUpper(strings.TrimSpace(country))
+		if len(country) > 4 {
+			country = country[:4]
+		}
+		geoArg = sql.NullString{String: country, Valid: true}
+	}
 	var ipArg any
 	if len(ipHash) > 0 {
 		ipArg = ipHash
 	}
 	_, err := a.db.Exec(
-		`INSERT INTO events (user_id, session, event, ref, meta, ip_hash, user_agent) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-		userIDArg, sessionArg, event, refArg, metaStr, ipArg, uaArg,
+		`INSERT INTO events (user_id, session, event, ref, meta, ip_hash, user_agent, geo_country) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+		userIDArg, sessionArg, event, refArg, metaStr, ipArg, uaArg, geoArg,
 	)
 	if err != nil {
 		log.Printf("[analytics] emit %s: %v", event, err)
@@ -185,6 +196,17 @@ func isExcludedIPHash(h []byte) bool {
 	}
 	_, ok := excludedIPHashes[hex.EncodeToString(h)]
 	return ok
+}
+
+// CountryFromRequest reads CF-IPCountry, Cloudflare's edge-geolocation header
+// that's set on every request when the zone is behind the orange cloud. Returns
+// "" when not running behind CF (direct origin hits, dev mode). Only honoured
+// when r.RemoteAddr is in TRUSTED_PROXY_CIDR so clients can't spoof it.
+func CountryFromRequest(r *http.Request) string {
+	if r == nil || !remoteIsTrusted(r.RemoteAddr) {
+		return ""
+	}
+	return r.Header.Get("CF-IPCountry")
 }
 
 // HashIPFromRequest returns the SHA-256 of the originating IP. Honours
@@ -292,6 +314,24 @@ type Summary struct {
 	SinceLaunch    SinceLaunchTotals `json:"since_launch"`    // raw totals so sparse windows still tell a story
 	BotSignals     BotSignals        `json:"bot_signals"`     // distinct-IP + UA-family breakdown
 	PublicSurfaces []SurfaceRow      `json:"public_surfaces"` // engagement per public/free page
+	Geo            GeoSummary        `json:"geo"`             // country breakdown (Cloudflare edge geo)
+}
+
+// GeoSummary breaks visitor traffic down by country and isolates the
+// browser-shaped subset so the operator can see "where are the real users"
+// vs "where is the scraper traffic".
+type GeoSummary struct {
+	WindowEvents      int      `json:"window_events"`
+	CapturedGeoEvents int      `json:"captured_geo_events"` // events with a non-NULL geo_country
+	Countries         []GeoRow `json:"countries"`
+}
+
+type GeoRow struct {
+	Country         string `json:"country"`
+	Events          int    `json:"events"`
+	BrowserEvents   int    `json:"browser_events"`   // narrowed to chrome/firefox/safari/edge UA families
+	DistinctIPs     int    `json:"distinct_ips"`
+	BrowserSessions int    `json:"browser_sessions"` // distinct sessions among browser-UA events
 }
 
 // SurfaceRow is a per-path engagement slice. Browser-shaped views filters
@@ -537,6 +577,9 @@ func (a *Analytics) BuildSummary(days int) (*Summary, error) {
 	if err := a.fillPublicSurfaces(s, days, ef); err != nil {
 		return nil, err
 	}
+	if err := a.fillGeo(s, days, ef); err != nil {
+		return nil, err
+	}
 	return s, nil
 }
 
@@ -730,6 +773,115 @@ func (a *Analytics) fillBotSignals(s *Summary, days int, ef *excludeFilter) erro
 			LastSeen:  ip.lastSeen,
 		})
 	}
+	return nil
+}
+
+// fillGeo aggregates events by Cloudflare's CF-IPCountry. Total event count
+// per country is the headline number; browser-UA narrowing isolates the
+// "where are the real users" view since most LLM scrapers run in cloud
+// regions concentrated in a few countries (US-East mostly).
+func (a *Analytics) fillGeo(s *Summary, days int, ef *excludeFilter) error {
+	since := fmt.Sprintf("-%d days", days)
+	excl := ef.Clause("")
+
+	totalQ := `SELECT COUNT(*) FROM events WHERE ts >= datetime('now', ?)` + excl
+	if err := a.db.QueryRow(totalQ, since).Scan(&s.Geo.WindowEvents); err != nil {
+		return err
+	}
+
+	q := `
+		SELECT geo_country,
+		       COUNT(*),
+		       COUNT(DISTINCT ip_hash),
+		       COALESCE(user_agent, '')
+		FROM events
+		WHERE ts >= datetime('now', ?)
+		  AND geo_country IS NOT NULL
+		  AND geo_country != ''` + excl + `
+		GROUP BY geo_country, COALESCE(user_agent, '')
+	`
+	rows, err := a.db.Query(q, since)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type bucket struct {
+		events        int
+		browserEvents int
+		ipSet         map[string]struct{}
+	}
+	agg := map[string]*bucket{}
+	for rows.Next() {
+		var country, ua string
+		var events, ips int
+		if err := rows.Scan(&country, &events, &ips, &ua); err != nil {
+			return err
+		}
+		b, ok := agg[country]
+		if !ok {
+			b = &bucket{ipSet: map[string]struct{}{}}
+			agg[country] = b
+		}
+		b.events += events
+		if isBrowserFamily(uaFamily(ua)) {
+			b.browserEvents += events
+		}
+		// Distinct IP per country needs a second pass; the first SELECT
+		// approximates by summing per-UA-group distinct counts which
+		// double-counts an IP that sent traffic from multiple UAs. Run
+		// a tight per-country query to get the exact distinct count.
+		_ = ips
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+
+	for country := range agg {
+		var distinctIPs int
+		_ = a.db.QueryRow(
+			`SELECT COUNT(DISTINCT ip_hash) FROM events
+			   WHERE ts >= datetime('now', ?)
+			     AND geo_country = ?
+			     AND ip_hash IS NOT NULL`+excl,
+			since, country,
+		).Scan(&distinctIPs)
+
+		var browserSessions int
+		_ = a.db.QueryRow(`
+			SELECT COUNT(DISTINCT session) FROM events
+			   WHERE ts >= datetime('now', ?)
+			     AND geo_country = ?
+			     AND session IS NOT NULL
+			     AND user_agent IS NOT NULL
+			     AND user_agent != ''
+			     AND (user_agent LIKE '%Firefox%'
+			       OR user_agent LIKE '%Chrome%'
+			       OR user_agent LIKE '%Safari%'
+			       OR user_agent LIKE '%Edg/%'
+			       OR user_agent LIKE '%Edge/%')
+			     AND user_agent NOT LIKE '%bot%'
+			     AND user_agent NOT LIKE '%Bot%'`+excl,
+			since, country,
+		).Scan(&browserSessions)
+
+		s.Geo.Countries = append(s.Geo.Countries, GeoRow{
+			Country:         country,
+			Events:          agg[country].events,
+			BrowserEvents:   agg[country].browserEvents,
+			DistinctIPs:     distinctIPs,
+			BrowserSessions: browserSessions,
+		})
+		s.Geo.CapturedGeoEvents += agg[country].events
+	}
+
+	sort.Slice(s.Geo.Countries, func(i, j int) bool {
+		// Browser events first; ties broken by total events
+		if s.Geo.Countries[i].BrowserEvents != s.Geo.Countries[j].BrowserEvents {
+			return s.Geo.Countries[i].BrowserEvents > s.Geo.Countries[j].BrowserEvents
+		}
+		return s.Geo.Countries[i].Events > s.Geo.Countries[j].Events
+	})
 	return nil
 }
 

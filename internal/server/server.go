@@ -2067,7 +2067,14 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 			hours = n
 		}
 	}
-	articles, err := s.store.ArticlesForTechnique(tid, hours)
+	// Default 30 keeps the modal snappy; ?limit=N (max 100) opts into more.
+	limit := 30
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 1 && n <= 100 {
+			limit = n
+		}
+	}
+	articles, err := s.store.ArticlesForTechnique(tid, hours, limit)
 	if err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
 		return

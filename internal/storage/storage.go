@@ -1477,11 +1477,13 @@ func topMitreCo(counts map[string]int, limit int) []MitreCoRef {
 }
 
 // ArticlesForTechnique returns unique articles tagged with the exact T-code
-// within the last `hours` hours, newest first, capped at 100. Powers the
-// per-technique modal on /mitre-live. SQL pre-filters with LIKE (so the
-// index helps); a Go-side check on the JSON tag array catches T1234 vs
-// T12340 substring collisions.
-func (s *Store) ArticlesForTechnique(tid string, hours int) ([]models.Article, error) {
+// within the last `hours` hours, severity-first (score DESC, then recency),
+// capped at 30. Powers the per-technique modal on /mitre-live. SQL pre-filters
+// with LIKE so the index helps; a Go-side check on the JSON tag array catches
+// T1234 vs T12340 substring collisions. Caller can override the limit but
+// the default keeps the modal snappy on heavy techniques (T1190 / T1059 can
+// each have 200+ matches in 24h).
+func (s *Store) ArticlesForTechnique(tid string, hours, limit int) ([]models.Article, error) {
 	tid = strings.ToUpper(strings.TrimSpace(tid))
 	ttpRe := regexp.MustCompile(`^T\d{4}(\.\d{3})?$`)
 	if !ttpRe.MatchString(tid) {
@@ -1490,20 +1492,26 @@ func (s *Store) ArticlesForTechnique(tid string, hours int) ([]models.Article, e
 	if hours <= 0 {
 		hours = 24
 	}
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	// Pull a generous SQL window then post-filter for exact tag match. Order
+	// by score DESC so the "world is going to break" articles surface first
+	// even if they're not the absolute newest. Tiebreaker is recency.
 	rows, err := s.db.Query(`
 		SELECT id, title, url, source, source_type, COALESCE(summary,''), score, tags, published_at, fetched_at
 		  FROM articles
 		 WHERE published_at >= datetime('now', ?)
 		   AND duplicate_of IS NULL
 		   AND tags LIKE ?
-		 ORDER BY published_at DESC
-		 LIMIT 200
+		 ORDER BY score DESC, published_at DESC
+		 LIMIT 120
 	`, fmt.Sprintf("-%d hours", hours), "%"+tid+"%")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []models.Article
+	out := make([]models.Article, 0, limit)
 	for rows.Next() {
 		var a models.Article
 		var tagsJSON string
@@ -1525,7 +1533,7 @@ func (s *Store) ArticlesForTechnique(tid string, hours int) ([]models.Article, e
 			continue
 		}
 		out = append(out, a)
-		if len(out) >= 100 {
+		if len(out) >= limit {
 			break
 		}
 	}

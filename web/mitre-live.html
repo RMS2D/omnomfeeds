@@ -1411,12 +1411,8 @@ function renderModalArticles(d) {
     body.innerHTML = '<div class="empty-pane">no articles in this window yet. extend the time range to see more.</div>';
     return;
   }
-  // Sort articles by score desc so the "world is going to break" stuff lands
-  // first. Same-score ties broken by recency.
-  const sorted = (d.articles || []).slice().sort((a, b) => {
-    if (a.score !== b.score) return b.score - a.score;
-    return (b.published_at || '').localeCompare(a.published_at || '');
-  });
+  // Backend returns score-desc already; just iterate as-is.
+  const sorted = d.articles;
   let html = '';
   for (const a of sorted) {
     const scoreClass = a.score >= 60 ? 'high' : (a.score >= 30 ? 'mid' : 'lo');
@@ -1437,10 +1433,32 @@ function renderModalArticles(d) {
         </div>
       </a>`;
   }
-  if (sorted.length >= 100) {
-    html += `<div class="empty-pane">showing first 100, sorted by score. <a href="/app?search=${encodeURIComponent(d.tid)}" target="_blank">open the reader filtered to ${esc(d.tid)}</a> for the full set.</div>`;
+  // The default API call returns up to 30 by-score. If the technique has
+  // more articles than that in the window, offer a one-click load of the
+  // bigger set (100) and a deeper drill into /app for the full corpus.
+  if (sorted.length >= 30) {
+    html += `<div class="empty-pane" id="modalMore">
+      showing top ${sorted.length} by score.
+      <a href="#" onclick="event.preventDefault(); loadMoreArticles('${esc(d.tid)}', ${d.window_hours})">show 100</a>
+      &middot;
+      <a href="/app?search=${encodeURIComponent(d.tid)}" target="_blank">open in the reader</a> for the full set.
+    </div>`;
   }
   body.innerHTML = html;
+}
+
+async function loadMoreArticles(tid, hours) {
+  const body = document.getElementById('modalBody');
+  const more = document.getElementById('modalMore');
+  if (more) more.innerHTML = '<span style="color:var(--text-dim)">loading...</span>';
+  try {
+    const r = await fetch(`/api/mitre/articles/${encodeURIComponent(tid)}?hours=${hours}&limit=100`, { credentials: 'same-origin' });
+    if (!r.ok) { if (more) more.textContent = 'HTTP ' + r.status; return; }
+    const d = await r.json();
+    renderModalArticles(d);
+  } catch (e) {
+    if (more) more.textContent = 'fetch failed';
+  }
 }
 
 // renderModalContext fills the "co-mentioned with" + sub-technique strip

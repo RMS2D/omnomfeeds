@@ -1288,7 +1288,14 @@ function renderOther(d) {
 // deltaIndicator formats a (current vs previous-window) delta as a styled
 // ↑/↓ chip. Returns "" for zero-vs-zero so empty rows stay quiet. Deltas
 // above 99% display as "99+" to keep the chip a constant width.
+//
+// At 30d / 90d windows the "previous identical window" reaches back into
+// dates that predate the corpus's real coverage - the math reports 999%
+// growth for every technique because the comparison reference is mostly
+// empty. We gate the indicator on CURRENT_HOURS <= 168 (7d) so it only
+// shows when the comparison is statistically meaningful.
 function deltaIndicator(deltaPct, current, previous) {
+  if (CURRENT_HOURS > 168) return '';
   if (current === 0 && previous === 0) return '';
   if (previous === 0 && current > 0) {
     return `<span class="delta new">NEW</span>`;

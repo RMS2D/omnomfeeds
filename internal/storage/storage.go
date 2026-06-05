@@ -1495,23 +1495,25 @@ func (s *Store) ArticlesForTechnique(tid string, hours, limit int) ([]models.Art
 	if limit <= 0 || limit > 100 {
 		limit = 30
 	}
-	// Pull a generous SQL window then post-filter for exact tag match. Order
-	// by score DESC so the "world is going to break" articles surface first
-	// even if they're not the absolute newest. Tiebreaker is recency.
+	// SQL stays ordered by published_at DESC because that's the indexed
+	// path - sorting by score in SQL forces a full-table sort over the
+	// LIKE-matched set which is slow on heavy techniques (T1190 etc).
+	// Pull 150 by recency to give the Go-side score sort enough material
+	// to actually pick the heavy hitters even when they aren't newest.
 	rows, err := s.db.Query(`
 		SELECT id, title, url, source, source_type, COALESCE(summary,''), score, tags, published_at, fetched_at
 		  FROM articles
 		 WHERE published_at >= datetime('now', ?)
 		   AND duplicate_of IS NULL
 		   AND tags LIKE ?
-		 ORDER BY score DESC, published_at DESC
-		 LIMIT 120
+		 ORDER BY published_at DESC
+		 LIMIT 150
 	`, fmt.Sprintf("-%d hours", hours), "%"+tid+"%")
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	out := make([]models.Article, 0, limit)
+	candidates := make([]models.Article, 0, 150)
 	for rows.Next() {
 		var a models.Article
 		var tagsJSON string
@@ -1532,12 +1534,24 @@ func (s *Store) ArticlesForTechnique(tid string, hours, limit int) ([]models.Art
 		if !hit {
 			continue
 		}
-		out = append(out, a)
-		if len(out) >= limit {
-			break
-		}
+		candidates = append(candidates, a)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Sort by score DESC, then recency. Severity-first so the modal shows
+	// the dangerous stuff at top regardless of when it landed in the
+	// window. Cheap operation on <=150 articles.
+	sort.Slice(candidates, func(i, j int) bool {
+		if candidates[i].Score != candidates[j].Score {
+			return candidates[i].Score > candidates[j].Score
+		}
+		return candidates[i].PublishedAt.After(candidates[j].PublishedAt)
+	})
+	if len(candidates) > limit {
+		candidates = candidates[:limit]
+	}
+	return candidates, nil
 }
 
 // PreKEVCandidates returns CVE -> distinct-source-count for CVEs mentioned in

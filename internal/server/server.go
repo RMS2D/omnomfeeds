@@ -1760,6 +1760,17 @@ var (
 
 const mitreLiveCacheTTL = 30 * time.Second
 
+// mitreArticleCache mirrors mitreLiveCache but for the per-technique article
+// modal. Articles change much more slowly than top-line counts so 5min TTL
+// is fine - the dashboard itself still polls /api/mitre/live every 30s for
+// the surge / fresh / critical signals.
+var (
+	mitreArticleCacheMu sync.Mutex
+	mitreArticleCache   = map[string]*mitreLiveCacheEntry{}
+)
+
+const mitreArticleCacheTTL = 5 * time.Minute
+
 // MitreLiveResponse is the JSON shape served at /api/mitre/live.
 type MitreLiveResponse struct {
 	GeneratedAt     string                  `json:"generated_at"`
@@ -2074,6 +2085,20 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 			limit = n
 		}
 	}
+	// Origin-side cache check. CF won't cache /api/*; this keeps repeat
+	// modal opens from re-running the expensive tag-LIKE scan.
+	cacheKey := fmt.Sprintf("%s|h=%d|l=%d", tid, hours, limit)
+	mitreArticleCacheMu.Lock()
+	if cached, ok := mitreArticleCache[cacheKey]; ok && time.Since(cached.at) < mitreArticleCacheTTL {
+		body := cached.body
+		mitreArticleCacheMu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "public, max-age=300")
+		w.Write(body)
+		return
+	}
+	mitreArticleCacheMu.Unlock()
+
 	articles, err := s.store.ArticlesForTechnique(tid, hours, limit)
 	if err != nil {
 		writeJSON(w, 400, map[string]string{"error": err.Error()})
@@ -2168,9 +2193,7 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Cache-Control", "public, max-age=60")
-	json.NewEncoder(w).Encode(map[string]any{
+	body, _ := json.Marshal(map[string]any{
 		"tid":           tid,
 		"name":          techName,
 		"url":           techURL,
@@ -2182,6 +2205,12 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 		"malware":       conv(coRefList(co, "malware")),
 		"subtechniques": subs,
 	})
+	mitreArticleCacheMu.Lock()
+	mitreArticleCache[cacheKey] = &mitreLiveCacheEntry{body: body, at: time.Now()}
+	mitreArticleCacheMu.Unlock()
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	w.Write(body)
 }
 
 // coRefList extracts one of the three co-mention lists, nil-safe.

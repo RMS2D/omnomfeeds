@@ -2151,10 +2151,10 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 		return out
 	}
 
-	// Sub-technique breakdown: if this is a parent technique (no dot in the
-	// TID), find its sub-techniques (TID.001, .002, ...) and grab their
-	// window counts from the same MitreRawCounts cache shape. Simpler: just
-	// list any sub-TIDs we know about from the ATT&CK map and report counts.
+	// Sub-technique breakdown: when this is a parent technique (no dot in
+	// the TID), count sub-TID mentions from the already-fetched article
+	// tags. Re-using the fetched data avoids a second tag-LIKE scan over
+	// the corpus; the cost is bounded by article tag count which is small.
 	type subTech struct {
 		TID            string `json:"tid"`
 		Name           string `json:"name"`
@@ -2162,35 +2162,28 @@ func (s *Server) handleMitreTechniqueArticles(w http.ResponseWriter, r *http.Req
 	}
 	var subs []subTech
 	if !strings.Contains(tid, ".") {
-		// Parent technique. Look up sub-techniques and their counts.
-		baselineDays := 30
-		if hours > 168 {
-			baselineDays = (hours / 24) * 2
-			if baselineDays > 180 {
-				baselineDays = 180
+		subCounts := map[string]int{}
+		prefix := tid + "."
+		for _, a := range articles {
+			for _, t := range a.Tags {
+				if strings.HasPrefix(t, prefix) {
+					subCounts[t]++
+				}
 			}
 		}
-		if raw, rerr := s.store.MitreRawCounts(hours, baselineDays); rerr == nil {
-			for childID, child := range s.enrich.MITRE {
-				if !child.IsSubTech {
-					continue
-				}
-				if !strings.HasPrefix(childID, tid+".") {
-					continue
-				}
-				count := raw.WindowCounts[childID]
-				if count == 0 {
-					continue
-				}
-				subs = append(subs, subTech{TID: childID, Name: child.Name, MentionsWindow: count})
+		for childID, n := range subCounts {
+			child := s.enrich.MITRE[childID]
+			if child == nil {
+				continue
 			}
-			sort.Slice(subs, func(i, j int) bool {
-				if subs[i].MentionsWindow != subs[j].MentionsWindow {
-					return subs[i].MentionsWindow > subs[j].MentionsWindow
-				}
-				return subs[i].TID < subs[j].TID
-			})
+			subs = append(subs, subTech{TID: childID, Name: child.Name, MentionsWindow: n})
 		}
+		sort.Slice(subs, func(i, j int) bool {
+			if subs[i].MentionsWindow != subs[j].MentionsWindow {
+				return subs[i].MentionsWindow > subs[j].MentionsWindow
+			}
+			return subs[i].TID < subs[j].TID
+		})
 	}
 
 	body, _ := json.Marshal(map[string]any{

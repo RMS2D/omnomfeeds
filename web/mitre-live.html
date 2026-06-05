@@ -348,6 +348,21 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
   color: var(--text-bright);
   letter-spacing: 0.3px;
 }
+.hot-strip .pill .pname {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--text);
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hot-strip .pill .sep {
+  color: var(--border-hi);
+  font-size: 10px;
+  margin: 0 1px;
+}
 .hot-strip .pill .mw {
   color: var(--accent);
   font-weight: 600;
@@ -1213,6 +1228,8 @@ function renderHotStrip(d) {
                  onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal('${esc(t.tid)}')}"
                  title="${esc(t.name)} - ${compactNum(t.mentions_window)} in window, ${compactNum(t.mentions_baseline)} in baseline">
       <span class="tid">${esc(t.tid)}</span>
+      <span class="pname">${esc(t.name)}</span>
+      <span class="sep">·</span>
       <span class="mw">${compactNum(t.mentions_window)}</span>
       ${extra}
     </a>`;

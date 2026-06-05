@@ -51,8 +51,15 @@ func New(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
+	// SQLite enforces single-writer at the engine level (the WAL takes care
+	// of that). The Go connection pool used to be pinned to 1 because of
+	// SQLITE_BUSY concerns; in practice that serialised every READ through
+	// one connection, so HTTP requests piled up behind the fetcher's
+	// inserts. WAL allows concurrent readers cleanly, so we let the pool
+	// open up to 8 connections - one will hold the writer when needed and
+	// the other 7 service reads in parallel.
+	db.SetMaxOpenConns(8)
+	db.SetMaxIdleConns(8)
 	db.SetConnMaxLifetime(0)
 	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
 		db.Close()

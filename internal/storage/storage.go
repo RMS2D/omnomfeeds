@@ -1286,10 +1286,12 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 	now := time.Now().UTC()
 	windowCutoff := now.Add(-time.Duration(windowHours) * time.Hour)
 	previousCutoff := now.Add(-time.Duration(2*windowHours) * time.Hour)
-	// Daily series anchors on today (UTC). Bucket 6 = today; bucket 0 =
-	// 6 days ago. Anything older than 6 days falls outside the sparkline
-	// (still counted in baseline).
-	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
+	// Sparkline series uses rolling 24h buckets ending NOW, not calendar
+	// days. Bucket 6 = last 24h, bucket 0 = 144-168h ago. Calendar-day
+	// bucketing made the final bucket a partial "today so far" which
+	// nose-dived every sparkline (looked like everything was crashing and
+	// contradicted the up/down delta). Rolling buckets are each a complete
+	// 24h window so the last point is comparable to the rest.
 	for rows.Next() {
 		var title, url, source, tagsJSON string
 		var score int
@@ -1326,10 +1328,11 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		publishedAtUTC := publishedAt.UTC()
 		inWindow := publishedAtUTC.After(windowCutoff)
 		inPrevious := !inWindow && publishedAtUTC.After(previousCutoff)
-		// Day delta from today (in days). 0 = today, 6 = 6 days ago. Negative
-		// = future (shouldn't happen but guarded), 7+ = out of sparkline range.
-		dayDelta := int(today.Sub(time.Date(publishedAtUTC.Year(), publishedAtUTC.Month(), publishedAtUTC.Day(), 0, 0, 0, 0, time.UTC)).Hours() / 24)
-		inSparkline := dayDelta >= 0 && dayDelta <= 6
+		// Rolling-24h bucket index. bucketsBack 0 = last 24h, 6 = 144-168h
+		// ago. Guard against clock skew producing a negative (future) value.
+		hoursAgo := now.Sub(publishedAtUTC).Hours()
+		bucketsBack := int(hoursAgo / 24)
+		inSparkline := bucketsBack >= 0 && bucketsBack <= 6
 		for _, tid := range tids {
 			out.BaselineCounts[tid]++
 			if inWindow {
@@ -1358,7 +1361,7 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 				if _, ok := out.DailyBuckets[tid]; !ok {
 					out.DailyBuckets[tid] = make([]int, 7)
 				}
-				out.DailyBuckets[tid][6-dayDelta]++
+				out.DailyBuckets[tid][6-bucketsBack]++
 			}
 			// rows come in newest-first; we record the FIRST occurrence per
 			// TID as "latest article" since that's the freshest mention.

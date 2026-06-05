@@ -1770,6 +1770,8 @@ type MitreLiveResponse struct {
 	DistinctTIDs    int                     `json:"distinct_tids"`
 	FreshCount      int                     `json:"fresh_count"`
 	SurgingCount    int                     `json:"surging_count"`
+	CriticalCount   int                     `json:"critical_count"`   // techniques with any critical article
+	KEVTouchedCount int                     `json:"kev_touched_count"` // techniques touched by any KEV-tagged article
 	Tactics         []MitreLiveTacticRow    `json:"tactics"`
 	Techniques      []MitreLiveTechniqueRow `json:"techniques"`
 	LatestMentions  []MitreLiveLatestRow    `json:"latest_mentions"`
@@ -1797,6 +1799,15 @@ type MitreLiveTechniqueRow struct {
 	SurgeRatio         float64 `json:"surge_ratio"`
 	IsFresh            bool    `json:"is_fresh"`
 	IsSurging          bool    `json:"is_surging"`
+	// Severity / "what's bad right now" fields. CriticalCount = articles
+	// in window with kev tag / 0day tag / actively-exploited / score >= 70.
+	CriticalCount      int    `json:"critical_count"`
+	KEVCount           int    `json:"kev_count"`
+	MaxScore           int    `json:"max_score"`
+	IsCritical         bool   `json:"is_critical"` // CriticalCount >= 1
+	CriticalArtTitle   string `json:"critical_article_title,omitempty"`
+	CriticalArtURL     string `json:"critical_article_url,omitempty"`
+	CriticalArtSource  string `json:"critical_article_source,omitempty"`
 	FirstSeenAt        string  `json:"first_seen_at"`
 	Spark              []int   `json:"spark"` // 7 daily counts, oldest -> newest
 	LatestArticleTitle string  `json:"latest_article_title"`
@@ -1940,6 +1951,10 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		case windowCount > 0:
 			deltaPct = 999 // sentinel for "infinite" - was zero, now non-zero
 		}
+		criticalCount := raw.CriticalCounts[tid]
+		kevCount := raw.KEVCounts[tid]
+		maxScore := raw.MaxScore[tid]
+		isCritical := criticalCount > 0
 		row := MitreLiveTechniqueRow{
 			TID:              tid,
 			Name:             t.Name,
@@ -1953,7 +1968,16 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 			SurgeRatio:       surge,
 			IsFresh:          isFresh,
 			IsSurging:        isSurging,
+			CriticalCount:    criticalCount,
+			KEVCount:         kevCount,
+			MaxScore:         maxScore,
+			IsCritical:       isCritical,
 			Spark:            raw.DailyBuckets[tid],
+		}
+		if sample := raw.CriticalSample[tid]; sample != nil {
+			row.CriticalArtTitle = sample.Title
+			row.CriticalArtURL = sample.URL
+			row.CriticalArtSource = sample.Source
 		}
 		if !first.IsZero() {
 			row.FirstSeenAt = first.Format(time.RFC3339)
@@ -1971,6 +1995,12 @@ func (s *Server) buildMitreLiveResponse(raw *storage.MitreRawCounts, hours, base
 		}
 		if isSurging {
 			resp.SurgingCount++
+		}
+		if isCritical {
+			resp.CriticalCount++
+		}
+		if kevCount > 0 {
+			resp.KEVTouchedCount++
 		}
 		if tactic != "" {
 			if agg, ok := tacticByID[tactic]; ok {

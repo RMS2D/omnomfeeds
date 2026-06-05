@@ -1207,6 +1207,13 @@ type MitreRawCounts struct {
 	FirstSeen      map[string]time.Time    // tid -> first time seen within baseline window
 	LatestArticle  map[string]*MitreArtRef // tid -> most recent article mentioning it
 	Latest         []MitreLatestMention    // newest 60 articles with any T-code (window only)
+	// Severity tracking: how many of the window's articles per TID are
+	// "world is going to break" class - kev-listed CVE co-tag, actively
+	// exploited tag, zero-day tag, or score >= 70.
+	CriticalCounts map[string]int             // tid -> article count meeting severity bar
+	KEVCounts      map[string]int             // tid -> article count with any kev:* tag
+	MaxScore       map[string]int             // tid -> highest score article in window
+	CriticalSample map[string]*MitreArtRef    // tid -> one representative critical article
 }
 
 // MitreArtRef is the trimmed article reference attached to each T-code.
@@ -1214,6 +1221,7 @@ type MitreArtRef struct {
 	Title       string
 	URL         string
 	Source      string
+	Score       int
 	PublishedAt time.Time
 }
 
@@ -1250,9 +1258,13 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 		DailyBuckets:   map[string][]int{},
 		FirstSeen:      map[string]time.Time{},
 		LatestArticle:  map[string]*MitreArtRef{},
+		CriticalCounts: map[string]int{},
+		KEVCounts:      map[string]int{},
+		MaxScore:       map[string]int{},
+		CriticalSample: map[string]*MitreArtRef{},
 	}
 	rows, err := s.db.Query(
-		`SELECT title, url, source, tags, published_at
+		`SELECT title, url, source, tags, score, published_at
 		   FROM articles
 		  WHERE published_at >= datetime('now', ?)
 		    AND duplicate_of IS NULL
@@ -1273,8 +1285,9 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 	today := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, time.UTC)
 	for rows.Next() {
 		var title, url, source, tagsJSON string
+		var score int
 		var publishedAt time.Time
-		if err := rows.Scan(&title, &url, &source, &tagsJSON, &publishedAt); err != nil {
+		if err := rows.Scan(&title, &url, &source, &tagsJSON, &score, &publishedAt); err != nil {
 			continue
 		}
 		var tags []string
@@ -1282,14 +1295,27 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 			continue
 		}
 		var tids []string
+		hasKEV := false
+		hasZeroDay := false
+		hasActivelyExploited := false
 		for _, t := range tags {
-			if ttpRe.MatchString(t) {
+			switch {
+			case ttpRe.MatchString(t):
 				tids = append(tids, t)
+			case strings.HasPrefix(t, "kev:"):
+				hasKEV = true
+			case t == "0day" || t == "zero-day":
+				hasZeroDay = true
+			case t == "actively exploited" || t == "actively-exploited":
+				hasActivelyExploited = true
 			}
 		}
 		if len(tids) == 0 {
 			continue
 		}
+		// Severity bar. Window-scope only - we don't care about baseline
+		// criticality for the "what's bad right now" feature.
+		isCritical := hasKEV || hasZeroDay || hasActivelyExploited || score >= 70
 		publishedAtUTC := publishedAt.UTC()
 		inWindow := publishedAtUTC.After(windowCutoff)
 		inPrevious := !inWindow && publishedAtUTC.After(previousCutoff)
@@ -1301,6 +1327,23 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 			out.BaselineCounts[tid]++
 			if inWindow {
 				out.WindowCounts[tid]++
+				if score > out.MaxScore[tid] {
+					out.MaxScore[tid] = score
+				}
+				if hasKEV {
+					out.KEVCounts[tid]++
+				}
+				if isCritical {
+					out.CriticalCounts[tid]++
+					// Keep one representative critical article per TID. Prefer
+					// the highest-score one we've seen so far.
+					if existing, ok := out.CriticalSample[tid]; !ok || score > existing.Score {
+						out.CriticalSample[tid] = &MitreArtRef{
+							Title: title, URL: url, Source: source,
+							PublishedAt: publishedAtUTC, Score: score,
+						}
+					}
+				}
 			} else if inPrevious {
 				out.PreviousCounts[tid]++
 			}
@@ -1314,7 +1357,7 @@ func (s *Store) MitreRawCounts(windowHours, baselineDays int) (*MitreRawCounts, 
 			// TID as "latest article" since that's the freshest mention.
 			if _, ok := out.LatestArticle[tid]; !ok {
 				out.LatestArticle[tid] = &MitreArtRef{
-					Title: title, URL: url, Source: source, PublishedAt: publishedAtUTC,
+					Title: title, URL: url, Source: source, PublishedAt: publishedAtUTC, Score: score,
 				}
 			}
 			// FirstSeen tracks the OLDEST occurrence in the baseline window.

@@ -233,6 +233,72 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
   margin-left: auto;
 }
 
+/* CRITICAL RIGHT NOW: severity-themed variant of the hot row. The eye should
+   land here BEFORE the surging band - "what's bad" outranks "what's moving". */
+.section-head.crit-head h2 { color: var(--score-crit); }
+.section-head.crit-head h2::before {
+  content: "⚠ ";
+  color: var(--score-crit);
+}
+.hot-row.crit-row .hot {
+  border: 1px solid var(--score-crit);
+  background: linear-gradient(135deg,
+    rgba(255, 77, 106, 0.08) 0%,
+    var(--bg-card) 60%,
+    rgba(255, 77, 106, 0.16) 100%);
+  box-shadow: 0 0 18px -4px rgba(255, 77, 106, 0.45);
+  animation: pulse-crit 2.8s ease-in-out infinite;
+}
+.hot-row.crit-row .hot:hover {
+  box-shadow: 0 0 28px -2px rgba(255, 77, 106, 0.65);
+}
+.hot-row.crit-row .hot-mw { color: var(--score-crit); text-shadow: 0 0 14px rgba(255, 77, 106, 0.5); }
+.hot-row.crit-row .hot-tid { text-shadow: 0 0 12px rgba(255, 77, 106, 0.35); }
+@keyframes pulse-crit {
+  0%, 100% { box-shadow: 0 0 14px -6px rgba(255, 77, 106, 0.4); }
+  50%      { box-shadow: 0 0 26px -2px rgba(255, 77, 106, 0.65); }
+}
+/* Severity badge cluster on each crit card */
+.crit-badges {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.crit-badges .b {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+.crit-badges .b.kev   { background: var(--score-crit); color: var(--text-bright); }
+.crit-badges .b.score { background: var(--accent); color: #0a0e14; }
+.crit-badges .b.crit  { background: rgba(255, 77, 106, 0.15); color: var(--score-crit); border: 1px solid rgba(255, 77, 106, 0.45); }
+
+/* Tech-card severity flag in the kill chain - subtle red dot when the
+   technique has any critical mention */
+.tech .crit-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  background: var(--score-crit);
+  border-radius: 50%;
+  margin-right: 4px;
+  box-shadow: 0 0 6px rgba(255, 77, 106, 0.7);
+  animation: pulse-crit-dot 2s ease-in-out infinite;
+  vertical-align: middle;
+}
+@keyframes pulse-crit-dot {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.5; }
+}
+
 /* Hot-right-now: the featured surging/fresh band above the kill chain. Larger
    cards than the per-tactic grid so the operator's eye lands here first. */
 .hot-row {
@@ -801,19 +867,19 @@ footer a:hover { color: var(--accent); }
       <div class="sub" id="kWindowSub">across all techniques</div>
     </div>
     <div class="status-card">
-      <div class="label">Distinct techniques</div>
-      <div class="value cyan" id="kDistinct">-</div>
-      <div class="sub">at least 1 mention in baseline</div>
+      <div class="label">Critical</div>
+      <div class="value crit" id="kCritical">-</div>
+      <div class="sub">techs touched by KEV / 0day / score &ge;70</div>
     </div>
     <div class="status-card">
       <div class="label">Surging</div>
-      <div class="value crit" id="kSurging">-</div>
+      <div class="value amber" id="kSurging">-</div>
       <div class="sub">&ge;3x baseline rate, &ge;3 mentions</div>
     </div>
     <div class="status-card">
-      <div class="label">Fresh</div>
-      <div class="value amber" id="kFresh">-</div>
-      <div class="sub">first seen in last 7 days</div>
+      <div class="label">Distinct techniques</div>
+      <div class="value cyan" id="kDistinct">-</div>
+      <div class="sub">at least 1 mention in baseline</div>
     </div>
   </div>
 
@@ -828,9 +894,17 @@ footer a:hover { color: var(--accent); }
     <button class="btn export-btn" id="exportBtn" title="download current view as an ATT&CK Navigator v4.5 layer JSON">&#x2193; navigator layer</button>
   </div>
 
+  <div class="section-head crit-head">
+    <h2>:: critical right now ::</h2>
+    <span class="hint">techniques touched by KEV-listed CVEs, 0-day reports, "actively exploited" tags, or score &ge;70 articles in this window. click to drill in.</span>
+  </div>
+  <div class="hot-row crit-row" id="criticalRow">
+    <div class="empty-pane">loading...</div>
+  </div>
+
   <div class="section-head">
     <h2>:: hot right now ::</h2>
-    <span class="hint">surging or fresh techniques across the corpus, regardless of tactic. click to open the latest article.</span>
+    <span class="hint">surging or fresh techniques across the corpus, regardless of tactic. click to drill in.</span>
   </div>
   <div class="hot-row" id="hotRow">
     <div class="empty-pane">loading...</div>
@@ -948,6 +1022,7 @@ async function load() {
     LAST_TECH_MAP = {};
     for (const t of (d.techniques || [])) LAST_TECH_MAP[t.tid] = t;
     renderStats(d);
+    renderCriticalRow(d);
     renderHotRow(d);
     renderKillChain(d);
     renderOther(d);
@@ -959,15 +1034,65 @@ async function load() {
 }
 
 function renderError(msg) {
-  document.getElementById('killChain').innerHTML = '<div class="empty-pane">' + esc(msg) + '</div>';
-  document.getElementById('hotRow').innerHTML   = '<div class="empty-pane">' + esc(msg) + '</div>';
+  document.getElementById('killChain').innerHTML    = '<div class="empty-pane">' + esc(msg) + '</div>';
+  document.getElementById('hotRow').innerHTML       = '<div class="empty-pane">' + esc(msg) + '</div>';
+  document.getElementById('criticalRow').innerHTML  = '<div class="empty-pane">' + esc(msg) + '</div>';
+}
+
+// renderCriticalRow surfaces the techniques tied to KEV-listed CVEs / 0-day
+// reports / actively-exploited tags / score>=70 articles. Sorted by
+// critical_count desc, then KEV count desc, then max_score desc. Cap at 6
+// so the band stays visually punchy.
+function renderCriticalRow(d) {
+  const root = document.getElementById('criticalRow');
+  const crit = (d.techniques || [])
+    .filter(t => t.is_critical)
+    .sort((a, b) => {
+      if (a.critical_count !== b.critical_count) return b.critical_count - a.critical_count;
+      if (a.kev_count !== b.kev_count) return b.kev_count - a.kev_count;
+      return (b.max_score || 0) - (a.max_score || 0);
+    })
+    .slice(0, 6);
+  if (crit.length === 0) {
+    root.innerHTML = '<div class="empty-pane">no critical-severity technique mentions in this window. ATT&CK matrix running at routine intensity.</div>';
+    return;
+  }
+  let html = '';
+  for (const t of crit) {
+    const tacticLabel = t.tactic_display || 'ungrouped';
+    let badges = '<div class="crit-badges">';
+    if (t.kev_count > 0) badges += `<span class="b kev">KEV ${t.kev_count}</span>`;
+    if (t.max_score >= 70) badges += `<span class="b score">SCORE ${t.max_score}</span>`;
+    badges += `<span class="b crit">${t.critical_count} CRITICAL</span>`;
+    badges += '</div>';
+    const sub = t.critical_article_title
+      ? `<div class="hot-name" style="margin-top:8px; color:var(--text-dim); font-size:11.5px;">→ ${esc(t.critical_article_title)}</div>`
+      : '';
+    html += `
+      <div class="hot is-surging" role="button" tabindex="0"
+           onclick="openModal('${esc(t.tid)}')"
+           onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal('${esc(t.tid)}')}">
+        <div class="hot-head">
+          <span class="hot-tid">${esc(t.tid)}</span>
+          <span class="count-wrap"><span class="hot-mw">${compactNum(t.mentions_window)}</span></span>
+        </div>
+        <div class="hot-name">${esc(t.name)}</div>
+        <div class="hot-meta">
+          <span class="hot-tactic">${esc(tacticLabel)}</span>
+          <span>${compactNum(t.mentions_baseline)} in baseline</span>
+        </div>
+        ${badges}
+        ${sub}
+      </div>`;
+  }
+  root.innerHTML = html;
 }
 
 function renderStats(d) {
   document.getElementById('kWindowTotal').textContent = fmt(d.window_total);
   document.getElementById('kDistinct').textContent    = fmt(d.distinct_tids);
   document.getElementById('kSurging').textContent     = fmt(d.surging_count);
-  document.getElementById('kFresh').textContent       = fmt(d.fresh_count);
+  document.getElementById('kCritical').textContent    = fmt(d.critical_count || 0);
   document.getElementById('kWindowSub').textContent   = 'across all techniques in last ' + d.window_hours + 'h';
 }
 
@@ -1138,7 +1263,7 @@ function techCard(t) {
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openModal('${esc(t.tid)}')}"
          title="${esc(t.name)} - ${fmt(t.mentions_window)} in window (prev ${fmt(t.mentions_previous || 0)}), ${fmt(t.mentions_baseline)} in baseline">
       <div class="tech-head">
-        <span class="tid">${esc(t.tid)}</span>
+        <span class="tid">${t.is_critical ? '<span class="crit-dot" title="critical-severity article in window"></span>' : ''}${esc(t.tid)}</span>
         <span class="count-wrap"><span class="count">${compactNum(t.mentions_window)}</span>${delta}</span>
       </div>
       <div class="name">${esc(t.name)}</div>
@@ -1202,8 +1327,14 @@ function renderModalArticles(d) {
     body.innerHTML = '<div class="empty-pane">no articles in this window yet. extend the time range to see more.</div>';
     return;
   }
+  // Sort articles by score desc so the "world is going to break" stuff lands
+  // first. Same-score ties broken by recency.
+  const sorted = (d.articles || []).slice().sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    return (b.published_at || '').localeCompare(a.published_at || '');
+  });
   let html = '';
-  for (const a of d.articles) {
+  for (const a of sorted) {
     const scoreClass = a.score >= 60 ? 'high' : (a.score >= 30 ? 'mid' : 'lo');
     const when = relTime(a.published_at);
     html += `
@@ -1222,8 +1353,8 @@ function renderModalArticles(d) {
         </div>
       </a>`;
   }
-  if (d.articles.length >= 100) {
-    html += `<div class="empty-pane">showing first 100. <a href="/app?search=${encodeURIComponent(d.tid)}" target="_blank">open the reader filtered to ${esc(d.tid)}</a> for the full set.</div>`;
+  if (sorted.length >= 100) {
+    html += `<div class="empty-pane">showing first 100, sorted by score. <a href="/app?search=${encodeURIComponent(d.tid)}" target="_blank">open the reader filtered to ${esc(d.tid)}</a> for the full set.</div>`;
   }
   body.innerHTML = html;
 }

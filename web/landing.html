@@ -3,1677 +3,263 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>oM noM Security Feeds</title>
-<link rel="icon" type="image/svg+xml" href="/favicon.svg">
-<link rel="alternate icon" href="/favicon.svg">
-<link rel="alternate" type="application/rss+xml" title="oM noM Security Feeds - High signal" href="/feed.xml">
-<meta name="description" content="A keyboard-driven security news reader. Pulls 50+ RSS, Reddit, Bluesky, Mastodon, and GitHub Advisories sources. Scores against MITRE ATT&amp;CK + CISA KEV. $10/mo Pro adds AI brief, semantic dedup, KEV webhook alerts, REST API tokens, and asset-profile highlighting.">
-<!-- Open Graph + Twitter / Bluesky preview -->
-<meta property="og:type" content="website">
-<meta property="og:url" content="https://omnomfeeds.com/">
-<meta property="og:title" content="oM noM Security Feeds - a worm that eats your security feeds">
-<meta property="og:description" content="50+ curated security sources, MITRE ATT&amp;CK + CISA KEV scoring, AI-augmented daily brief, KEV webhook alerts. $10/mo founder pricing.">
-<meta property="og:image" content="https://omnomfeeds.com/og-cover.png">
-<meta property="og:image:type" content="image/png">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="oM noM Security Feeds - a worm with teeth above the wordmark">
-<meta property="og:site_name" content="oM noM Security Feeds">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="oM noM Security Feeds">
-<meta name="twitter:description" content="50+ curated security sources, MITRE ATT&amp;CK + CISA KEV scoring, AI-augmented daily brief. $10/mo.">
-<meta name="twitter:image" content="https://omnomfeeds.com/og-cover.png">
 <meta name="description" content="A worm that eats your security feeds. Self-host free or use the hosted version with stack-aware CVE prioritization, threat actor follow, KEV webhook alerts, and managed AI briefs.">
-<meta property="og:title" content="oM noM Security Feeds">
-<meta property="og:description" content="A keyboard-driven security news terminal. Self-host free, or $10/mo for managed Pro with stack-aware CVE alerts.">
-<meta property="og:type" content="website">
+<title>oM noM Security Feeds - a worm that eats your security feeds</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0a0e14;
-  --bg-card: #14191f;
-  --bg-card-hi: #1a212a;
-  --border: #2a3340;
-  --border-hi: #3a4555;
-  --text: #e6ecf5;
-  --text-dim: #b8c4d4;
-  --text-bright: #ffffff;
-  --accent: #00e5a0;
-  --accent-cyan: #56e2ff;
-  --accent-amber: #ffb547;
-  --score-crit: #ff4d6a;
+  --bg:#15171c; --panel:#181b21; --row:#1b1e25; --border:#2b3039; --bhi:#3b424d;
+  --text:#e9ebf0; --dim:#8d93a0; --faint:#5d636e; --bright:#ffffff;
+  --accent:#2dd49c; --accent-hi:#54e3b4; --crit:#ff5d6e; --warn:#f0b552;
+  --elev: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
 }
-html, body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.6;
-  min-height: 100vh;
-}
-a { color: var(--accent-cyan); text-decoration: none; }
-a:hover { color: var(--accent); }
-code, pre, .mono { font-family: 'JetBrains Mono', monospace; }
+html,body { background: var(--bg); color: var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px; line-height:1.55; min-height:100vh; font-variant-numeric: tabular-nums; }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.022; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+a { color: var(--accent); text-decoration: none; }
+.mono { font-family:'JetBrains Mono',monospace; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
-* { scrollbar-width: thin; scrollbar-color: rgba(86,226,255,0.25) transparent; }
-*::-webkit-scrollbar { width: 8px; height: 8px; }
-*::-webkit-scrollbar-thumb { background: rgba(86,226,255,0.18); border-radius: 4px; }
-*::-webkit-scrollbar-thumb:hover { background: rgba(86,226,255,0.45); }
+.page { max-width: 980px; margin: 0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--bg) 320px); position:relative; z-index:1; min-height:100vh; }
 
-.wrap {
-  max-width: 980px;
-  margin: 0 auto;
-  padding: 32px 24px 80px;
+/* spine row: continuous left gutter + content */
+.row { display:flex; align-items:stretch; }
+.row > .gut { width:50px; flex-shrink:0; border-right:1px solid var(--border); display:flex; align-items:flex-start; justify-content:center; padding-top:14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--faint); }
+.row > .main { flex:1; min-width:0; }
+.rule { border-bottom:1px solid var(--border); }
+
+.worm { width:28px; height:22px; }
+.worm .seg, .worm .head { fill: var(--accent); }
+.worm .seg.s3 { opacity:0.35; } .worm .seg.s2 { opacity:0.6; } .worm .seg.s1 { opacity:0.85; }
+.worm .eye, .worm .mouth { fill: var(--bg); } .worm .glint { fill: var(--bright); }
+@media (prefers-reduced-motion: no-preference) {
+  #brandWorm { animation: bob 3.4s ease-in-out infinite; transform-origin:center; }
+  #brandWorm.chomp .mouth { animation: chomp 0.5s ease-out; transform-origin:28px 14.5px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+  @keyframes chomp { 0%,100%{transform:scaleY(0.5)} 40%{transform:scaleY(1.7) scaleX(0.9)} }
 }
 
-header {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding-bottom: 22px;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 56px;
-}
-header .header-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-/* Bottom row: pro CTA on left, primary + secondary nav on right. */
-header .header-row.bottom {
-  padding-top: 4px;
-  gap: 18px;
-}
-header .brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-/* SVG worm logo. Replaces the ASCII ~~~_o) sprite with a small dimensional
-   creature: 3 body segments + head + eye + glint + mouth. Inherits mood
-   from body[data-worm-mood] so it shifts colour/speed with KEV velocity. */
-header .brand .worm-logo {
-  width: 36px;
-  height: 28px;
-  flex-shrink: 0;
-  animation: worm-bob 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 0 6px rgba(0,229,160,0.35));
-}
-header .brand .worm-logo .seg,
-header .brand .worm-logo .head { fill: var(--accent); }
-header .brand .worm-logo .seg.s3 { opacity: 0.35; }
-header .brand .worm-logo .seg.s2 { opacity: 0.6; }
-header .brand .worm-logo .seg.s1 { opacity: 0.85; }
-header .brand .worm-logo .eye   { fill: var(--bg); }
-header .brand .worm-logo .glint { fill: var(--accent-cyan); }
-header .brand .worm-logo .mouth { fill: var(--bg); }
-@keyframes worm-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1.5px); }
-}
-/* Brand wordmark - "oM noM" is the quirky proper noun, "SECURITY FEEDS"
-   sits underneath as a small tracked subtitle. Reads as a masthead instead
-   of a single inline string. */
-header .brand .brand-text {
-  display: inline-flex; flex-direction: column;
-  line-height: 1.05; gap: 2px;
-}
-header .brand .brand-primary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--text-bright);
-  letter-spacing: -0.4px;
-}
-header .brand .brand-primary .ny  { color: var(--text-bright); }
-header .brand .brand-primary .cap { color: var(--accent); }
-header .brand .brand-secondary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  font-weight: 500;
-  color: var(--text-dim);
-  letter-spacing: 2.4px;
-  text-transform: uppercase;
-}
+/* status-line header */
+.statusbar { display:flex; align-items:center; gap:12px; padding:13px 20px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+.statusbar .bd { color:var(--bright); font-weight:600; letter-spacing:0.2px; }
+.statusbar nav { display:flex; gap:16px; margin-left:8px; }
+.statusbar nav a { color:var(--dim); font-size:11.5px; padding-bottom:2px; border-bottom:1px solid transparent; }
+.statusbar nav a:hover { color:var(--text); border-bottom-color:var(--bhi); }
+.statusbar nav a.cur { color:var(--bright); border-bottom-color:var(--accent); }
+.statusbar .grow { flex:1; border-bottom:1px dotted var(--border); height:1px; transform:translateY(-2px); min-width:20px; }
+.statusbar .nom { color:var(--dim); } .statusbar .nom b { color:var(--accent); font-weight:600; }
+.statusbar .signin { color:var(--accent); }
 
-/* ── Worm mood states ───────────────────────────────────────────────
-   Driven by body[data-worm-mood] set by the /api/worm/mood poller.
-   Each mood retints the header brand worm AND the honest-mark worm
-   so the "vibe" of the landing matches threat conditions:
-     - hibernating: no KEV in 24h, dim + slow drowsy bob
-     - eating: 1-2 KEV in 24h, normal (no override)
-     - frenzy: 3+ KEV in 24h, amber/red + faster jittery bob
-*/
-/* Mood overrides apply to BOTH the SVG header logo and the .honest-mark
-   text worm further down the page so the page's worm avatars stay in
-   sync visually. */
-body[data-worm-mood="hibernating"] header .brand .worm-logo {
-  filter: drop-shadow(0 0 4px rgba(90,138,114,0.22));
-  opacity: 0.7;
-  animation: worm-snooze 5s ease-in-out infinite;
-}
-body[data-worm-mood="hibernating"] header .brand .worm-logo .seg,
-body[data-worm-mood="hibernating"] header .brand .worm-logo .head { fill: #5a8a72; }
-body[data-worm-mood="frenzy"] header .brand .worm-logo {
-  filter: drop-shadow(0 0 8px rgba(255,181,71,0.5)) drop-shadow(0 0 16px rgba(255,110,110,0.3));
-  animation: worm-frenzy 0.55s ease-in-out infinite;
-}
-body[data-worm-mood="frenzy"] header .brand .worm-logo .seg,
-body[data-worm-mood="frenzy"] header .brand .worm-logo .head { fill: var(--accent-amber); }
-body[data-worm-mood="frenzy"] header .brand .worm-logo .glint { fill: var(--accent-amber); }
-/* honest-mark mood overrides moved next to the .honest-mark SVG-fill rules above */
-@keyframes worm-snooze {
-  0%, 100% { opacity: 0.55; transform: translateY(0); }
-  50%      { opacity: 0.75; transform: translateY(-0.5px); }
-}
-@keyframes worm-frenzy {
-  0%, 100% { transform: translateX(0) rotate(0); }
-  25%      { transform: translateX(1.5px) rotate(-3deg); }
-  75%      { transform: translateX(-1.5px) rotate(3deg); }
-}
-/* Top-right CTA cluster: the TRENDING CVES + PRE-KEV WATCH live pills.
-   Grouped so the eye reads them as a single live-data block. */
-.top-cta-cluster {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-}
+/* hero */
+.hero { padding:54px 20px 44px; }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(30px,5vw,52px); font-weight:700; letter-spacing:-0.02em; line-height:1.04; color:var(--bright); display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.hero h1 .wm-wrap { display:inline-flex; align-items:center; }
+.hero h1 .hw { width:46px; height:36px; }
+.hero h1 em { color:var(--accent); font-style:normal; }
+.hero .sub { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--dim); margin-top:18px; max-width:60ch; line-height:1.6; }
+.hero .cta { display:flex; gap:14px; margin-top:26px; flex-wrap:wrap; }
+.btn { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; padding:10px 18px; cursor:pointer; letter-spacing:0.2px; border:1px solid var(--accent); }
+.btn.pri { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+.btn.pri:hover { background:var(--accent-hi); border-color:var(--accent-hi); }
+.btn.sec { background:transparent; color:var(--accent); }
+.btn.sec:hover { background:color-mix(in srgb,var(--accent) 10%,transparent); }
 
-/* Two-tier nav layout.
-   - Primary nav (features, pricing) uses the body sans-serif at a
-     brighter colour - these are the "marketing surface" anchors the
-     visitor came for.
-   - Secondary nav (install, github) stays monospace dim - dev / tech
-     links, deliberately quieter. */
-.nav-cluster {
-  display: flex; align-items: center; gap: 22px;
-  flex-wrap: wrap;
-}
-.nav-primary {
-  display: flex; align-items: center; gap: 18px;
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 14px; font-weight: 500;
-}
-.nav-primary a {
-  color: var(--text);
-  text-decoration: none;
-  position: relative;
-  padding: 2px 0;
-  transition: color 0.14s ease;
-}
-.nav-primary a::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -3px;
-  height: 1px;
-  background: var(--accent-cyan);
-  transform: scaleX(0);
-  transform-origin: left center;
-  transition: transform 0.18s ease;
-}
-.nav-primary a:hover { color: var(--text-bright); }
-.nav-primary a:hover::after { transform: scaleX(1); }
-.nav-secondary {
-  display: flex; align-items: center; gap: 14px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.3px;
-}
-.nav-secondary a { color: var(--text-dim); text-decoration: none; transition: color 0.14s ease; }
-.nav-secondary a:hover { color: var(--accent-cyan); }
-.nav-sep-vert {
-  width: 1px; height: 12px;
-  background: var(--border);
-  display: inline-block;
-}
-header .live-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  background: rgba(0,229,160,0.08);
-  border: 1px solid rgba(0,229,160,0.4);
-  padding: 4px 11px;
-  border-radius: 2px;
-  text-transform: uppercase;
-  text-decoration: none;
-  transition: background 0.14s ease, box-shadow 0.14s ease;
-}
-header .live-link:hover {
-  background: rgba(0,229,160,0.18);
-  color: var(--text-bright);
-  box-shadow: 0 0 12px rgba(0,229,160,0.3);
-}
-header .live-dot {
-  width: 6px; height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 6px rgba(0,229,160,0.7);
-  animation: live-pulse 1.4s ease-in-out infinite;
-}
-@keyframes live-pulse {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.35; transform: scale(0.85); }
-}
-header .pro-link {
-  color: #c1abff;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.3px;
-  background: rgba(124,77,255,0.08);
-  border: 1px solid rgba(124,77,255,0.4);
-  padding: 4px 11px;
-  border-radius: 2px;
-  text-transform: uppercase;
-  text-decoration: none;
-  box-shadow: 0 0 10px rgba(124,77,255,0.18), 0 0 22px rgba(124,77,255,0.10);
-  transition: background 0.14s ease, box-shadow 0.14s ease, color 0.14s ease;
-}
-header .pro-link:hover {
-  background: rgba(124,77,255,0.18);
-  color: var(--text-bright);
-  box-shadow: 0 0 14px rgba(124,77,255,0.32), 0 0 28px rgba(124,77,255,0.14);
-}
+/* stats ledger (masthead) */
+.statledger { display:flex; flex-wrap:wrap; gap:0; opacity:0; transition:opacity .4s; }
+.statledger.ready { opacity:1; }
+.statledger .s { flex:1; min-width:120px; padding:16px 20px; border-right:1px solid var(--border); border-top:1px solid var(--border); }
+.statledger .s .n { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; color:var(--bright); letter-spacing:-0.5px; line-height:1; }
+.statledger .s .l { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); margin-top:6px; letter-spacing:0.3px; }
 
-.hero {
-  text-align: center;
-  margin-bottom: 72px;
-}
+/* inline-label rule */
+.seclabel { display:flex; align-items:center; gap:12px; padding:30px 20px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.seclabel .c { color:var(--faint); }
+.seclabel .ext { flex:1; border-bottom:1px solid var(--border); height:1px; }
+.prose { padding:0 20px 18px; }
+.prose p { color:var(--dim); font-size:14px; max-width:68ch; margin-bottom:12px; }
+.prose p.lead { color:var(--text); font-size:15px; }
+.prose b { color:var(--text); }
 
-/* ── Hero long-crawl-and-chomp interaction ───────────────────────────
-   Worm spawns under "A worm" (way to the left of the wrap), crawls
-   slowly along the baseline toward "eats" over ~6s with subtle Y-bob,
-   pauses at the word, opens mouth, chomps the whole word at once
-   (scaleX from 1 → 0 anchored left), chews, walks off to the right,
-   disappears. Word respawns. Brief pause. Loop.
-   Total cycle: 12s.
-*/
-.hero-eats-wrap {
-  position: relative;
-  display: inline-block;
-  vertical-align: baseline;
-}
-.hero-worm {
-  position: absolute;
-  left: 0;
-  bottom: -14px;          /* sits underneath the text baseline */
-  width: 48px; height: 36px;
-  opacity: 0;
-  /* Head leads - scale pulse anchors at the head end so the body squishes
-     toward the head and extends back from it. Real inchworm peristalsis. */
-  transform-origin: right center;
-  translate: -280px 0;    /* start way to the left, under "A worm" */
-  scale: 1 1;
-  filter: drop-shadow(0 0 9px rgba(0,229,160,0.55));
-  /* Two stacked animations: smooth horizontal translate (no Y bob, no
-     stepped feeling), plus a separate continuous scaleX pulse that
-     mimics body contraction/extension. They run on independent timing
-     functions so the gait reads as organic rather than mechanical. */
-  animation:
-    hero-worm-walk  12s linear        0.6s infinite,
-    hero-worm-pulse 0.85s ease-in-out 0.6s infinite;
-  pointer-events: none;
-}
-.hero-worm .seg, .hero-worm .head { fill: var(--accent); }
-.hero-worm .seg.s3 { opacity: 0.35; }
-.hero-worm .seg.s2 { opacity: 0.6; }
-.hero-worm .seg.s1 { opacity: 0.85; }
-.hero-worm .eye {
-  fill: var(--bg);
-  transform-origin: 25px 11px;
-  animation: hero-worm-blink 3.2s ease-in-out infinite;
-}
-.hero-worm .glint { fill: var(--accent-cyan); }
-.hero-worm .mouth {
-  fill: var(--bg);
-  transform-origin: 28px 14.5px;
-  animation: hero-worm-mouth 12s linear 0.6s infinite;
-}
-/* Teeth: pale fang colour, scaleY 0 by default (invisible), grow into
-   the open mouth at each chomp. transform-box: fill-box anchors each
-   tooth's transform-origin at its own bounding box so top teeth grow
-   downward from the gum line and bottom teeth grow upward. */
-.hero-worm .tooth {
-  fill: #f3ecd9;            /* warm cream - reads as fang under glow */
-  transform-box: fill-box;
-  transform: scaleY(0);
-  animation: hero-worm-teeth 12s linear 0.6s infinite;
-}
-.hero-worm .tooth.top { transform-origin: center top; }
-.hero-worm .tooth.bot { transform-origin: center bottom; }
-/* Bottom teeth offset slightly so they chomp visibly off-phase with
-   the top fangs - tiny detail but adds menace. */
-.hero-worm .tooth.bot { animation-delay: 0.65s; }
+/* features ledger */
+.feat { display:flex; gap:16px; padding:14px 20px; border-top:1px solid var(--row); }
+.feat .fn { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--bright); font-weight:600; width:230px; flex-shrink:0; }
+.feat .fd { color:var(--dim); font-size:13px; line-height:1.55; }
+.feat .fd a { color:var(--accent); }
+@media (max-width:680px){ .feat{flex-direction:column;gap:5px} .feat .fn{width:auto} }
 
-/* Horizontal motion + opacity only. No bob. translateX interpolates
-   smoothly between waypoints. The worm now CROSSES through the word,
-   eating one letter at each stop:
-     46%   mouth lands on "e"  -> e vanishes (handled by .l-e keyframe)
-     53%   mouth lands on "a"  -> a vanishes
-     60%   mouth lands on "t"  -> t vanishes
-     67%   mouth lands on "s"  -> s vanishes
-   Then walks off the right edge. */
-@keyframes hero-worm-walk {
-  0%,  3%  { opacity: 0; translate: -280px 0; }
-  5%       { opacity: 1; translate: -280px 0; }
-  44%      { opacity: 1; translate: -28px 0; }    /* arriving at "e" */
-  47%      { opacity: 1; translate: -18px 0; }    /* mouth chomping "e" */
-  52%      { opacity: 1; translate: -2px 0; }     /* mouth chomping "a" */
-  54%      { opacity: 1; translate: 4px 0; }
-  59%      { opacity: 1; translate: 22px 0; }     /* mouth chomping "t" */
-  61%      { opacity: 1; translate: 30px 0; }
-  66%      { opacity: 1; translate: 44px 0; }     /* mouth chomping "s" */
-  68%      { opacity: 1; translate: 52px 0; }
-  78%      { opacity: 1; translate: 92px 0; }     /* walking off */
-  88%      { opacity: 1; translate: 140px 0; }
-  93%      { opacity: 0; translate: 170px 0; }
-  100%     { opacity: 0; translate: 170px 0; }
-}
-/* Body pulse: subtle inchworm compression. Runs at 0.85s so the worm
-   "breathes" ~6 times during the crawl portion of the 12s cycle. */
-@keyframes hero-worm-pulse {
-  0%, 100% { scale: 1 1; }
-  50%      { scale: 0.87 1.05; }
-}
-@keyframes hero-worm-blink {
-  0%, 88%, 100% { transform: scaleY(1); }
-  93%, 97%      { transform: scaleY(0.05); }
-}
-@keyframes hero-worm-mouth {
-  /* Idle nibble during the long crawl in. */
-  0%, 44% { transform: scaleY(0.4); }
-  8%, 18%, 28%, 38%  { transform: scaleY(1.0); }
-  /* Four big chomps - one per letter. Each: gape WIDE, then snap shut. */
-  46%     { transform: scaleY(2.4); }    /* gape over "e" */
-  48%     { transform: scaleY(0.15); }   /* snap on "e" */
-  53%     { transform: scaleY(2.4); }    /* gape over "a" */
-  55%     { transform: scaleY(0.15); }   /* snap on "a" */
-  60%     { transform: scaleY(2.4); }    /* gape over "t" */
-  62%     { transform: scaleY(0.15); }   /* snap on "t" */
-  67%     { transform: scaleY(2.4); }    /* gape over "s" */
-  69%     { transform: scaleY(0.15); }   /* snap on "s" */
-  /* Walking-off nibble after the full word is eaten. */
-  74%, 84%, 94% { transform: scaleY(0.4); }
-  78%, 88%      { transform: scaleY(1.0); }
-  100%          { transform: scaleY(0.4); }
-}
-/* Teeth keyframes - synced to the four chomp moments. Each tooth
-   grows scaleY 0 -> 1 just BEFORE the mouth gapes (anticipation),
-   stays full through the gape, then snaps to scaleY 0 with the mouth
-   snap-shut. Hidden the rest of the cycle. */
-@keyframes hero-worm-teeth {
-  0%, 44%, 49%, 50%, 56%, 57%, 63%, 64%, 70%, 100% { transform: scaleY(0); }
-  45%, 47% { transform: scaleY(1); }     /* "e" chomp */
-  52%, 54% { transform: scaleY(1); }     /* "a" chomp */
-  59%, 61% { transform: scaleY(1); }     /* "t" chomp */
-  66%, 68% { transform: scaleY(1); }     /* "s" chomp */
-}
+/* pricing - sharp panels, Pro reticled */
+.tiers { display:grid; grid-template-columns:repeat(3,1fr); gap:0; border-top:1px solid var(--border); }
+.tier { padding:20px; border-right:1px solid var(--border); position:relative; }
+.tier:last-child { border-right:none; }
+.tier.pro { background:color-mix(in srgb,var(--accent) 5%,transparent); }
+.tier.pro .cn { position:absolute; width:12px; height:12px; border:0 solid var(--accent); }
+.tier.pro .tl{top:0;left:0;border-top-width:1.5px;border-left-width:1.5px;}
+.tier.pro .tr{top:0;right:0;border-top-width:1.5px;border-right-width:1.5px;}
+.tier.pro .bl{bottom:0;left:0;border-bottom-width:1.5px;border-left-width:1.5px;}
+.tier.pro .br{bottom:0;right:0;border-bottom-width:1.5px;border-right-width:1.5px;}
+.tier .flag { font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; color:var(--accent); text-transform:uppercase; }
+.tier .tn { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--bright); font-weight:600; margin-top:6px; }
+.tier .tp { font-family:'JetBrains Mono',monospace; font-size:28px; color:var(--bright); font-weight:700; margin-top:8px; letter-spacing:-1px; }
+.tier .tp .per { font-size:11px; color:var(--dim); font-weight:400; letter-spacing:0; }
+.tier .tpitch { font-size:12.5px; color:var(--dim); margin-top:10px; line-height:1.5; min-height:62px; }
+.tier .tcta { margin:14px 0; }
+.tier ul { list-style:none; }
+.tier ul li { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); padding:3px 0 3px 14px; position:relative; }
+.tier ul li::before { content:"+"; position:absolute; left:0; color:var(--accent); }
+.tier ul li.h { color:var(--text); margin-top:4px; }
+@media (max-width:760px){ .tiers{grid-template-columns:1fr} .tier{border-right:none;border-bottom:1px solid var(--border)} }
 
-.hero-eats {
-  position: relative;
-  display: inline-block;
-  color: var(--accent);
-  text-shadow: 0 0 18px rgba(0,229,160,0.5);
-}
-/* Each letter is its own inline-block with a transform-anchored bite
-   animation. Letter snaps to scaleY=0 + blur at its bite frame, stays
-   gone until the cycle resets at 95%. transform-origin: center bottom
-   so each letter collapses INTO the baseline (toward the worm's
-   mouth) rather than shrinking from the top. */
-.hero-eats .ltr {
-  display: inline-block;
-  transform-origin: center bottom;
-  animation-duration: 12s;
-  animation-timing-function: ease-in-out;
-  animation-delay: 0.6s;
-  animation-iteration-count: infinite;
-}
-.hero-eats .l-e { animation-name: hero-letter-e; }
-.hero-eats .l-a { animation-name: hero-letter-a; }
-.hero-eats .l-t { animation-name: hero-letter-t; }
-.hero-eats .l-s { animation-name: hero-letter-s; }
+/* install terminal block */
+.install { padding:6px 20px 22px; }
+.cmd { font-family:'JetBrains Mono',monospace; font-size:12.5px; background:var(--bg); border:1px solid var(--border); border-left:2px solid var(--accent); padding:10px 14px; margin:8px 0; color:var(--text); overflow-x:auto; }
+.cmd .p { color:var(--faint); }
+.install .lab { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--faint); text-transform:uppercase; letter-spacing:0.5px; margin-top:12px; }
 
-/* Each letter shares the same vanish shape - just shifted in time so
-   it lands at the moment the worm's mouth crosses it. About a 2%
-   distortion window before the snap, then it's gone. All four
-   respawn together at 95-100% before the next cycle. */
-@keyframes hero-letter-e {
-  0%, 45%, 95%, 100% { transform: scale(1);   opacity: 1; filter: none; }
-  47% { transform: scale(0.5, 0.7); opacity: 0.45; filter: blur(1.5px); }
-  49%, 92% { transform: scale(0, 0); opacity: 0; filter: blur(3px); }
-}
-@keyframes hero-letter-a {
-  0%, 52%, 95%, 100% { transform: scale(1);   opacity: 1; filter: none; }
-  54% { transform: scale(0.5, 0.7); opacity: 0.45; filter: blur(1.5px); }
-  56%, 92% { transform: scale(0, 0); opacity: 0; filter: blur(3px); }
-}
-@keyframes hero-letter-t {
-  0%, 59%, 95%, 100% { transform: scale(1);   opacity: 1; filter: none; }
-  61% { transform: scale(0.5, 0.7); opacity: 0.45; filter: blur(1.5px); }
-  63%, 92% { transform: scale(0, 0); opacity: 0; filter: blur(3px); }
-}
-@keyframes hero-letter-s {
-  0%, 66%, 95%, 100% { transform: scale(1);   opacity: 1; filter: none; }
-  68% { transform: scale(0.5, 0.7); opacity: 0.45; filter: blur(1.5px); }
-  70%, 92% { transform: scale(0, 0); opacity: 0; filter: blur(3px); }
-}
-
-/* Amber crumb particles fly upward at the snap-shut moment. */
-.hero-crumbs {
-  position: absolute;
-  bottom: -6px;
-  left: 8px;
-  width: 0; height: 0;
-  pointer-events: none;
-}
-.hero-crumbs .crumb {
-  position: absolute;
-  width: 3px; height: 3px;
-  border-radius: 50%;
-  background: var(--accent-amber);
-  box-shadow: 0 0 4px rgba(255,181,71,0.8);
-  opacity: 0;
-  animation-duration: 12s;
-  animation-timing-function: ease-out;
-  animation-delay: 0.6s;
-  animation-iteration-count: infinite;
-}
-/* Four crumb bursts, each timed to a letter chomp moment. The crumbs
-   travel a short arc up + sideways, then fade. Each animation only
-   "fires" within a 4-5% window of the 12s cycle; for the rest of the
-   cycle the crumb is invisible. */
-.hero-crumbs .crumb.c1 { animation-name: hero-crumb-e; --crumb-x: -6px;  --crumb-y: -20px; }
-.hero-crumbs .crumb.c2 { animation-name: hero-crumb-a; --crumb-x:  4px;  --crumb-y: -22px; }
-.hero-crumbs .crumb.c3 { animation-name: hero-crumb-t; --crumb-x: -4px;  --crumb-y: -24px; }
-.hero-crumbs .crumb.c4 { animation-name: hero-crumb-s; --crumb-x:  6px;  --crumb-y: -20px; }
-@keyframes hero-crumb-e {
-  0%, 46%, 54%, 100% { opacity: 0; transform: translate(0, 0); }
-  49% { opacity: 1; transform: translate(calc(var(--crumb-x) * 0.3), calc(var(--crumb-y) * 0.4)); }
-  53% { opacity: 0; transform: translate(var(--crumb-x), var(--crumb-y)); }
-}
-@keyframes hero-crumb-a {
-  0%, 53%, 61%, 100% { opacity: 0; transform: translate(0, 0); }
-  56% { opacity: 1; transform: translate(calc(var(--crumb-x) * 0.3), calc(var(--crumb-y) * 0.4)); }
-  60% { opacity: 0; transform: translate(var(--crumb-x), var(--crumb-y)); }
-}
-@keyframes hero-crumb-t {
-  0%, 60%, 68%, 100% { opacity: 0; transform: translate(0, 0); }
-  63% { opacity: 1; transform: translate(calc(var(--crumb-x) * 0.3), calc(var(--crumb-y) * 0.4)); }
-  67% { opacity: 0; transform: translate(var(--crumb-x), var(--crumb-y)); }
-}
-@keyframes hero-crumb-s {
-  0%, 67%, 75%, 100% { opacity: 0; transform: translate(0, 0); }
-  70% { opacity: 1; transform: translate(calc(var(--crumb-x) * 0.3), calc(var(--crumb-y) * 0.4)); }
-  74% { opacity: 0; transform: translate(var(--crumb-x), var(--crumb-y)); }
-}
-
-@media (max-width: 600px) {
-  .hero-worm { width: 36px; height: 28px; }
-}
-.hero .feast {
-  text-align: left;
-  margin: 0 auto 22px;
-  max-width: 640px;
-  width: 100%;
-  overflow: hidden;
-}
-.hero .feast-line {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(10px, 1.5vw, 14px);
-  line-height: 1.4;
-  color: var(--accent);
-  text-shadow: 0 0 10px rgba(0,229,160,0.35);
-  white-space: pre;
-  margin: 0;
-  min-height: 1.4em;
-  letter-spacing: 0.3px;
-  overflow: hidden;
-  width: 100%;
-}
-.hero .feast-line .trail { color: var(--text-dim); opacity: 0.45; }
-.hero .feast-line .worm  { color: var(--accent); font-weight: 700; }
-/* Inline SVG worm in the feast animation. Sized to occupy roughly 6
-   monospace chars of width so food-word columns stay aligned with the
-   ASCII-era layout. Continuous CSS animations (bob, eye blink, mouth
-   chomp) give it ambient life while the JS-driven .crawl-x position
-   advances frame by frame. */
-.hero .feast-line .worm-inline-sprite {
-  width: 38px; height: 24px;
-  display: inline-block;
-  vertical-align: -7px;
-  filter: drop-shadow(0 0 5px rgba(0,229,160,0.4));
-  animation: worm-inline-bob 1.4s ease-in-out infinite;
-}
-.hero .feast-line .worm-inline-sprite .seg, .hero .feast-line .worm-inline-sprite .head { fill: var(--accent); }
-.hero .feast-line .worm-inline-sprite .seg.s3 { opacity: 0.35; }
-.hero .feast-line .worm-inline-sprite .seg.s2 { opacity: 0.6; }
-.hero .feast-line .worm-inline-sprite .seg.s1 { opacity: 0.85; }
-.hero .feast-line .worm-inline-sprite .eye {
-  fill: var(--bg);
-  transform-origin: 25px 11px;
-  animation: worm-inline-blink 3.4s ease-in-out infinite;
-}
-.hero .feast-line .worm-inline-sprite .glint { fill: var(--accent-cyan); }
-.hero .feast-line .worm-inline-sprite .mouth {
-  fill: var(--bg);
-  transform-origin: 28px 14.5px;
-  animation: worm-inline-chomp 1.6s ease-in-out infinite;
-}
-@keyframes worm-inline-bob {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  50%      { transform: translateY(-3.5px) rotate(-3deg); }
-}
-@keyframes worm-inline-blink {
-  0%, 88%, 100% { transform: scaleY(1); }
-  93%, 97%      { transform: scaleY(0.05); }
-}
-@keyframes worm-inline-chomp {
-  0%, 100% { transform: scaleY(0.35); }
-  45%, 55% { transform: scaleY(1.9); }
-}
-.hero .feast-line .t-crit { color: var(--score-crit); text-shadow: 0 0 5px rgba(255,77,106,0.45); font-weight: 700; }
-.hero .feast-line .t-high { color: #ff9940; text-shadow: 0 0 4px rgba(255,153,64,0.35); font-weight: 600; }
-.hero .feast-line .t-med  { color: var(--accent-cyan); }
-@keyframes feast-panic {
-  0%, 100% { filter: brightness(1.0); }
-  50%      { filter: brightness(1.6); }
-}
-.hero .feast-line .panic { animation: feast-panic 0.28s ease-in-out infinite; }
-
-/* Cursor crumbs: tiny dots that drift from the mouse toward the worm. */
-.cursor-crumb {
-  position: fixed;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--accent);
-  text-shadow: 0 0 5px rgba(0,229,160,0.55);
-  pointer-events: none;
-  z-index: 100;
-  transition: transform 0.9s cubic-bezier(0.34, 0.6, 0.4, 1), opacity 0.9s ease-out;
-  user-select: none;
-  will-change: transform, opacity;
-}
-.char-ruler {
-  position: absolute;
-  visibility: hidden;
-  pointer-events: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: inherit;
-  letter-spacing: inherit;
-}
-.hero .feast-status {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: clamp(10px, 1.2vw, 12px);
-  color: var(--accent-cyan);
-  margin-top: 6px;
-  min-height: 1.4em;
-  opacity: 0.85;
-  letter-spacing: 0.3px;
-}
-.hero h1 {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-weight: 600;
-  font-size: 42px;
-  line-height: 1.12;
-  letter-spacing: -0.5px;
-  color: var(--text-bright);
-  margin-bottom: 14px;
-}
-.hero .tagline {
-  color: var(--text-dim);
-  font-size: 18px;
-  margin-bottom: 26px;
-  max-width: 660px;
-  margin-left: auto;
-  margin-right: auto;
-}
-.cta-row {
-  display: flex;
-  gap: 14px;
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 11px 22px;
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.3px;
-  border: 1px solid;
-  transition: all 0.14s ease;
-  cursor: pointer;
-}
-.btn-primary {
-  background: rgba(0,229,160,0.08);
-  border-color: var(--accent);
-  color: var(--accent);
-  text-shadow: 0 0 6px rgba(0,229,160,0.3);
-}
-.btn-primary:hover {
-  background: rgba(0,229,160,0.18);
-  color: var(--text-bright);
-  box-shadow: 0 0 14px rgba(0,229,160,0.25);
-}
-.btn-secondary {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text);
-}
-.btn-secondary:hover {
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-.btn-disabled {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--text-dim);
-  cursor: default;
-  opacity: 0.65;
-}
-.btn-disabled:hover { color: var(--text-dim); }
-
-.hero .install-line {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 16px;
-}
-.hero .live-stats-strip {
-  margin-top: 28px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 18px 28px;
-  justify-content: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text-dim);
-  opacity: 0;
-  transition: opacity 0.4s ease-out;
-  letter-spacing: 0.2px;
-}
-.hero .live-stats-strip.ready { opacity: 1; }
-.hero .live-stats-strip .stat {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-}
-.hero .live-stats-strip .stat .n {
-  color: var(--accent);
-  font-weight: 600;
-  font-size: 13px;
-  letter-spacing: 0.4px;
-}
-.hero .live-stats-strip .stat .l {
-  color: var(--text-dim);
-  text-transform: lowercase;
-}
-.hero .live-stats-strip .pulse {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--accent);
-  animation: live-stats-pulse 1.8s ease-in-out infinite;
-  margin-right: 4px;
-  vertical-align: middle;
-}
-@keyframes live-stats-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(0,229,160,0.55); }
-  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(0,229,160,0); }
-}
-@media (max-width: 640px) {
-  .hero .live-stats-strip { font-size: 11px; gap: 12px 18px; }
-  .hero .live-stats-strip .stat .n { font-size: 12px; }
-}
-
-.hero .install-line code {
-  background: rgba(86,226,255,0.06);
-  border: 1px solid rgba(86,226,255,0.18);
-  border-radius: 3px;
-  padding: 4px 10px;
-  color: var(--text-bright);
-  user-select: all;
-}
-
-.section { margin-bottom: 72px; }
-.section h2 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 18px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.section .lead {
-  font-size: 17px;
-  color: var(--text);
-  margin-bottom: 14px;
-  max-width: 760px;
-}
-.section p { color: var(--text-dim); max-width: 760px; margin-bottom: 12px; }
-
-.features {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-}
-.feature {
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px 18px;
-  background: rgba(0,0,0,0.2);
-}
-.feature .name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--accent);
-  font-weight: 600;
-  margin-bottom: 6px;
-  letter-spacing: 0.3px;
-}
-.feature .desc {
-  color: var(--text-dim);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-/* Honest-pricing callout above the tiers */
-.honest-strip {
-  display: flex;
-  align-items: flex-start;
-  gap: 14px;
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  background: rgba(0,229,160,0.04);
-  border-radius: 4px;
-  padding: 14px 18px;
-  margin-bottom: 22px;
-  font-size: 14px;
-  line-height: 1.55;
-  color: var(--text-dim);
-}
-.honest-strip strong {
-  color: var(--text-bright);
-  font-weight: 600;
-  margin-right: 4px;
-}
-.honest-mark {
-  width: 34px; height: 26px; flex-shrink: 0;
-  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
-  animation: worm-bob 2.4s ease-in-out infinite;
-  padding-top: 2px;
-}
-.honest-mark .seg, .honest-mark .head { fill: var(--accent); }
-.honest-mark .seg.s3 { opacity: 0.35; }
-.honest-mark .seg.s2 { opacity: 0.6; }
-.honest-mark .seg.s1 { opacity: 0.85; }
-.honest-mark .eye   { fill: var(--bg); }
-.honest-mark .glint { fill: var(--accent-cyan); }
-.honest-mark .mouth { fill: var(--bg); }
-body[data-worm-mood="hibernating"] .honest-mark .seg,
-body[data-worm-mood="hibernating"] .honest-mark .head { fill: #5a8a72; }
-body[data-worm-mood="hibernating"] .honest-mark { opacity: 0.7; }
-body[data-worm-mood="frenzy"] .honest-mark .seg,
-body[data-worm-mood="frenzy"] .honest-mark .head { fill: var(--accent-amber); }
-body[data-worm-mood="frenzy"] .honest-mark { filter: drop-shadow(0 0 7px rgba(255,181,71,0.55)); }
-
-/* Pricing tiers */
-.tiers {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 18px;
-}
-.tier {
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 24px 22px;
-  background: var(--bg-card);
-  display: flex;
-  flex-direction: column;
-  position: relative;
-  transition: border-color 0.18s ease, transform 0.18s ease;
-}
-.tier:hover { border-color: var(--border-hi); transform: translateY(-2px); }
-.tier.pro {
-  border-color: rgba(0,229,160,0.4);
-  background: linear-gradient(180deg, rgba(0,229,160,0.04), var(--bg-card));
-}
-.tier.pro:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 24px rgba(0,229,160,0.15);
-}
-.tier-flag {
-  position: absolute;
-  top: -10px;
-  right: 18px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  background: var(--accent);
-  color: var(--bg);
-  padding: 3px 9px;
-  border-radius: 2px;
-  font-weight: 700;
-}
-.tier-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: var(--accent-cyan);
-  margin-bottom: 10px;
-}
-.tier.pro .tier-name { color: var(--accent); }
-.tier-price {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 36px;
-  font-weight: 600;
-  color: var(--text-bright);
-  margin-bottom: 4px;
-  letter-spacing: -0.5px;
-}
-.tier-price .per {
-  font-size: 14px;
-  color: var(--text-dim);
-  font-weight: 400;
-}
-.tier-pitch {
-  color: var(--text-dim);
-  font-size: 13px;
-  margin-bottom: 18px;
-  line-height: 1.5;
-  min-height: 60px;
-}
-.tier-cta {
-  margin-bottom: 16px;
-}
-.tier-cta .btn {
-  width: 100%;
-  justify-content: center;
-}
-.tier-features {
-  list-style: none;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text);
-  flex: 1;
-  border-top: 1px solid var(--border);
-  padding-top: 14px;
-}
-.tier-features li {
-  padding: 5px 0;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-}
-.tier-features li::before {
-  content: '+';
-  color: var(--accent);
-  font-weight: 700;
-  flex-shrink: 0;
-}
-.tier-features li.minor::before { content: '+'; color: var(--text-dim); opacity: 0.5; }
-.tier-features li.headline {
-  font-weight: 700;
-  color: var(--accent-cyan);
-  letter-spacing: 0.4px;
-}
-.tier-features li.headline::before { content: '*'; color: var(--accent-cyan); }
-.tier-features li.soon::before { content: '~'; color: var(--accent-amber); opacity: 0.85; }
-.tier-features li.soon { color: var(--text-dim); }
-.tier-features li.soon .soon-tag {
-  font-size: 9px;
-  letter-spacing: 1px;
-  color: var(--accent-amber);
-  background: rgba(255,181,71,0.12);
-  border: 1px solid rgba(255,181,71,0.4);
-  padding: 1px 5px;
-  border-radius: 2px;
-  margin-left: 6px;
-  text-transform: uppercase;
-  vertical-align: 1px;
-}
-
-.beta-tag {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  background: rgba(255,181,71,0.12);
-  border: 1px solid rgba(255,181,71,0.4);
-  color: var(--accent-amber);
-  padding: 1px 6px;
-  border-radius: 2px;
-  margin-left: 10px;
-  vertical-align: 2px;
-}
-
-.founder-flag {
-  position: absolute;
-  top: -10px;
-  left: 18px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  background: var(--accent-amber);
-  color: var(--bg);
-  padding: 3px 9px;
-  border-radius: 2px;
-  font-weight: 700;
-}
-.tier .founder-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10.5px;
-  color: var(--accent-amber);
-  margin-top: -6px;
-  margin-bottom: 12px;
-  letter-spacing: 0.4px;
-}
-
-/* Worm CTA: single playful link to /pro that replaces the deep-dive grid */
-.pro-peek {
-  display: flex;
-  align-items: center;
-  gap: 18px;
-  padding: 22px 26px;
-  margin-top: 6px;
-  background: linear-gradient(180deg, rgba(255,181,71,0.09), rgba(255,181,71,0.03));
-  border: 1px solid rgba(255,181,71,0.35);
-  border-left: 3px solid var(--accent-amber);
-  border-radius: 4px;
-  text-decoration: none;
-  position: relative;
-  overflow: hidden;
-  transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
-}
-.pro-peek::after {
-  content: '';
-  position: absolute;
-  top: 0; left: -120%;
-  width: 60%; height: 100%;
-  background: linear-gradient(110deg, transparent, rgba(255,181,71,0.18), transparent);
-  transition: left 0.6s ease;
-  pointer-events: none;
-}
-.pro-peek:hover {
-  border-color: var(--accent-amber);
-  transform: translateY(-1px);
-  box-shadow: 0 6px 26px rgba(255,181,71,0.22);
-}
-.pro-peek:hover::after { left: 140%; }
-.pro-peek-worm {
-  width: 50px; height: 38px; flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(255,181,71,0.55));
-  animation: worm-peek 2.4s ease-in-out infinite;
-}
-.pro-peek-worm .seg, .pro-peek-worm .head { fill: var(--accent-amber); }
-.pro-peek-worm .seg.s3 { opacity: 0.4; }
-.pro-peek-worm .seg.s2 { opacity: 0.65; }
-.pro-peek-worm .seg.s1 { opacity: 0.85; }
-.pro-peek-worm .eye   { fill: var(--bg); }
-.pro-peek-worm .glint { fill: #ffd9a3; }
-.pro-peek-worm .mouth { fill: var(--bg); }
-@keyframes worm-peek {
-  0%, 100% { transform: translateY(0)   rotate(0); }
-  25%      { transform: translateY(-2px) rotate(-2deg); }
-  75%      { transform: translateY(-2px) rotate(2deg);  }
-}
-.pro-peek-bubble {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.pro-peek-bubble-line {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px;
-  color: var(--text-bright);
-  font-weight: 600;
-  letter-spacing: 0.3px;
-}
-.pro-peek-bubble-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 0.3px;
-}
-.pro-peek-arrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 22px;
-  color: var(--accent-amber);
-  flex-shrink: 0;
-  transition: transform 0.18s ease;
-}
-.pro-peek:hover .pro-peek-arrow { transform: translateX(4px); }
-@media (max-width: 600px) {
-  .pro-peek { padding: 18px 18px; gap: 12px; }
-  .pro-peek-worm { font-size: 20px; }
-  .pro-peek-bubble-line { font-size: 13px; }
-  .pro-peek-bubble-sub { font-size: 10px; }
-}
-
-/* Pro feature deep-dive cards */
-.pro-deep {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 18px;
-}
-.pro-card {
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  border-radius: 4px;
-  padding: 20px 22px;
-  background: rgba(0,229,160,0.04);
-}
-.pro-card .label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 1.4px;
-  margin-bottom: 6px;
-}
-.pro-card .name {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-bright);
-  margin-bottom: 10px;
-}
-.pro-card .desc {
-  color: var(--text-dim);
-  font-size: 13.5px;
-  line-height: 1.6;
-}
-
-.box-pitch {
-  border: 1px solid var(--border);
-  border-left: 2px solid var(--accent);
-  border-radius: 4px;
-  padding: 20px 24px;
-  background: rgba(0,229,160,0.04);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  line-height: 1.7;
-  color: var(--text);
-}
-.box-pitch .label { color: var(--accent); letter-spacing: 0.6px; }
-.box-pitch .dim { color: var(--text-dim); }
-
-footer {
-  margin-top: 80px;
-  padding-top: 28px;
-  border-top: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-footer a { color: var(--text-dim); }
-footer a:hover { color: var(--accent-cyan); }
-
-@media (max-width: 760px) {
-  .features, .pro-deep { grid-template-columns: 1fr; }
-  .tiers { grid-template-columns: 1fr; }
-  .hero h1 { font-size: 32px; }
-  .hero .feast-line { font-size: 11px; }
-  .tier-pitch { min-height: 0; }
-}
+/* footer */
+.foot { display:flex; flex-wrap:wrap; gap:10px 14px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); border-top:1px solid var(--border); }
+.foot a { color:var(--dim); } .foot a:hover { color:var(--accent); }
+.foot .grow { flex:1; min-width:20px; }
+/* free dashboards grid */
+.dashframe { position:relative; margin:6px 20px 14px; }
+.dashframe .cn { position:absolute; width:13px; height:13px; border:0 solid var(--accent); }
+.dashframe .tl{top:-2px;left:-2px;border-top-width:1.5px;border-left-width:1.5px;}
+.dashframe .tr{top:-2px;right:-2px;border-top-width:1.5px;border-right-width:1.5px;}
+.dashframe .bl{bottom:-2px;left:-2px;border-bottom-width:1.5px;border-left-width:1.5px;}
+.dashframe .br{bottom:-2px;right:-2px;border-bottom-width:1.5px;border-right-width:1.5px;}
+.dashgrid { display:grid; grid-template-columns:repeat(2,1fr); }
+.dash { display:block; padding:16px 18px; transition:background .15s; }
+.dash:nth-child(odd){ border-right:1px solid var(--border); }
+.dash:nth-child(-n+2){ border-bottom:1px solid var(--border); }
+.dash:hover { background:color-mix(in srgb,var(--accent) 6%,transparent); }
+.dash .dn { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--bright); font-weight:600; display:flex; justify-content:space-between; align-items:center; }
+.dash .dn .ar { color:var(--faint); transition:color .15s,transform .15s; }
+.dash:hover .dn { color:var(--accent); }
+.dash:hover .dn .ar { color:var(--accent); transform:translateX(3px); }
+.dash .dd { color:var(--dim); font-size:12.5px; margin-top:7px; line-height:1.5; }
+@media (max-width:680px){ .dashgrid{grid-template-columns:1fr} .dash:nth-child(odd){border-right:none} .dash:not(:last-child){border-bottom:1px solid var(--border)} }
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="page">
 
-<header>
-  <div class="header-row top">
-    <div class="brand">
-      <svg class="worm-logo" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-label="oM noM Security Feeds worm logo">
-        <circle cx="5"  cy="17" r="3.0" class="seg s3"/>
-        <circle cx="10" cy="16" r="3.6" class="seg s2"/>
-        <circle cx="16" cy="14" r="4.4" class="seg s1"/>
-        <circle cx="24" cy="13" r="5.4" class="head"/>
-        <circle cx="25" cy="11" r="1.4" class="eye"/>
-        <circle cx="25.5" cy="10.5" r="0.5" class="glint"/>
-        <ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/>
-      </svg>
-      <span class="brand-text">
-        <span class="brand-primary">oM noM</span>
-        <span class="brand-secondary">Security Feeds</span>
-      </span>
-    </div>
-    <div class="top-cta-cluster">
-      <a href="/trending" class="live-link" title="Top CVEs by mention count across our sources"><span class="live-dot"></span>TRENDING CVES</a>
-      <a href="/pre-kev" class="live-link" style="border-color:rgba(255,181,71,0.5);color:#ffb547;" title="CVEs heating up before CISA adds them to KEV"><span class="live-dot" style="background:#ffb547;"></span>PRE-KEV WATCH</a>
-      <a href="/mitre-live" class="live-link" style="border-color:rgba(255,90,122,0.5);color:#ff5a7a;" title="Live ATT&CK technique heat map across our sources"><span class="live-dot" style="background:#ff5a7a;"></span>MITRE LIVE</a>
-      <a href="/live" class="live-link"><span class="live-dot"></span>FREE LIVE FEED</a>
-    </div>
+  <div class="row rule">
+    <div class="gut"><svg id="brandWorm" class="worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></div>
+    <div class="main"><div class="statusbar">
+      <span class="bd">oM noM</span><span style="color:var(--faint)">//</span>
+      <nav><a class="cur" href="/">home</a><a href="/live">live</a><a href="/trending">trending</a><a href="/pre-kev">pre-kev</a><a href="/mitre-live">mitre</a><a href="/api">api</a><a href="/pro">pro</a></nav>
+      <span class="grow"></span>
+      <span class="nom">last nom <b id="lsAgo">-</b></span>
+      <a class="signin" href="/login.html">[ sign in ]</a>
+    </div></div>
   </div>
-  <div class="header-row bottom">
-    <a href="/pro" class="pro-link">what pro looks like</a>
-    <div class="nav-cluster">
-      <div class="nav-primary">
-        <a href="#features">features</a>
-        <a href="#pricing">pricing</a>
+
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main"><div class="hero">
+      <h1>A worm that <span class="wm-wrap"><svg class="hw worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></span> <em>eats</em> your security feeds.</h1>
+      <div class="sub">Pulls every security feed, scores each item against MITRE ATT&amp;CK and CISA KEV, and surfaces the 5% worth reading.</div>
+      <div class="cta">
+        <a class="btn pri" href="/login.html">sign in (free)</a>
+        <a class="btn sec" href="#install">install (one-liner)</a>
       </div>
-      <span class="nav-sep-vert" aria-hidden="true"></span>
-      <div class="nav-secondary">
-        <a href="#install">install</a>
-        <a href="https://github.com/RMS2D/omnomfeeds">github</a>
+    </div></div>
+  </div>
+
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main"><div class="statledger" id="liveStats">
+      <div class="s"><div class="n" id="lsSrcA">-</div><div class="l">feeds active</div></div>
+      <div class="s"><div class="n" id="lsArt30">-</div><div class="l">articles / 30d</div></div>
+      <div class="s"><div class="n" id="lsCves">-</div><div class="l">cves surfaced</div></div>
+      <div class="s"><div class="n" id="lsKev">-</div><div class="l">kev pops</div></div>
+    </div></div>
+  </div>
+
+  <div class="row"><div class="gut">01</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> free dashboards <span style="color:var(--faint)">no sign-in, no paywall</span> <span class="ext"></span></div>
+    <div class="dashframe"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+    <div class="dashgrid">
+      <a class="dash" href="/live"><div class="dn">live ticker <span class="ar">&rarr;</span></div><div class="dd">Every scored item the moment it lands, newest first. The raw firehose.</div></a>
+      <a class="dash" href="/trending"><div class="dn">trending cves <span class="ar">&rarr;</span></div><div class="dd">What the feed is buzzing on right now, ranked by mentions and severity.</div></a>
+      <a class="dash" href="/pre-kev"><div class="dn">pre-kev watch <span class="ar">&rarr;</span></div><div class="dd">CVEs gaining exploit chatter before they reach the CISA KEV catalog.</div></a>
+      <a class="dash" href="/mitre-live"><div class="dn">mitre live <span class="ar">&rarr;</span></div><div class="dd">Which ATT&amp;CK techniques are dominating the feed, by time window.</div></a>
+    </div></div>
+  </div></div>
+
+  <div class="row"><div class="gut">02</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> why a worm <span class="ext"></span></div>
+    <div class="prose">
+      <p class="lead">Reading every security RSS feed by hand is a tax on your day. A bookmark folder of 50 sites is a guilt machine. oM noM does the firehose part for you: pulls everything, scores each item against weighted keyword categories, auto-flags anything in the CISA KEV catalog, deduplicates noise, and shows you the 5% worth your attention.</p>
+      <p>Single Go binary. Runs entirely on your machine. SQLite for state. No telemetry. No proxy. All API calls go direct from your machine to the source.</p>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut">03</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> features <span style="color:var(--faint)">(all tiers)</span> <span class="ext"></span></div>
+    <div class="feat"><div class="fn">50+ curated sources</div><div class="fd">RSS, Reddit, Mastodon, GitHub Security Advisories, MalwareBazaar, Bluesky search + watched accounts. 107-handle curated picker for security researchers.</div></div>
+    <div class="feat"><div class="fn">MITRE ATT&amp;CK coverage</div><div class="fd">Every article gets technique tags. A modal shows which ATT&amp;CK techniques are dominating today's feed; click to filter.</div></div>
+    <div class="feat"><div class="fn">CISA KEV auto-flagging</div><div class="fd">CVE references get cross-matched against the KEV catalog. Actively exploited items are flagged on arrival.</div></div>
+    <div class="feat"><div class="fn">A public page per CVE</div><div class="fd">Every CVE we've seen has a shareable URL with NVD + EPSS + KEV + OTX + source consensus + timeline + the articles that mentioned it. Try <a href="/cve/CVE-2026-45585">/cve/CVE-2026-45585</a>.</div></div>
+    <div class="feat"><div class="fn">BYOK AI daily brief</div><div class="fd">Drop in an Anthropic or OpenAI API key, get a 300-word brief of the day's most important items, tuned to your focus area.</div></div>
+    <div class="feat"><div class="fn">Two-pane reader, vim keybinds</div><div class="fd">List on the left, reader on the right, draggable divider. j/k to nav, o to open, b to bookmark, T for MITRE coverage, S for stats.</div></div>
+    <div class="feat"><div class="fn">No telemetry. No proxy.</div><div class="fd">Single binary, SQLite local state. Nothing leaves your machine unless you explicitly click out. Open source under MIT.</div></div>
+  </div></div>
+
+  <div class="row"><div class="gut">04</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> three ways to use it <span class="ext"></span></div>
+    <div class="prose"><p>No ads. No tracking pixels. No mailing list nag. The $10/mo Pro tier exists to cover the server bill and the AI API calls. It is a side project, not a SaaS.</p></div>
+    <div class="tiers">
+      <div class="tier">
+        <div class="flag">self-host</div>
+        <div class="tn">Self-host</div>
+        <div class="tp">$0<span class="per"> / free forever</span></div>
+        <div class="tpitch">Run the binary on your own machine. MIT licensed, full source on GitHub. Your data never leaves your box.</div>
+        <div class="tcta"><a class="btn sec" href="#install">install</a></div>
+        <ul><li class="h">Everything in the app</li><li>All 50+ sources</li><li>MITRE ATT&amp;CK + KEV scoring</li><li>BYOK AI brief (your key)</li><li>Local SQLite state</li><li>Updates via GitHub releases</li></ul>
+      </div>
+      <div class="tier">
+        <div class="flag">hosted free</div>
+        <div class="tn">Hosted free</div>
+        <div class="tp">$0<span class="per"> / free forever</span></div>
+        <div class="tpitch">Same app, on a box you don't babysit. Sign in with Google or email; settings + bookmarks sync across devices.</div>
+        <div class="tcta"><a class="btn sec" href="/login.html">sign in (free)</a></div>
+        <ul><li class="h">Everything in self-host</li><li>Google or email sign-in</li><li>Settings synced across devices</li><li>Bookmarks synced across devices</li><li>30 days article history</li><li>BYOK AI brief (your key)</li></ul>
+      </div>
+      <div class="tier pro">
+        <span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+        <div class="flag">pro / founder pricing</div>
+        <div class="tn">Hosted Pro</div>
+        <div class="tp">$10<span class="per"> /mo / cancel anytime</span></div>
+        <div class="tpitch">For people who use it daily. Convenience, alerts that turn the worm into a monitor, and the personalization that makes the feed yours.</div>
+        <div class="tcta"><a class="btn pri" href="/login.html">get pro - $10/mo</a> &nbsp; <a href="/pro" style="font-family:'JetBrains Mono',monospace;font-size:11px">see pro &rarr;</a></div>
+        <ul><li class="h">Everything in hosted free, plus:</li><li>Managed AI daily brief (no API key)</li><li>One-click "explain this" on any article</li><li>CVE deep-dive: NVD + EPSS + KEV + AI</li><li>"What about me?" personalization</li><li>AI semantic dedup / story clustering</li><li>KEV webhook alerts (Slack / Discord)</li><li>Saved keyword + CVE pattern alerts</li><li>Stack-aware CVE prioritization</li><li>Threat actor follow + per-actor feeds</li><li>REST API + full-corpus search</li></ul>
       </div>
     </div>
-  </div>
-</header>
+  </div></div>
 
-<div class="hero">
-  <h1>A worm that <span class="hero-eats-wrap">
-    <svg class="hero-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-      <circle cx="5"  cy="17" r="3.0" class="seg s3"/>
-      <circle cx="10" cy="16" r="3.6" class="seg s2"/>
-      <circle cx="16" cy="14" r="4.4" class="seg s1"/>
-      <circle cx="24" cy="13" r="5.4" class="head"/>
-      <circle cx="25" cy="11" r="1.4" class="eye"/>
-      <circle cx="25.5" cy="10.5" r="0.5" class="glint"/>
-      <ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/>
-      <!-- Teeth: hidden by default (scaleY 0), pop out per chomp. Two
-           top fangs hanging from the upper jaw, two bottom fangs
-           rising from the lower jaw. Rendered AFTER the mouth so they
-           sit on top of the dark opening when the mouth gapes. -->
-      <polygon points="26.5,13.3 27.1,14.9 27.7,13.3" class="tooth top t1"/>
-      <polygon points="28.3,13.3 28.9,14.9 29.5,13.3" class="tooth top t2"/>
-      <polygon points="26,15.7 26.6,14.3 27.2,15.7" class="tooth bot b1"/>
-      <polygon points="27.8,15.7 28.4,14.3 29,15.7" class="tooth bot b2"/>
-    </svg>
-    <span class="hero-eats"><span class="ltr l-e">e</span><span class="ltr l-a">a</span><span class="ltr l-t">t</span><span class="ltr l-s">s</span></span>
-    <span class="hero-crumbs"><span class="crumb c1"></span><span class="crumb c2"></span><span class="crumb c3"></span><span class="crumb c4"></span></span>
-  </span> your security feeds.</h1>
-  <p class="tagline">
-    Pulls RSS, Reddit, Bluesky, Mastodon, GitHub Advisories and MalwareBazaar.
-    Scores against keyword categories tied to MITRE ATT&amp;CK and CISA KEV.
-    Renders a keyboard-driven two-pane reader in your browser.
-  </p>
-  <div class="cta-row">
-    <a class="btn btn-primary" href="/login.html">Sign in (free)</a>
-    <a class="btn btn-secondary" href="#install">Install (one-liner)</a>
-  </div>
-  <div class="install-line">
-    <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code>
-  </div>
-
-  <!-- Live stats strip: real numbers pulled from /api/landing/stats.
-       Hidden until the fetch resolves so a slow/failed request stays
-       invisible rather than rendering "-" placeholders. -->
-  <div class="live-stats-strip" id="liveStats" aria-live="polite" aria-label="Live feed stats">
-    <span class="stat" title="distinct source feeds that produced at least one article in the last 24 hours"><span class="pulse" aria-hidden="true"></span><span class="n" id="lsSrcA">-</span><span class="l">feeds active</span></span>
-    <span class="stat" title="articles ingested in the last 30 days"><span class="n" id="lsArt30">-</span><span class="l">articles</span></span>
-    <span class="stat" title="distinct CVE-IDs mentioned across feeds in the last 7 days"><span class="n" id="lsCves">-</span><span class="l">CVEs surfaced</span></span>
-    <span class="stat" title="articles flagged against the CISA KEV catalog in the last 7 days"><span class="n" id="lsKev">-</span><span class="l">KEV pops</span></span>
-    <span class="stat" title="time since the most recent article landed in the database"><span class="n" id="lsAgo">-</span><span class="l">since last sip</span></span>
-  </div>
-</div>
-
-<div class="section" id="why">
-  <h2>:: why a worm ::</h2>
-  <p class="lead">
-    Reading every security RSS feed by hand is a tax on your day. A bookmark folder of 50 sites is a guilt machine.
-    oM noM does the firehose part for you: pulls everything, scores each item against weighted keyword categories,
-    auto-flags anything in the CISA KEV catalog, deduplicates noise, and shows you the 5% worth your attention.
-  </p>
-  <p>
-    Single Go binary. Runs entirely on your machine. SQLite for state. No telemetry. No proxy. All API calls go direct
-    from your machine to the source.
-  </p>
-</div>
-
-<div class="section" id="features">
-  <h2>:: features (all tiers) ::</h2>
-  <div class="features">
-    <div class="feature">
-      <div class="name">50+ curated sources</div>
-      <div class="desc">RSS, Reddit, Mastodon, GitHub Security Advisories, MalwareBazaar, Bluesky search + watched accounts. 107-handle curated picker for security researchers.</div>
+  <div class="row" id="install"><div class="gut">05</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> install <span class="ext"></span></div>
+    <div class="install">
+      <div class="lab">linux / macos</div>
+      <div class="cmd"><span class="p">$</span> curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</div>
+      <div class="lab">windows (powershell)</div>
+      <div class="cmd"><span class="p">&gt;</span> irm https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.ps1 | iex</div>
+      <div class="lab">go install</div>
+      <div class="cmd"><span class="p">$</span> go install github.com/RMS2D/omnomfeeds@latest</div>
+      <div class="prose" style="padding:14px 0 0"><p>Open <span class="mono" style="color:var(--text)">http://localhost:8080</span>, press <span class="mono" style="color:var(--accent)">c</span> to configure sources. <a href="https://github.com/RMS2D/omnomfeeds#readme">README</a> &middot; <a href="https://github.com/RMS2D/omnomfeeds/releases">Releases</a></p></div>
     </div>
-    <div class="feature">
-      <div class="name">MITRE ATT&amp;CK coverage</div>
-      <div class="desc">Every article gets technique tags. A modal shows which ATT&amp;CK techniques are dominating today's feed; click to filter.</div>
-    </div>
-    <div class="feature">
-      <div class="name">CISA KEV auto-flagging</div>
-      <div class="desc">CVE references get cross-matched against the KEV catalog. Active exploitation items pulse red and edge-flash on arrival.</div>
-    </div>
-    <div class="feature">
-      <div class="name">A public page per CVE</div>
-      <div class="desc">Every CVE we've seen has a shareable URL with NVD + EPSS + KEV + OTX + source consensus + timeline + the articles that mentioned it. Try <a href="/cve/CVE-2026-45585" style="color:var(--accent-cyan);">/cve/CVE-2026-45585</a>.</div>
-    </div>
-    <div class="feature">
-      <div class="name">BYOK AI daily brief</div>
-      <div class="desc">Drop in an Anthropic or OpenAI API key, get a 300-word brief of the day's most important items, tuned to your focus area.</div>
-    </div>
-    <div class="feature">
-      <div class="name">Two-pane reader, vim keybinds</div>
-      <div class="desc">List on the left, reader on the right, draggable divider. j/k to nav, o to open, b to bookmark, T for MITRE coverage, S for stats.</div>
-    </div>
-    <div class="feature">
-      <div class="name">No telemetry. No proxy.</div>
-      <div class="desc">Single binary, SQLite local state. Nothing leaves your machine unless you explicitly click out. Open source under MIT.</div>
-    </div>
-  </div>
-</div>
+  </div></div>
 
-<div class="section" id="pricing">
-  <h2>:: three ways to use it ::</h2>
-  <div class="honest-strip">
-    <svg class="honest-mark" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
-    <span>
-      <strong>No ads. No tracking pixels. No mailing list nag.</strong>
-      The $10/mo Pro tier exists to cover the server bill and the AI API calls. It is a side project, not a SaaS.
-    </span>
-  </div>
-  <div class="tiers">
-
-    <!-- Self-host -->
-    <div class="tier">
-      <div class="tier-name">Self-host</div>
-      <div class="tier-price">$0<span class="per"> &middot; free forever</span></div>
-      <div class="tier-pitch">
-        Run the binary on your own machine. MIT licensed, full source on GitHub. Your data never leaves your box.
-      </div>
-      <div class="tier-cta"><a class="btn btn-primary" href="#install">Install (one-liner)</a></div>
-      <ul class="tier-features">
-        <li class="headline">Everything in the app</li>
-        <li>All 50+ sources</li>
-        <li>MITRE ATT&amp;CK + KEV scoring</li>
-        <li>BYOK AI brief (your key)</li>
-        <li>Local SQLite state</li>
-        <li>Updates via GitHub releases</li>
-      </ul>
-    </div>
-
-    <!-- Hosted free -->
-    <div class="tier">
-      <div class="tier-name">Hosted free</div>
-      <div class="tier-price">$0<span class="per"> &middot; free forever</span></div>
-      <div class="tier-pitch">
-        Same app, just running on a box you don't have to babysit. Sign in with Google or email, your settings + bookmarks sync across devices. No install, no API-key setup unless you want one.
-      </div>
-      <div class="tier-cta"><a class="btn btn-primary" href="/login.html">Sign in (free)</a></div>
-      <ul class="tier-features">
-        <li class="headline">Everything in self-host</li>
-        <li>Google or email sign-in</li>
-        <li>Settings synced across devices</li>
-        <li>Bookmarks synced across devices</li>
-        <li>30 days article history</li>
-        <li>BYOK AI brief (your key)</li>
-      </ul>
-    </div>
-
-    <!-- Pro -->
-    <div class="tier pro">
-      <span class="founder-flag">Founder pricing</span>
-      <span class="tier-flag">Pro</span>
-      <div class="tier-name">Hosted Pro</div>
-      <div class="tier-price">$10<span class="per">/mo &middot; cancel anytime</span></div>
-      <div class="founder-sub">locked in for life of subscription</div>
-      <div class="tier-pitch">
-        For people who actually use it daily. Convenience, alerts that turn the worm into a monitor, and the personalization that makes the feed feel like yours.
-      </div>
-      <div class="tier-cta">
-        <a class="btn btn-primary" href="/login.html">Get Pro - $10/mo</a>
-        <div style="margin-top:8px;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:0.3px;">
-          <a href="/pro" style="color:var(--accent-amber);">See what Pro looks like &rarr;</a>
-        </div>
-      </div>
-      <ul class="tier-features">
-        <li class="headline">Everything in hosted free, plus:</li>
-        <li>Managed AI daily brief (no API key)</li>
-        <li>One-click "explain this" AI on any article</li>
-        <li>CVE deep-dive: NVD + EPSS + KEV + AI summary</li>
-        <li>"What about me?" AI personalization</li>
-        <li>AI semantic dedup / story clustering</li>
-        <li>KEV webhook alerts (Slack / Discord / generic)</li>
-        <li>Saved keyword + CVE pattern alerts</li>
-        <li>Saved searches as named channels</li>
-        <li>Stack-aware CVE prioritization</li>
-        <li>Dependency advisory matcher</li>
-        <li>Threat actor follow + per-actor feeds</li>
-        <li>Email digest (daily or weekly)</li>
-        <li>6 months article history</li>
-        <li>Custom private feeds</li>
-        <li>REST API access</li>
-        <li>Full-corpus search</li>
-        <li>Self-service billing portal</li>
-      </ul>
-    </div>
-
-  </div>
-</div>
-
-<div class="section" id="pro">
-  <h2>:: what Pro gives you ::</h2>
-  <p class="lead">
-    Pro doesn't gate the core. The reader, the scoring, the MITRE coverage, the curated sources, the KEV indicator,
-    they're free on every tier. Pro adds an <em>operational</em> layer on top: things that turn a feed reader into a
-    monitoring tool, plus the convenience of not running the box yourself.
-  </p>
-  <p>
-    Ten bucks a month covers the server bill, the AI API calls, and keeps the worm fed. It is a side project, not a
-    SaaS.
-  </p>
-  <a href="/pro" class="pro-peek">
-    <svg class="pro-peek-worm" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
-    <span class="pro-peek-bubble">
-      <span class="pro-peek-bubble-line">om nom... wanna see what i eat in pro mode?</span>
-      <span class="pro-peek-bubble-sub">click here for the real screenshots, not stock art</span>
-    </span>
-    <span class="pro-peek-arrow">&rarr;</span>
-  </a>
-</div>
-
-<div class="section" id="install">
-  <h2>:: install ::</h2>
-  <div class="box-pitch">
-    <span class="label">linux / macos</span><br>
-    <code>curl -fsSL https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.sh | sh</code><br>
-    <br>
-    <span class="label">windows (powershell)</span><br>
-    <code>irm https://raw.githubusercontent.com/RMS2D/omnomfeeds/main/install.ps1 | iex</code><br>
-    <br>
-    <span class="label">go install</span><br>
-    <code>go install github.com/RMS2D/omnomfeeds@latest</code><br>
-    <br>
-    <span class="dim">Open <code>http://localhost:8080</code>, press <code>c</code> to configure sources.
-    <a href="https://github.com/RMS2D/omnomfeeds#readme">Full README</a> &middot;
-    <a href="https://github.com/RMS2D/omnomfeeds/releases">Releases</a></span>
-  </div>
-</div>
-
-<footer>
-  <span>oM noM Security Feeds &middot; MIT licensed &middot; running locally since 2026</span>
-  <span>
-    <a href="/pre-kev">Pre-KEV watch</a> &middot;
-    <a href="/trending">Trending CVEs</a> &middot;
-    <a href="/mitre-live">MITRE live</a> &middot;
-    <a href="/live">Live ticker</a> &middot;
-    <a href="/feed.xml" title="Top-signal RSS feed">RSS</a> &middot;
-    <a href="/api">API</a> &middot;
-    <a href="/privacy">Privacy</a> &middot;
-    <a href="/terms">Terms</a> &middot;
-    <a href="https://github.com/RMS2D/omnomfeeds">github.com/RMS2D/omnomfeeds</a>
-  </span>
-</footer>
+  <div class="row"><div class="gut"></div><div class="main"><div class="foot">
+    <span>oM noM Security Feeds</span><span style="color:var(--border)">·</span><span>MIT licensed</span>
+    <span class="grow"></span>
+    <a href="/pre-kev">pre-kev</a><a href="/trending">trending</a><a href="/feed.xml">rss</a><a href="/privacy">privacy</a><a href="/terms">terms</a><a href="https://github.com/RMS2D/omnomfeeds">github</a>
+  </div></div></div>
 
 </div>
-
-<script>
-// Hero feast animation. Worm crawls right, eats 4 threats sampled from a
-// rotating pool, burps, pauses, loops. Starts immediately; IntersectionObserver
-// only pauses while scrolled out of view.
-(function() {
-  const lineEl = document.getElementById('heroFeastLine');
-  const statusEl = document.getElementById('heroFeastStatus');
-  if (!lineEl || !statusEl) return;
-
-  // Pool of threats. Each cycle picks 4 at random + assigns x positions, so
-  // repeat visitors see a different lineup. sev: crit (red), high (orange),
-  // med (cyan).
-  const THREAT_POOL = [
-    { text: 'CVE-2026-1337', sev: 'crit', flavor: 'looks crunchy.' },
-    { text: 'CVE-2026-7707', sev: 'crit', flavor: 'still steaming.' },
-    { text: '0-day PoC',     sev: 'crit', flavor: 'handle with care.' },
-    { text: 'log4shell',     sev: 'crit', flavor: 'classic.' },
-    { text: 'mimikatz',      sev: 'med',  flavor: 'salty.' },
-    { text: 'kernel exploit',sev: 'high', flavor: 'gooey inner.' },
-    { text: 'LockBit 4.0',   sev: 'high', flavor: 'sticky.' },
-    { text: 'Volt Typhoon',  sev: 'high', flavor: 'spicy.' },
-    { text: 'rootkit',       sev: 'high', flavor: 'a little gamey.' },
-    { text: 'BlackCat',      sev: 'high', flavor: 'a little burnt.' },
-    { text: 'printnightmare',sev: 'high', flavor: 'crispy edges.' },
-    { text: 'C2 beacon',     sev: 'high', flavor: 'callback returned. om nom.' },
-  ];
-  const FINALES = [
-    '~burp~', '~urp~', '~bleh~', '* satisfied *', '( zZz )',
-    '~mmmm~', '* yawns *', '~hic~', '*pat pat*',
-  ];
-  // Random status-line message after each burp. Pool of quotables that
-  // gets sampled per cycle so repeat visitors hear something new.
-  const QUIPS = [
-    'all chewed. queueing next batch...',
-    'done. who is next.',
-    'feed me more.',
-    '5 more please.',
-    'delicious. spicy.',
-    'hmm needs salt.',
-    'is that all you have?',
-    'next course.',
-    'mmm. crunchy.',
-    'send more CVEs.',
-    'still hungry.',
-    'pass the rootkits.',
-    'fang sharpening break.',
-    'om nom nom waiting...',
-  ];
-  // Inline SVG sprite the feast animation paints in place of the ASCII
-  // worm. Sized to roughly match 6 monospace chars wide so the food-word
-  // column positions downstream stay aligned. Continuous CSS animations
-  // give it idle life (body bob, eye blink, mouth chomp).
-  const WORM_SVG = '<svg class="worm-inline-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>';
-  const SPRITES  = ['~~~_o)', '~~_~o)', '_~~~o)', '~~_~O)', '~~~_o)']; // legacy, kept for word-length math below
-  const AMBIENT  = ['nomming.', 'mouth open.', 'sniffing for more.', 'tasting the air.', 'sharpening fangs.'];
-
-  const TOTAL_X   = 48;
-  // Per-column step. Bumped from 55ms so the worm doesn't blow across
-  // the line before its SVG bob / chomp / blink keyframes are visible.
-  // Total crawl now ~6s, then a brief pause, then repeat.
-  const FRAME_MS  = 120;
-  const CYCLE_GAP = 2800;
-
-  let timer = null;
-  let visible = true;       // start running; IO will pause if hero scrolls off
-  let currentWormX = 0;     // chars; consumed by cursor-crumb destination math
-
-  function esc(s) {
-    return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  }
-
-  // Pick 4 random threats, position them across the line with even spacing.
-  function pickTargets() {
-    const pool = THREAT_POOL.slice();
-    const picked = [];
-    while (picked.length < 4 && pool.length) {
-      picked.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-    }
-    // Position targets so the worm crosses them at evenly distributed x.
-    // First target at x=8, last around x=44, then TOTAL_X is the burp post.
-    const positions = [8, 18, 28, 38];
-    return picked.map((t, i) => Object.assign({}, t, { x: positions[i], chomped: false }));
-  }
-
-  // Build the line ONCE with three stable children: a trail span, the
-  // SVG worm, and a food-words span. Subsequent paints only update the
-  // trail's textContent and the food span's innerHTML. The SVG element
-  // stays in the DOM untouched, so its CSS keyframes (bob / blink /
-  // chomp) actually get to play through instead of resetting every
-  // 55ms frame.
-  function ensureFeastStructure() {
-    if (lineEl.querySelector('.worm-inline-sprite')) return;
-    lineEl.innerHTML = '<span class="trail" id="feastTrail"></span>' + WORM_SVG + '<span id="feastFood"></span>';
-  }
-
-  function paintFeast(x, worm, status, targets) {
-    ensureFeastStructure();
-    const trailEl = document.getElementById('feastTrail');
-    const foodEl  = document.getElementById('feastFood');
-    if (trailEl) trailEl.textContent = '·'.repeat(x);
-    let html = '';
-    // SVG occupies ~6 chars wide; food-word column math is unchanged.
-    let pos = x + 6;
-    for (const t of targets) {
-      if (!t.chomped) {
-        while (pos < t.x) { html += ' '; pos++; }
-        const near = (t.x - x) <= 3 && (t.x - x) > -2;
-        html += '<span class="t-' + t.sev + (near ? ' panic' : '') + '">' + esc(t.text) + '</span>';
-        pos += t.text.length;
-      }
-    }
-    if (foodEl) foodEl.innerHTML = html;
-    statusEl.textContent = status;
-  }
-
-  function runCycle() {
-    if (!visible) { timer = null; return; }
-    const targets = pickTargets();
-    let x = 0;
-    let statusMsg = 'larva online. fangs out.';
-    let statusHoldUntil = 0;
-
-    function step() {
-      if (!visible) { timer = null; return; }
-      const worm = SPRITES[Math.floor(x / 3) % SPRITES.length];
-
-      for (const t of targets) {
-        if (!t.chomped && x >= t.x - 1 && x <= t.x + 2) {
-          t.chomped = true;
-          statusMsg = '*chomp*  ' + t.text + ' :: ' + t.flavor;
-          statusHoldUntil = Date.now() + 750;
-        }
-      }
-      if (statusHoldUntil && Date.now() > statusHoldUntil) {
-        statusMsg = AMBIENT[Math.floor(x / 10) % AMBIENT.length];
-        statusHoldUntil = 0;
-      }
-
-      paintFeast(x, worm, statusMsg, targets);
-      currentWormX = x;
-
-      x++;
-      if (x <= TOTAL_X) {
-        timer = setTimeout(step, FRAME_MS);
-      } else {
-        const finale = FINALES[Math.floor(Math.random() * FINALES.length)];
-        const quip   = QUIPS[Math.floor(Math.random() * QUIPS.length)];
-        // Finale: full trail + worm + flavor text. Reuse the existing SVG
-        // node if we can so its animation doesn't blink/restart at cycle end.
-        ensureFeastStructure();
-        const finalTrail = document.getElementById('feastTrail');
-        const finalFood  = document.getElementById('feastFood');
-        if (finalTrail) finalTrail.textContent = '·'.repeat(TOTAL_X);
-        if (finalFood)  finalFood.innerHTML  = '  <span style="color:var(--text-dim);font-style:italic;">' + esc(finale) + '</span>';
-        statusEl.textContent = quip;
-        currentWormX = TOTAL_X;
-        timer = setTimeout(runCycle, CYCLE_GAP);
-      }
-    }
-    step();
-  }
-
-  // Click the worm sprite to force-trigger the next cycle immediately.
-  lineEl.addEventListener('click', () => {
-    if (timer) { clearTimeout(timer); timer = null; }
-    runCycle();
-  });
-
-  // --- Cursor crumbs ---
-  // Each mousemove (throttled) spawns a tiny dot at the cursor that animates
-  // toward the worm's current screen position and fades out. Looks like the
-  // worm is pulling crumbs in. Skipped entirely on touch / reduced-motion.
-  const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let charWidth = 8;
-  function measureCharWidth() {
-    const probe = document.createElement('span');
-    probe.style.cssText = 'position:fixed;visibility:hidden;font-family:\'JetBrains Mono\',monospace;letter-spacing:0.3px;white-space:pre;font-size:' + getComputedStyle(lineEl).fontSize + ';';
-    probe.textContent = 'M'.repeat(20);
-    document.body.appendChild(probe);
-    charWidth = probe.offsetWidth / 20 || 8;
-    probe.remove();
-  }
-  measureCharWidth();
-  window.addEventListener('resize', measureCharWidth, { passive: true });
-
-  const CRUMB_CHARS = ['·', '.', ',', '·'];
-  let lastCrumb = 0;
-  if (!reduceMotion) {
-    document.addEventListener('mousemove', (e) => {
-      if (!visible) return;
-      const now = Date.now();
-      if (now - lastCrumb < 90) return;
-      lastCrumb = now;
-
-      const rect = lineEl.getBoundingClientRect();
-      // Aim slightly ahead of the worm's head so crumbs feel "eaten" mid-stride.
-      const targetX = rect.left + (currentWormX + 4) * charWidth;
-      const targetY = rect.top + rect.height / 2;
-
-      const crumb = document.createElement('span');
-      crumb.className = 'cursor-crumb';
-      crumb.textContent = CRUMB_CHARS[Math.floor(Math.random() * CRUMB_CHARS.length)];
-      crumb.style.left = e.clientX + 'px';
-      crumb.style.top  = e.clientY + 'px';
-      document.body.appendChild(crumb);
-
-      requestAnimationFrame(() => {
-        crumb.style.transform = 'translate(' + (targetX - e.clientX) + 'px,' + (targetY - e.clientY) + 'px) scale(0.25)';
-        crumb.style.opacity = '0';
-      });
-
-      setTimeout(() => crumb.remove(), 950);
-    }, { passive: true });
-  }
-
-  // --- Console easter egg ---
-  // Type nom() in the browser DevTools console -> triggers a chomp cycle.
-  window.nom = function() {
-    if (timer) { clearTimeout(timer); timer = null; }
-    if (!visible) visible = true;
-    runCycle();
-    console.log('%c~~~_o)  *burp*', 'color:#00e5a0;font-family:monospace;font-weight:bold;text-shadow:0 0 6px rgba(0,229,160,0.5);font-size:14px;');
-    return '*burp*';
-  };
-  console.log('%c~~~_o)  oM noM Security Feeds  -  type nom() to feed the worm', 'color:#00e5a0;font-family:monospace;');
-
-  // Pause when scrolled out of view; resume when scrolled back.
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver((entries) => {
-      for (const e of entries) {
-        if (e.isIntersecting) {
-          if (!visible) {
-            visible = true;
-            runCycle();
-          }
-        } else {
-          visible = false;
-          if (timer) { clearTimeout(timer); timer = null; }
-        }
-      }
-    }, { threshold: 0.1 });
-    io.observe(lineEl);
-  }
-
-  // Kick off immediately; don't wait for IO callback latency.
-  runCycle();
-})();
-</script>
-
 <script>
 // Worm mood poller. Hits /api/worm/mood every 5 minutes, applies the
 // label as a body data-attr so CSS retints the worm sprites + the
@@ -1734,5 +320,15 @@ footer a:hover { color: var(--accent-cyan); }
 })();
 </script>
 
+<script>
+// Worm chomps when a fresher item lands (the "last nom" age drops).
+(function(){
+  var el=document.getElementById('lsAgo'), worm=document.getElementById('brandWorm');
+  if(!el||!worm) return;
+  var prev=null;
+  function parse(t){ var m=/^(\d+)([smhd])$/.exec(String(t).trim()); if(!m) return null; return (+m[1])*({s:1,m:60,h:3600,d:86400}[m[2]]); }
+  new MutationObserver(function(){ var v=parse(el.textContent); if(v!==null&&prev!==null&&v<prev){ worm.classList.add('chomp'); setTimeout(function(){worm.classList.remove('chomp');},520);} if(v!==null) prev=v; }).observe(el,{childList:true,characterData:true,subtree:true});
+})();
+</script>
 </body>
 </html>

@@ -4,498 +4,316 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex">
-<title>Admin - oM noM Security Feeds</title>
+<title>oM noM Security Feeds - admin</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0a0e14;
-  --bg-card: #14191f;
-  --bg-row: #11161d;
-  --border: #2a3340;
-  --border-hi: #3a4555;
-  --text: #e6ecf5;
-  --text-dim: #b8c4d4;
-  --text-bright: #ffffff;
-  --accent: #00e5a0;
-  --accent-cyan: #56e2ff;
-  --accent-amber: #ffb547;
-  --score-crit: #ff4d6a;
+  --bg:#15171c; --panel:#181b21; --row:#1b1e25; --border:#2b3039; --bhi:#3b424d;
+  --text:#e9ebf0; --dim:#8d93a0; --faint:#5d636e; --bright:#ffffff;
+  --accent:#2dd49c; --accent-hi:#54e3b4; --crit:#ff5d6e; --warn:#f0b552;
+  --elev: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
 }
-html, body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 100vh;
-}
-a { color: var(--accent-cyan); text-decoration: none; }
-a:hover { color: var(--accent); }
-code, .mono { font-family: 'JetBrains Mono', monospace; }
+html,body { background: var(--bg); color: var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:14px; line-height:1.55; min-height:100vh; font-variant-numeric: tabular-nums; }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.022; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hi); }
+code, .mono { font-family:'JetBrains Mono',monospace; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-card);
-}
-.brand {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--text-bright);
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brand .worm-sprite {
-  width: 32px; height: 25px; flex-shrink: 0; vertical-align: middle;
-  animation: worm-bob 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 0 5px rgba(0,229,160,0.35));
-}
-.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--accent); }
-.brand .worm-sprite .seg.s3 { opacity: 0.35; }
-.brand .worm-sprite .seg.s2 { opacity: 0.6; }
-.brand .worm-sprite .seg.s1 { opacity: 0.85; }
-.brand .worm-sprite .eye   { fill: var(--bg); }
-.brand .worm-sprite .glint { fill: var(--accent-cyan); }
-.brand .worm-sprite .mouth { fill: var(--bg); }
-@keyframes worm-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1.5px); }
-}
-.brand .tag {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  background: rgba(0,229,160,0.12);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 1px 6px;
-  border-radius: 2px;
-  margin-left: 6px;
-}
-nav.top-nav {
-  display: flex;
-  gap: 18px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
+.page { max-width: 1180px; margin: 0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--bg) 320px); position:relative; z-index:1; min-height:100vh; }
+
+/* spine row: continuous left gutter + content */
+.row { display:flex; align-items:stretch; }
+.row > .gut { width:50px; flex-shrink:0; border-right:1px solid var(--border); display:flex; align-items:flex-start; justify-content:center; padding-top:14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--faint); }
+.row > .main { flex:1; min-width:0; }
+.rule { border-bottom:1px solid var(--border); }
+
+.worm { width:28px; height:22px; }
+.worm .seg, .worm .head { fill: var(--accent); }
+.worm .seg.s3 { opacity:0.35; } .worm .seg.s2 { opacity:0.6; } .worm .seg.s1 { opacity:0.85; }
+.worm .eye, .worm .mouth { fill: var(--bg); } .worm .glint { fill: var(--bright); }
+@media (prefers-reduced-motion: no-preference) {
+  #brandWorm { animation: bob 3.4s ease-in-out infinite; transform-origin:center; }
+  #brandWorm.chomp .mouth { animation: chomp 0.5s ease-out; transform-origin:28px 14.5px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+  @keyframes chomp { 0%,100%{transform:scaleY(0.5)} 40%{transform:scaleY(1.7) scaleX(0.9)} }
 }
 
-.wrap {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 26px 24px 64px;
-}
-h1 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  letter-spacing: 1.4px;
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  margin: 26px 0 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-h1:first-of-type { margin-top: 6px; }
+/* status-line header */
+.statusbar { display:flex; align-items:center; gap:12px; padding:13px 20px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+.statusbar .bd { color:var(--bright); font-weight:600; letter-spacing:0.2px; }
+.statusbar .scan { color:var(--faint); }
+.statusbar nav { display:flex; gap:16px; margin-left:8px; }
+.statusbar nav a { color:var(--dim); font-size:11.5px; padding-bottom:2px; border-bottom:1px solid transparent; }
+.statusbar nav a:hover { color:var(--text); border-bottom-color:var(--bhi); }
+.statusbar nav a.cur { color:var(--bright); border-bottom-color:var(--accent); }
+.statusbar .grow { flex:1; border-bottom:1px dotted var(--border); height:1px; transform:translateY(-2px); min-width:20px; }
+.statusbar .nom { color:var(--dim); } .statusbar .nom b { color:var(--accent); font-weight:600; }
 
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
-}
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 14px 16px;
-  position: relative;
-}
-.card .label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1.1px;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-}
-.card .value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--text-bright);
-  letter-spacing: -0.4px;
-}
-.card .sub {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 6px;
-}
-.card.alert .value { color: var(--score-crit); }
+/* section masthead label: // name -------- */
+.seclabel { display:flex; align-items:center; gap:12px; padding:30px 20px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.seclabel .c { color:var(--faint); }
+.seclabel .note { color:var(--faint); text-transform:none; letter-spacing:0; }
+.seclabel .ext { flex:1; border-bottom:1px solid var(--border); height:1px; }
+
+/* stats ledger - sharp metric cells, severity on the number only */
+.cards { display:grid; grid-template-columns:repeat(auto-fit, minmax(180px,1fr)); gap:0; border-top:1px solid var(--border); }
+.card { padding:16px 20px; border-right:1px solid var(--border); border-bottom:1px solid var(--border); position:relative; }
+.card .label { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); letter-spacing:0.3px; margin-bottom:8px; text-transform:uppercase; }
+.card .value { font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; color:var(--bright); letter-spacing:-0.5px; line-height:1; }
+.card .sub { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); margin-top:8px; }
+.card.alert .value { color: var(--crit); }
 .card.good  .value { color: var(--accent); }
-.card.pro   .value { color: var(--accent-amber); }
+.card.pro   .value { color: var(--warn); }
 
-.row-2col {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 18px;
-  margin-top: 18px;
-}
-@media (max-width: 900px) {
-  .row-2col { grid-template-columns: 1fr; }
-}
+/* hairline panel - one surface, no float */
+.panel { padding:0 0 4px; }
+.panel-title { display:flex; justify-content:space-between; align-items:baseline; padding:14px 20px 10px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--text); font-weight:600; letter-spacing:0.2px; }
+.panel-title .count { color:var(--dim); font-size:11px; font-family:'JetBrains Mono',monospace; font-weight:400; }
+.panel-body { padding:0 20px 10px; }
 
-.panel {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 16px 18px;
-}
-.panel-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  color: var(--accent);
-  text-transform: uppercase;
-  margin-bottom: 12px;
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-}
-.panel-title .count {
-  color: var(--text-dim);
-  font-size: 10px;
-}
+/* service meta strip */
+.meta { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); display:flex; gap:22px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid var(--border); }
+.meta span strong { color:var(--faint); font-weight:400; text-transform:uppercase; letter-spacing:0.3px; margin-right:6px; }
+.meta span .mono { color:var(--text); }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-th {
-  text-align: left;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-dim);
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-  background: transparent;
-}
-td {
-  padding: 8px;
-  border-bottom: 1px solid rgba(42,51,64,0.4);
-  vertical-align: middle;
-}
-tr:hover td { background: var(--bg-row); }
-td.mono { font-family: 'JetBrains Mono', monospace; font-size: 11px; }
-td.dim  { color: var(--text-dim); }
+/* two-column split on the spine */
+.row-2col { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--border); }
+.row-2col > .panel { border-right:1px solid var(--border); }
+.row-2col > .panel:last-child { border-right:none; }
+@media (max-width:900px) { .row-2col { grid-template-columns:1fr; } .row-2col > .panel { border-right:none; border-bottom:1px solid var(--border); } }
 
-.dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-right: 8px;
-  vertical-align: 1px;
-}
-.dot.ok    { background: var(--accent); box-shadow: 0 0 6px rgba(0,229,160,0.4); }
-.dot.err   { background: var(--score-crit); box-shadow: 0 0 6px rgba(255,77,106,0.4); }
-.dot.stale { background: var(--accent-amber); box-shadow: 0 0 6px rgba(255,181,71,0.3); }
+/* ledger tables */
+table { width:100%; border-collapse:collapse; font-size:12px; }
+th { text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:0.4px; color:var(--faint); padding:6px 8px; border-bottom:1px solid var(--border); background:transparent; }
+td { padding:8px; border-bottom:1px solid var(--row); vertical-align:middle; }
+tr:hover td { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+td.mono { font-family:'JetBrains Mono',monospace; font-size:11px; }
+td.dim { color: var(--dim); }
 
-.pill {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  border-radius: 2px;
-  background: rgba(86,226,255,0.08);
-  border: 1px solid rgba(86,226,255,0.3);
-  color: var(--accent-cyan);
-}
-.pill.pro    { background: rgba(255,181,71,0.08); border-color: rgba(255,181,71,0.35); color: var(--accent-amber); }
-.pill.google { background: rgba(86,226,255,0.08); border-color: rgba(86,226,255,0.3); color: var(--accent-cyan); }
-.pill.email  { background: rgba(0,229,160,0.08); border-color: rgba(0,229,160,0.3); color: var(--accent); }
+.dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:8px; vertical-align:1px; }
+.dot.ok { background: var(--accent); }
+.dot.err { background: var(--crit); }
+.dot.stale { background: var(--warn); }
+tr:has(.dot.err) td { background: color-mix(in srgb, var(--crit) 7%, transparent); }
+tr:has(.dot.err):hover td { background: color-mix(in srgb, var(--crit) 11%, transparent); }
 
-.meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  display: flex;
-  gap: 18px;
-  flex-wrap: wrap;
-  margin-top: 10px;
-}
-.meta span strong { color: var(--text); font-weight: 600; }
+/* severity / provider badges - data only, sharp */
+.pill { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; text-transform:uppercase; padding:2px 6px; border-radius:2px; background: color-mix(in srgb, var(--dim) 12%, transparent); border:1px solid var(--bhi); color: var(--dim); }
+.pill.pro { background: color-mix(in srgb, var(--warn) 10%, transparent); border-color: color-mix(in srgb, var(--warn) 40%, transparent); color: var(--warn); }
+.pill.google { background: color-mix(in srgb, var(--dim) 12%, transparent); border-color: var(--bhi); color: var(--text); }
+.pill.email { background: color-mix(in srgb, var(--accent) 10%, transparent); border-color: color-mix(in srgb, var(--accent) 35%, transparent); color: var(--accent); }
 
-.empty {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  text-align: center;
-  padding: 18px 8px;
-}
+.empty { font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); text-align:center; padding:18px 8px; }
 
-.reload-btn {
-  background: transparent;
-  border: 1px solid var(--border-hi);
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.8px;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  text-transform: uppercase;
-}
-.reload-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
+/* reticle frame: 4 emerald L-corners on the focus panel */
+.reticle { position:relative; }
+.reticle .cn { position:absolute; width:13px; height:13px; border:0 solid var(--accent); pointer-events:none; }
+.reticle .tl{top:-1px;left:-1px;border-top-width:1.5px;border-left-width:1.5px;}
+.reticle .tr{top:-1px;right:-1px;border-top-width:1.5px;border-right-width:1.5px;}
+.reticle .bl{bottom:-1px;left:-1px;border-bottom-width:1.5px;border-left-width:1.5px;}
+.reticle .br{bottom:-1px;right:-1px;border-bottom-width:1.5px;border-right-width:1.5px;}
+
+/* operator settings */
+.op-hint { font-family:'Space Grotesk',system-ui,sans-serif; font-size:12px; color:var(--dim); line-height:1.55; padding:0 20px 14px; max-width:78ch; }
+.op-hint code { font-family:'JetBrains Mono',monospace; font-size:11px; background:var(--bg); border:1px solid var(--border); padding:1px 5px; color:var(--text); }
+.op-form { padding:0 20px 18px; margin-bottom:18px; border-bottom:1px solid var(--row); }
+.op-form:last-child { border-bottom:0; margin-bottom:0; }
+.op-row { margin-bottom:10px; }
+.op-row label { display:block; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); letter-spacing:0.2px; margin-bottom:5px; }
+.op-row input[type=text] { width:100%; max-width:420px; background:var(--bg); border:1px solid var(--border); color:var(--bright); font-family:'JetBrains Mono',monospace; font-size:12px; padding:7px 10px; border-radius:2px; outline:none; }
+.op-row input[type=text]:focus { border-color:var(--accent); outline:1px solid var(--accent); outline-offset:0; }
+.op-add-row { display:flex; gap:8px; align-items:center; max-width:560px; }
+.op-add-row input { flex:1; max-width:none; }
+
+.op-btn { background: color-mix(in srgb, var(--accent) 8%, transparent); border:1px solid var(--bhi); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.2px; padding:7px 14px; border-radius:2px; cursor:pointer; transition: background-color .15s, border-color .15s, color .15s; }
+.op-btn:hover { background: color-mix(in srgb, var(--accent) 16%, transparent); border-color:var(--accent); color:var(--bright); }
+.op-btn:active { transform: translateY(1px); }
+.op-btn:focus-visible { outline:1px solid var(--accent); outline-offset:2px; }
+.op-btn.saved { background: color-mix(in srgb, var(--accent) 22%, transparent); border-color:var(--accent); color:var(--bright); }
+.op-btn.failed { background: color-mix(in srgb, var(--crit) 18%, transparent); border-color:var(--crit); color:var(--bright); }
+
+.op-row select { background:var(--bg); border:1px solid var(--border); color:var(--text); font-family:'JetBrains Mono',monospace; font-size:12px; padding:6px 8px; border-radius:2px; }
+
+.op-bsky-acct { display:flex; justify-content:space-between; align-items:center; padding:8px 12px; border:1px solid var(--border); border-radius:2px; margin-bottom:6px; font-family:'JetBrains Mono',monospace; font-size:12px; }
+.op-bsky-acct .handle { color:var(--bright); }
+.op-bsky-acct .rm { background:transparent; border:1px solid var(--border); color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:500; padding:3px 8px; border-radius:2px; cursor:pointer; letter-spacing:0.2px; transition: background-color .15s, border-color .15s, color .15s; }
+.op-bsky-acct .rm:hover { background: color-mix(in srgb, var(--crit) 11%, transparent); color:var(--crit); border-color:var(--crit); }
+.op-bsky-acct .rm:active { transform: translateY(1px); }
+.op-bsky-acct .rm:focus-visible { outline:1px solid var(--accent); outline-offset:2px; }
+
+/* footer status line */
+.foot { display:flex; flex-wrap:wrap; gap:10px 14px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); border-top:1px solid var(--border); }
+.foot a { color:var(--dim); } .foot a:hover { color:var(--accent); }
+.foot .grow { flex:1; min-width:20px; }
 </style>
 </head>
 <body>
+<div class="page">
 
-<div class="top">
-  <div class="brand">
-    <svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
-    oM noM Security Feeds
-    <span class="tag">admin</span>
-  </div>
-  <nav class="top-nav">
-    <a href="/app">&larr; back to app</a>
-    <a href="/admin/analytics">analytics &rarr;</a>
-    <button class="reload-btn" onclick="loadStats(true)">refresh</button>
-  </nav>
-</div>
-
-<div class="wrap">
-
-  <h1>:: at a glance ::</h1>
-  <div class="cards" id="cards">
-    <div class="card"><div class="label">Total users</div><div class="value" id="cTotalUsers">-</div><div class="sub" id="cTotalUsersSub">&nbsp;</div></div>
-    <div class="card pro"><div class="label">Pro subscribers</div><div class="value" id="cPro">-</div><div class="sub" id="cProSub">&nbsp;</div></div>
-    <div class="card good"><div class="label">Articles (24h)</div><div class="value" id="cArt24">-</div><div class="sub" id="cArtTotal">&nbsp;</div></div>
-    <div class="card"><div class="label">Sources erroring</div><div class="value" id="cSrcErr">-</div><div class="sub" id="cSrcMeta">&nbsp;</div></div>
-    <div class="card"><div class="label">Magic links (24h)</div><div class="value" id="cMagic">-</div><div class="sub">&nbsp;</div></div>
-    <div class="card"><div class="label">Uptime</div><div class="value mono" id="cUptime" style="font-size:20px;">-</div><div class="sub" id="cUptimeSub">&nbsp;</div></div>
+  <div class="row rule">
+    <div class="gut"><svg id="brandWorm" class="worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></div>
+    <div class="main"><div class="statusbar">
+      <span class="bd">oM noM</span><span class="scan">// scan admin</span>
+      <nav><a href="/">home</a><a class="cur" href="/admin">admin</a><a href="/admin/analytics">analytics</a><a href="/app">reader</a></nav>
+      <span class="grow"></span>
+      <span class="nom">last nom <b id="lsAgo">-</b></span>
+    </div></div>
   </div>
 
-  <h1>:: service ::</h1>
-  <div class="panel">
-    <div class="meta">
-      <span><strong>started</strong> <span id="svcStarted" class="mono">-</span></span>
-      <span><strong>go</strong> <span id="svcGo" class="mono">-</span></span>
-      <span><strong>goroutines</strong> <span id="svcGoroutines" class="mono">-</span></span>
-      <span><strong>mem</strong> <span id="svcMem" class="mono">-</span></span>
-      <span><strong>hosted</strong> <span id="svcHosted" class="mono">-</span></span>
+  <div class="row"><div class="gut">01</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> at a glance <span class="ext"></span></div>
+    <div class="panel">
+    <div class="cards" id="cards">
+      <div class="card"><div class="label">Total users</div><div class="value" id="cTotalUsers">-</div><div class="sub" id="cTotalUsersSub">&nbsp;</div></div>
+      <div class="card pro"><div class="label">Pro subscribers</div><div class="value" id="cPro">-</div><div class="sub" id="cProSub">&nbsp;</div></div>
+      <div class="card good"><div class="label">Articles (24h)</div><div class="value" id="cArt24">-</div><div class="sub" id="cArtTotal">&nbsp;</div></div>
+      <div class="card"><div class="label">Sources erroring</div><div class="value" id="cSrcErr">-</div><div class="sub" id="cSrcMeta">&nbsp;</div></div>
+      <div class="card"><div class="label">Magic links (24h)</div><div class="value" id="cMagic">-</div><div class="sub">&nbsp;</div></div>
+      <div class="card"><div class="label">Uptime</div><div class="value mono" id="cUptime" style="font-size:20px;">-</div><div class="sub" id="cUptimeSub">&nbsp;</div></div>
     </div>
-  </div>
+    </div>
+  </div></div>
 
-  <div class="row-2col">
+  <div class="row"><div class="gut">02</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> service <span class="ext"></span></div>
+    <div class="panel">
+      <div class="meta">
+        <span><strong>started</strong> <span id="svcStarted" class="mono">-</span></span>
+        <span><strong>go</strong> <span id="svcGo" class="mono">-</span></span>
+        <span><strong>goroutines</strong> <span id="svcGoroutines" class="mono">-</span></span>
+        <span><strong>mem</strong> <span id="svcMem" class="mono">-</span></span>
+        <span><strong>hosted</strong> <span id="svcHosted" class="mono">-</span></span>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut">03</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> users <span class="ext"></span></div>
+    <div class="row-2col">
+      <div class="panel">
+        <div class="panel-title">recent signups <span class="count" id="signupsCount"></span></div>
+        <div class="panel-body" id="signupsTbl"><div class="empty">loading...</div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">pro subscribers <span class="count" id="proCount"></span></div>
+        <div class="panel-body" id="proTbl"><div class="empty">loading...</div></div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut">04</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> source health <span class="note">errors first, then stale</span> <span class="ext"></span></div>
+    <div class="panel reticle">
+      <span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+      <div class="panel-body" id="srcTbl"><div class="empty">loading...</div></div>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut">05</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> operator settings <span class="note">deployment-wide</span> <span class="ext"></span></div>
 
     <div class="panel">
-      <div class="panel-title">Recent signups <span class="count" id="signupsCount"></span></div>
-      <div id="signupsTbl"><div class="empty">loading...</div></div>
+      <div class="panel-title">api keys</div>
+      <div class="op-hint">Deployment-wide secrets used by the fetcher. Existing values show as <code>********</code> - leave that placeholder to keep them, type a new value to replace.</div>
+
+      <div class="op-form">
+        <div class="op-row">
+          <label>Bluesky identifier</label>
+          <input id="opBskyId" type="text" placeholder="handle.bsky.social">
+        </div>
+        <div class="op-row">
+          <label>Bluesky app password</label>
+          <input id="opBskyPw" type="text" placeholder="xxxx-xxxx-xxxx-xxxx">
+        </div>
+        <button class="op-btn primary" onclick="saveOpBsky()">Save Bluesky</button>
+      </div>
+
+      <div class="op-form">
+        <div class="op-row">
+          <label>MalwareBazaar API key</label>
+          <input id="opBazaarKey" type="text" placeholder="********">
+        </div>
+        <button class="op-btn primary" onclick="saveOpBazaar()">Save MalwareBazaar</button>
+      </div>
+
+      <div class="op-form">
+        <div class="op-row">
+          <label><input id="opGhEnabled" type="checkbox" style="margin-right:6px;vertical-align:middle;"> GitHub Security Advisories enabled</label>
+        </div>
+        <div class="op-row">
+          <label>GitHub personal access token (optional, higher rate limit)</label>
+          <input id="opGhToken" type="text" placeholder="ghp_******** or github_pat_********">
+        </div>
+        <button class="op-btn primary" onclick="saveOpGitHub()">Save GitHub</button>
+      </div>
     </div>
 
     <div class="panel">
-      <div class="panel-title">Pro subscribers <span class="count" id="proCount"></span></div>
-      <div id="proTbl"><div class="empty">loading...</div></div>
-    </div>
-
-  </div>
-
-  <h1>:: source health ::</h1>
-  <div class="panel">
-    <div id="srcTbl"><div class="empty">loading...</div></div>
-  </div>
-
-  <h1>:: operator settings ::</h1>
-
-  <div class="panel">
-    <div class="panel-title">API keys</div>
-    <div class="op-hint">Deployment-wide secrets used by the fetcher. Existing values show as <code>********</code> - leave that placeholder to keep them, type a new value to replace.</div>
-
-    <div class="op-form">
-      <div class="op-row">
-        <label>Bluesky identifier</label>
-        <input id="opBskyId" type="text" placeholder="handle.bsky.social">
-      </div>
-      <div class="op-row">
-        <label>Bluesky app password</label>
-        <input id="opBskyPw" type="text" placeholder="xxxx-xxxx-xxxx-xxxx">
-      </div>
-      <button class="op-btn primary" onclick="saveOpBsky()">Save Bluesky</button>
-    </div>
-
-    <div class="op-form">
-      <div class="op-row">
-        <label>MalwareBazaar API key</label>
-        <input id="opBazaarKey" type="text" placeholder="********">
-      </div>
-      <button class="op-btn primary" onclick="saveOpBazaar()">Save MalwareBazaar</button>
-    </div>
-
-    <div class="op-form">
-      <div class="op-row">
-        <label><input id="opGhEnabled" type="checkbox" style="margin-right:6px;vertical-align:middle;"> GitHub Security Advisories enabled</label>
-      </div>
-      <div class="op-row">
-        <label>GitHub personal access token (optional, higher rate limit)</label>
-        <input id="opGhToken" type="text" placeholder="ghp_******** or github_pat_********">
-      </div>
-      <button class="op-btn primary" onclick="saveOpGitHub()">Save GitHub</button>
-    </div>
-  </div>
-
-  <div class="panel">
-    <div class="panel-title">Operator-baseline Bluesky watched accounts <span class="count" id="opBskyAcctsCount"></span></div>
-    <div class="op-hint">Handles added here are part of the default feed every user sees, in addition to the editorial curated list. Users can also add their own on top in their Config (c) modal; those are stored per-user and don't show here.</div>
-    <div id="opBskyAcctsList"><div class="empty">loading...</div></div>
-    <div class="op-form" style="margin-top:14px;">
-      <div class="op-row">
-        <label>Add baseline handle</label>
-        <div class="op-add-row">
-          <input id="opBskyNewHandle" type="text" placeholder="researcher.bsky.social" onkeydown="if(event.key==='Enter'){event.preventDefault();addOpBskyAccount();}">
-          <button class="op-btn primary" onclick="addOpBskyAccount()">Add</button>
+      <div class="panel-title">operator-baseline Bluesky watched accounts <span class="count" id="opBskyAcctsCount"></span></div>
+      <div class="op-hint">Handles added here are part of the default feed every user sees, in addition to the editorial curated list. Users can also add their own on top in their Config (c) modal; those are stored per-user and don't show here.</div>
+      <div class="panel-body" id="opBskyAcctsList"><div class="empty">loading...</div></div>
+      <div class="op-form" style="margin-top:14px;">
+        <div class="op-row">
+          <label>Add baseline handle</label>
+          <div class="op-add-row">
+            <input id="opBskyNewHandle" type="text" placeholder="researcher.bsky.social" onkeydown="if(event.key==='Enter'){event.preventDefault();addOpBskyAccount();}">
+            <button class="op-btn primary" onclick="addOpBskyAccount()">Add</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="panel">
-    <div class="panel-title">Pipeline tests</div>
-    <div class="op-hint">Fire a real digest email or webhook payload from the live workers, on demand. Use this to validate the pipelines end-to-end before a real Pro user is affected.</div>
+    <div class="panel">
+      <div class="panel-title">pipeline tests</div>
+      <div class="op-hint">Fire a real digest email or webhook payload from the live workers, on demand. Use this to validate the pipelines end-to-end before a real Pro user is affected.</div>
 
-    <div class="op-form">
-      <div class="op-row">
-        <label>Send digest email to</label>
-        <div class="op-add-row">
-          <input id="testDigestTo" type="text" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestDigest();}">
-          <button class="op-btn primary" onclick="sendTestDigest()">Send now</button>
+      <div class="op-form">
+        <div class="op-row">
+          <label>Send digest email to</label>
+          <div class="op-add-row">
+            <input id="testDigestTo" type="text" placeholder="you@example.com" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestDigest();}">
+            <button class="op-btn primary" onclick="sendTestDigest()">Send now</button>
+          </div>
         </div>
+        <div id="testDigestStatus" class="op-hint" style="margin-top:6px;padding:0;"></div>
       </div>
-      <div id="testDigestStatus" class="op-hint" style="margin-top:6px;"></div>
-    </div>
 
-    <div class="op-form">
-      <div class="op-row">
-        <label>Fire test webhook</label>
-        <div class="op-add-row" style="flex-wrap:wrap;gap:6px;">
-          <select id="testWebhookChannel" style="background:transparent;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:2px;">
-            <option value="discord">Discord</option>
-            <option value="slack">Slack</option>
-            <option value="generic">Generic JSON</option>
-          </select>
-          <select id="testWebhookKind" style="background:transparent;border:1px solid var(--border);color:var(--text);font-family:'JetBrains Mono',monospace;font-size:12px;padding:6px 8px;border-radius:2px;">
-            <option value="kev">KEV</option>
-            <option value="keyword">Keyword</option>
-            <option value="cve">CVE</option>
-            <option value="tag">Tag</option>
-          </select>
-          <input id="testWebhookURL" type="text" placeholder="https://discord.com/api/webhooks/..." style="flex:1;min-width:280px;" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestWebhook();}">
-          <button class="op-btn primary" onclick="sendTestWebhook()">Fire</button>
+      <div class="op-form">
+        <div class="op-row">
+          <label>Fire test webhook</label>
+          <div class="op-add-row" style="flex-wrap:wrap;gap:6px;">
+            <select id="testWebhookChannel">
+              <option value="discord">Discord</option>
+              <option value="slack">Slack</option>
+              <option value="generic">Generic JSON</option>
+            </select>
+            <select id="testWebhookKind">
+              <option value="kev">KEV</option>
+              <option value="keyword">Keyword</option>
+              <option value="cve">CVE</option>
+              <option value="tag">Tag</option>
+            </select>
+            <input id="testWebhookURL" type="text" placeholder="https://discord.com/api/webhooks/..." style="flex:1;min-width:280px;" onkeydown="if(event.key==='Enter'){event.preventDefault();sendTestWebhook();}">
+            <button class="op-btn primary" onclick="sendTestWebhook()">Fire</button>
+          </div>
         </div>
+        <div id="testWebhookStatus" class="op-hint" style="margin-top:6px;padding:0;"></div>
       </div>
-      <div id="testWebhookStatus" class="op-hint" style="margin-top:6px;"></div>
     </div>
-  </div>
+  </div></div>
+
+  <div class="row"><div class="gut"></div><div class="main"><div class="foot">
+    <span>oM noM Security Feeds</span><span style="color:var(--border)">·</span><span>admin console</span>
+    <span class="grow"></span>
+    <a href="/admin/analytics">analytics</a><a href="/app">reader</a><a href="https://github.com/RMS2D/omnomfeeds">github</a>
+  </div></div></div>
 
 </div>
-
-<style>
-.op-hint {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  line-height: 1.55;
-  margin-bottom: 14px;
-}
-.op-form { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px solid rgba(42,51,64,0.5); }
-.op-form:last-child { border-bottom: 0; padding-bottom: 0; }
-.op-row { margin-bottom: 10px; }
-.op-row label {
-  display: block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-  margin-bottom: 5px;
-}
-.op-row input[type=text] {
-  width: 100%;
-  max-width: 420px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text-bright);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 7px 10px;
-  border-radius: 3px;
-  outline: none;
-}
-.op-row input[type=text]:focus { border-color: var(--accent-cyan); }
-.op-add-row {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  max-width: 520px;
-}
-.op-add-row input { flex: 1; max-width: none; }
-.op-btn {
-  background: rgba(0,229,160,0.10);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.5px;
-  padding: 7px 14px;
-  border-radius: 3px;
-  cursor: pointer;
-  text-transform: uppercase;
-}
-.op-btn:hover { background: rgba(0,229,160,0.2); color: var(--text-bright); }
-.op-bsky-acct {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 12px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  margin-bottom: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-}
-.op-bsky-acct .handle { color: var(--text-bright); }
-.op-bsky-acct .rm {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 2px;
-  cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-}
-.op-bsky-acct .rm:hover { color: var(--score-crit); border-color: var(--score-crit); }
-</style>
 
 <script>
 function esc(s) {
@@ -645,7 +463,7 @@ function renderSources(s) {
         const ageMin = (Date.now() - new Date(src.last_fetch).getTime()) / 60000;
         if (ageMin > 30) cls = 'stale';
       }
-      const err = src.last_error ? '<span style="color:var(--score-crit);font-family:JetBrains Mono,monospace;font-size:11px;">' + esc(src.last_error) + '</span>' : '<span class="dim">-</span>';
+      const err = src.last_error ? '<span style="color:var(--crit);font-family:JetBrains Mono,monospace;font-size:11px;">' + esc(src.last_error) + '</span>' : '<span class="dim">-</span>';
       return `
         <tr>
           <td><span class="dot ${cls}"></span></td>
@@ -724,8 +542,8 @@ function flashSaved(resp, label) {
     if (b.textContent.includes(label)) {
       const orig = b.textContent;
       b.textContent = ok ? 'saved' : 'failed';
-      b.style.background = ok ? 'rgba(0,229,160,0.25)' : 'rgba(255,77,106,0.2)';
-      setTimeout(() => { b.textContent = orig; b.style.background = ''; }, 1400);
+      b.classList.add(ok ? 'saved' : 'failed');
+      setTimeout(() => { b.textContent = orig; b.classList.remove('saved', 'failed'); }, 1400);
     }
   });
 }
@@ -792,10 +610,10 @@ async function sendTestDigest() {
   const to = (input.value || '').trim();
   if (!to || !to.includes('@')) {
     status.textContent = 'Enter a valid email first.';
-    status.style.color = 'var(--score-crit)';
+    status.style.color = 'var(--crit)';
     return;
   }
-  status.style.color = 'var(--text-dim)';
+  status.style.color = 'var(--dim)';
   status.textContent = 'Generating digest... (AI call takes 30-60s)';
   try {
     const r = await fetch('/api/admin/digest/send-test', {
@@ -808,11 +626,11 @@ async function sendTestDigest() {
       status.style.color = 'var(--accent)';
       status.textContent = 'Sent to ' + (body.sent_to || to) + ' - check the inbox.';
     } else {
-      status.style.color = 'var(--score-crit)';
+      status.style.color = 'var(--crit)';
       status.textContent = 'Failed: ' + (body.error || ('HTTP ' + r.status));
     }
   } catch (e) {
-    status.style.color = 'var(--score-crit)';
+    status.style.color = 'var(--crit)';
     status.textContent = 'Failed: ' + e.message;
   }
 }
@@ -823,11 +641,11 @@ async function sendTestWebhook() {
   const kind = document.getElementById('testWebhookKind').value;
   const status = document.getElementById('testWebhookStatus');
   if (!url || !url.startsWith('https://')) {
-    status.style.color = 'var(--score-crit)';
+    status.style.color = 'var(--crit)';
     status.textContent = 'Enter an https:// webhook URL first.';
     return;
   }
-  status.style.color = 'var(--text-dim)';
+  status.style.color = 'var(--dim)';
   status.textContent = 'Firing ' + channel + ' ' + kind.toUpperCase() + ' webhook...';
   try {
     const r = await fetch('/api/admin/alert/send-test', {
@@ -840,11 +658,11 @@ async function sendTestWebhook() {
       status.style.color = 'var(--accent)';
       status.textContent = 'Fired ' + body.channel + ' ' + body.kind.toUpperCase() + ' - check the channel.';
     } else {
-      status.style.color = 'var(--score-crit)';
+      status.style.color = 'var(--crit)';
       status.textContent = 'Failed: ' + (body.error || ('HTTP ' + r.status));
     }
   } catch (e) {
-    status.style.color = 'var(--score-crit)';
+    status.style.color = 'var(--crit)';
     status.textContent = 'Failed: ' + e.message;
   }
 }
@@ -855,6 +673,34 @@ loadOpBskyAccounts();
 // Auto-refresh every 30 seconds so the dashboard stays current without
 // needing the user to hit refresh.
 setInterval(loadStats, 30000);
+</script>
+
+<script>
+// last nom: age since the dashboard last pulled fresh stats. Ticks every
+// second, resets to "just now" when loadStats repaints the cards (observed
+// via the #cArt24 value updating). The worm does a one-shot chomp on a
+// fresh pull. No green dot, no LIVE badge - this is the freshness signal.
+(function(){
+  var ago = document.getElementById('lsAgo'), worm = document.getElementById('brandWorm'),
+      anchor = document.getElementById('cArt24');
+  if (!ago || !anchor) return;
+  var last = null;
+  function fmt(sec){
+    if (sec < 2)     return 'just now';
+    if (sec < 60)    return sec + 's';
+    if (sec < 3600)  return Math.floor(sec/60) + 'm';
+    if (sec < 86400) return Math.floor(sec/3600) + 'h';
+    return Math.floor(sec/86400) + 'd';
+  }
+  function paint(){ ago.textContent = last === null ? '-' : fmt(Math.floor((Date.now()-last)/1000)); }
+  function fresh(){
+    last = Date.now();
+    paint();
+    if (worm) { worm.classList.add('chomp'); setTimeout(function(){ worm.classList.remove('chomp'); }, 520); }
+  }
+  new MutationObserver(fresh).observe(anchor, { childList:true, characterData:true, subtree:true });
+  setInterval(paint, 1000);
+})();
 </script>
 
 </body>

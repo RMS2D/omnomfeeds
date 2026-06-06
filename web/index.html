@@ -6,29 +6,27 @@
 <title>oM noM Security Feeds</title>
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 :root {
-  --bg: #0a0e14;
-  --bg-card: #14191f;
-  --bg-hover: #1e2530;
-  --border: #2a3340;
-  --text: #e6ecf5;
-  --text-dim: #b8c4d4;
+  --bg: #15171c;
+  --bg-card: #1b1e25;
+  --bg-hover: #232a33;
+  --border: #2b3039;
+  --text: #e9ebf0;
+  --text-dim: #8d93a0;
   --text-bright: #ffffff;
-  --accent: #00e5a0;
-  --accent-dim: rgba(0,229,160,0.12);
-  --accent-cyan: #56e2ff;
+  --accent: #2dd49c;
+  --accent-dim: rgba(45, 212, 156,0.12);
+  --accent-cyan: #56d3e0;
   --accent-magenta: #ff5cc4;
-  --accent-amber: #ffb547;
-  --red: #ff4d6a;
+  --accent-amber: #f0b552;
+  --red: #ff5d6e;
   --orange: #ff9940;
   --yellow: #ffd000;
-  --blue: #4da6ff;
-  --purple: #b48eff;
-  --score-crit: #ff4d6a;
+  --score-crit: #ff5d6e;
   --score-high: #ff9940;
   --score-med: #ffd000;
   --score-low: #8a98a8;
@@ -37,7 +35,7 @@
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 14px;
   font-weight: 500;
   line-height: 1.5;
@@ -92,7 +90,6 @@ body {
   color: var(--accent);
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
-  text-shadow: 0 0 8px rgba(0,229,160,0.5);
 }
 
 /* Worm logo - caterpillar chomping feed bits. Subtle idle animation:
@@ -105,38 +102,37 @@ body {
 }
 .worm-logo .worm-seg, .worm-logo .worm-head { fill: var(--accent); }
 
-/* Feed-temperature: tint + animation speed of the brand worm reflects how
-   spicy the last 24h of articles look. Set by updateHud() based on KEV
-   tag count. Free for all - sets the mood for the whole app at a glance. */
-.worm-logo.temp-warm .worm-seg, .worm-logo.temp-warm .worm-head { fill: var(--accent-amber); }
-.worm-logo.temp-warm .worm-head { filter: drop-shadow(0 0 5px rgba(255,181,71,0.55)); animation: worm-bob 1.6s ease-in-out infinite; }
-.worm-logo.temp-warm .worm-mouth { animation: worm-chomp 2.4s ease-in-out infinite; }
-.worm-logo.temp-hot .worm-seg, .worm-logo.temp-hot .worm-head { fill: var(--score-crit); }
-.worm-logo.temp-hot .worm-head { filter: drop-shadow(0 0 6px rgba(255,77,106,0.6)); animation: worm-bob 0.9s ease-in-out infinite; }
-.worm-logo.temp-hot .worm-mouth { animation: worm-chomp 1.5s ease-in-out infinite; }
-.worm-logo.temp-hot .worm-eye-glint { fill: var(--accent-amber); }
+/* Feed temperature reads through the worm's motion (bob + chomp speed) set by
+   updateHud(), not through colour. The brand mark stays green - no second
+   accent or glow on the chrome. */
 .worm-logo .worm-seg.s3 { opacity: 0.35; }
 .worm-logo .worm-seg.s2 { opacity: 0.6; }
 .worm-logo .worm-seg.s1 { opacity: 0.85; }
 .worm-logo .worm-head {
-  filter: drop-shadow(0 0 4px rgba(0,229,160,0.45));
+  filter: drop-shadow(0 0 3px rgba(45, 212, 156,0.25));
   transform-origin: 19px 11px;
-  animation: worm-bob 2.4s ease-in-out infinite;
 }
 .worm-logo .worm-eye { fill: var(--bg); }
 .worm-logo .worm-eye-glint { fill: var(--accent-cyan); }
 .worm-logo .worm-mouth {
   fill: var(--bg);
   transform-origin: 22.5px 12.2px;
-  animation: worm-chomp 3.6s ease-in-out infinite;
 }
 .worm-logo .worm-crumb {
   fill: var(--accent-cyan);
   transform-origin: 26px 10px;
   opacity: 0;
 }
-.worm-logo .worm-crumb.c1 { animation: worm-crumb-1 3.6s ease-in-out infinite; }
-.worm-logo .worm-crumb.c2 { animation: worm-crumb-2 3.6s ease-in-out infinite 0.15s; }
+@media (prefers-reduced-motion: no-preference) {
+  .worm-logo .worm-head { animation: worm-bob 2.4s ease-in-out infinite; }
+  .worm-logo .worm-mouth { animation: worm-chomp 3.6s ease-in-out infinite; }
+  .worm-logo.temp-warm .worm-head { animation: worm-bob 1.6s ease-in-out infinite; }
+  .worm-logo.temp-warm .worm-mouth { animation: worm-chomp 2.4s ease-in-out infinite; }
+  .worm-logo.temp-hot .worm-head { animation: worm-bob 0.9s ease-in-out infinite; }
+  .worm-logo.temp-hot .worm-mouth { animation: worm-chomp 1.5s ease-in-out infinite; }
+  .worm-logo .worm-crumb.c1 { animation: worm-crumb-1 3.6s ease-in-out infinite; }
+  .worm-logo .worm-crumb.c2 { animation: worm-crumb-2 3.6s ease-in-out infinite 0.15s; }
+}
 
 @keyframes worm-chomp {
   0%, 60%, 100% { transform: scaleY(0.25); }
@@ -169,10 +165,13 @@ body {
   font-weight: 700;
   fill: var(--accent-cyan);
   opacity: 0;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   transform-origin: 23px 5px;
 }
-.worm-logo.idle-yawn .worm-mouth { animation: worm-yawn 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: no-preference) {
+  .worm-logo.idle-yawn .worm-mouth { animation: worm-yawn 2.6s ease-in-out infinite; }
+  .worm-logo.idle-sleep .worm-zzz { animation: worm-zzz-rise 2.4s ease-in-out infinite; }
+}
 @keyframes worm-yawn {
   0%, 100% { transform: scaleY(0.25); }
   45%, 55% { transform: scaleY(1.7) scaleX(0.85); }
@@ -181,7 +180,6 @@ body {
 .worm-logo.idle-sleep .worm-eye-glint { opacity: 0; }
 .worm-logo.idle-sleep .worm-eye-shut { opacity: 1; }
 .worm-logo.idle-sleep .worm-mouth { animation: none; transform: scaleY(0.18); }
-.worm-logo.idle-sleep .worm-zzz { animation: worm-zzz-rise 2.4s ease-in-out infinite; }
 @keyframes worm-zzz-rise {
   0%   { opacity: 0; transform: translateY(2px); }
   20%  { opacity: 0.95; transform: translateY(0); }
@@ -189,10 +187,8 @@ body {
   100% { opacity: 0; transform: translateY(-3.5px); }
 }
 
-/* KEV alert: red shake + flash on the logo when a new KEV item lands. */
-.worm-logo.kev-alert .worm-head,
-.worm-logo.kev-alert .worm-seg { fill: var(--score-crit); }
-.worm-logo.kev-alert .worm-head { filter: drop-shadow(0 0 8px rgba(255,77,106,0.7)); }
+/* KEV alert: the logo shakes when a new KEV item lands - motion is the signal,
+   no colour flash or glow on the brand mark. */
 .worm-logo.kev-alert { animation: worm-shake 0.6s ease-out; }
 @keyframes worm-shake {
   0%, 100% { transform: translateX(0); }
@@ -213,24 +209,15 @@ body[data-worm-mood="hibernating"] .worm-logo .worm-head {
 }
 body[data-worm-mood="hibernating"] .worm-logo .worm-head {
   filter: drop-shadow(0 0 3px rgba(90,138,114,0.25));
-  animation: worm-bob 4s ease-in-out infinite;
 }
 body[data-worm-mood="hibernating"] .worm-logo {
   opacity: 0.7;
 }
-body[data-worm-mood="frenzy"] .worm-logo .worm-seg,
-body[data-worm-mood="frenzy"] .worm-logo .worm-head {
-  fill: var(--accent-amber);
-}
-body[data-worm-mood="frenzy"] .worm-logo .worm-head {
-  filter: drop-shadow(0 0 7px rgba(255,181,71,0.7)) drop-shadow(0 0 14px rgba(255,110,110,0.3));
-  animation: worm-bob 0.7s ease-in-out infinite;
-}
-body[data-worm-mood="frenzy"] .worm-logo .worm-mouth {
-  animation: worm-chomp 1.2s ease-in-out infinite;
-}
-body[data-worm-mood="frenzy"] .worm-logo .worm-eye-glint {
-  fill: var(--accent-amber);
+/* frenzy reads through faster bob/chomp below, not a colour swap or glow */
+@media (prefers-reduced-motion: no-preference) {
+  body[data-worm-mood="hibernating"] .worm-logo .worm-head { animation: worm-bob 4s ease-in-out infinite; }
+  body[data-worm-mood="frenzy"] .worm-logo .worm-head { animation: worm-bob 0.7s ease-in-out infinite; }
+  body[data-worm-mood="frenzy"] .worm-logo .worm-mouth { animation: worm-chomp 1.2s ease-in-out infinite; }
 }
 
 /* Easter egg chomp: one-shot mouth flare triggered by typing "nom". */
@@ -242,7 +229,7 @@ body[data-worm-mood="frenzy"] .worm-logo .worm-eye-glint {
 
 /* Mark-all-read cascade: row briefly flashes cyan as the worm chews through. */
 @keyframes row-chomp-flash {
-  0%   { background: rgba(86,226,255,0.32); box-shadow: inset 3px 0 0 var(--accent-cyan), 0 0 18px rgba(86,226,255,0.4); }
+  0%   { background: rgba(86,226,255,0.32); box-shadow: inset 3px 0 0 var(--accent-cyan); }
   60%  { background: rgba(86,226,255,0.14); }
   100% { background: transparent; box-shadow: none; }
 }
@@ -256,8 +243,10 @@ body[data-worm-mood="frenzy"] .worm-logo .worm-eye-glint {
   width: 64px; height: 50px;
   margin: 10px auto 10px;
   display: block;
-  filter: drop-shadow(0 0 7px rgba(0,229,160,0.45));
-  animation: rd-worm-crawl 3.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgba(45, 212, 156,0.45));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rd-loading-worm { animation: rd-worm-crawl 3.2s ease-in-out infinite; }
 }
 .rd-loading-worm .seg, .rd-loading-worm .head { fill: var(--accent); }
 .rd-loading-worm .seg.s3 { opacity: 0.35; }
@@ -292,12 +281,11 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   bottom: 50px;
   z-index: 60;
   padding: 4px 10px 4px 8px;
-  background: rgba(0,229,160,0.05);
-  border: 1px solid rgba(0,229,160,0.28);
-  border-radius: 14px;
+  background: rgba(45, 212, 156,0.05);
+  border: 1px solid rgba(45, 212, 156,0.28);
+  border-radius: 3px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  letter-spacing: 0.5px;
   color: var(--accent);
   cursor: pointer;
   display: inline-flex;
@@ -305,15 +293,13 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   gap: 6px;
   opacity: 0.55;
   user-select: none;
-  text-shadow: 0 0 6px rgba(0,229,160,0.35);
   transition: opacity 0.18s ease, transform 0.15s ease,
               background-color 0.2s ease, border-color 0.2s ease;
-  animation: nom-hint-breathe 4.2s ease-in-out infinite;
 }
 .nom-hint:hover {
   opacity: 1;
   transform: translateY(-1px);
-  background: rgba(0,229,160,0.12);
+  background: rgba(45, 212, 156,0.12);
   border-color: var(--accent);
 }
 .nom-hint.found { opacity: 0.32; }
@@ -321,16 +307,13 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
 .nom-hint .nom-glyph {
   display: inline-block;
   color: var(--accent);
-  animation: nom-hint-wiggle 2.6s ease-in-out infinite;
   transform-origin: right center;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .nom-hint .nom-glyph { animation: nom-hint-wiggle 2.6s ease-in-out infinite; }
 }
 .nom-hint.chomp .nom-glyph { animation: nom-hint-chomp 0.45s ease-out; }
 .nom-hint .nom-text { font-weight: 700; }
-@keyframes nom-hint-breathe {
-  0%, 100% { opacity: 0.42; }
-  50%      { opacity: 0.72; }
-}
-.nom-hint.found { animation: none; }
 @keyframes nom-hint-wiggle {
   0%, 100% { transform: translateX(0) scaleX(1); }
   50%      { transform: translateX(2px) scaleX(1.03); }
@@ -362,7 +345,7 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
 .hover-card {
   position: fixed;
   z-index: 1090;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.95), rgba(13, 18, 28, 0.85));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.95), rgba(15, 16, 20, 0.85));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-cyan);
   padding: 14px 18px;
@@ -373,7 +356,7 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   color: var(--text);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 12px 40px rgba(0,0,0,0.7), 0 0 18px rgba(86,226,255,0.12);
+  box-shadow: 0 16px 40px rgba(5,9,16,0.6);
   opacity: 0;
   transform: translateY(6px) scale(0.98);
   transition: opacity 0.18s ease, transform 0.18s ease;
@@ -433,7 +416,6 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   gap: 6px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  letter-spacing: 0.6px;
   padding: 2px 8px;
   border-radius: 2px;
   color: var(--text-dim);
@@ -443,22 +425,20 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
 .tui-status .scan-ind .scan-label {
   color: var(--accent-cyan);
   font-weight: 700;
-  text-shadow: 0 0 6px rgba(86,226,255,0.4);
 }
 .tui-status .scan-ind .scan-arrow { color: var(--accent-cyan); opacity: 0.6; }
 .tui-status .scan-ind #scanTarget {
   color: var(--text-bright);
   font-weight: 600;
-  letter-spacing: 0.3px;
 }
 .tui-status .scan-ind .scan-cursor {
   color: var(--accent-cyan);
-  animation: scan-cursor-blink 0.8s steps(2) infinite;
   font-weight: 700;
 }
+/* Calm loading pulse: gentle opacity ease, no hard neon strobe. */
 @keyframes scan-cursor-blink {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0; }
+  50% { opacity: 0.35; }
 }
 
 .tui-status .live {
@@ -469,7 +449,7 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   font-size: 11px;
   font-weight: 700;
   color: var(--accent);
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
 }
 
 /* If scanner is hidden, push LIVE indicator to the right edge itself. */
@@ -480,22 +460,26 @@ body.spicy-mode .worm-eye-glint { fill: #ffaa00; }
   height: 6px;
   border-radius: 50%;
   background: var(--accent);
-  animation: live-pulse 2s ease-in-out infinite;
 }
 
+/* Static solid green dot. The LIVE label + dot communicate auto-refresh is on;
+   no perpetual pulse. On refresh the dot briefly nudges to cyan (see below). */
 .tui-status .live.refreshing .dot {
   background: var(--accent-cyan);
-  animation: refresh-pulse 0.6s ease-in-out infinite;
+}
+.tui-status .live .nl { color: var(--text-dim); }
+.tui-status .live b { color: var(--accent); font-weight: 600; }
+.tui-status .live.refreshing b { color: var(--accent-cyan); }
+
+/* One-shot cyan nudge while a refresh is in flight (class removed after ~600ms). */
+@media (prefers-reduced-motion: no-preference) {
+  .tui-status .live.refreshing .dot { animation: refresh-nudge 0.6s ease-out; }
 }
 
-@keyframes live-pulse {
-  0%, 100% { opacity: 0.55; }
-  50%      { opacity: 1; }
-}
-
-@keyframes refresh-pulse {
-  0%, 100% { opacity: 0.6; }
-  50%      { opacity: 1; }
+@keyframes refresh-nudge {
+  0%   { transform: scale(1);    opacity: 0.7; }
+  35%  { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(1);    opacity: 1; }
 }
 
 .tui-status .accent { color: var(--accent); }
@@ -604,7 +588,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .tui-reader .rd-empty {
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   opacity: 0.55;
   padding-top: 30vh;
@@ -678,7 +662,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .tui-reader .rd-actions button,
 .tui-reader .rd-actions a {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text);
   background: transparent;
@@ -696,11 +680,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: var(--text-bright);
 }
 .tui-reader .rd-actions .primary {
-  border-color: rgba(0,229,160,0.45);
+  border-color: rgba(45, 212, 156,0.45);
   color: var(--accent);
 }
 .tui-reader .rd-actions .primary:hover {
-  background: rgba(0,229,160,0.10);
+  background: rgba(45, 212, 156,0.10);
   color: var(--text-bright);
 }
 
@@ -723,9 +707,9 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .filter-chips[hidden] { display: none; }
 .filter-chips .label {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   color: var(--text-dim);
   font-size: 10px;
-  letter-spacing: 0.8px;
   align-self: center;
   margin-right: 4px;
 }
@@ -768,7 +752,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: var(--accent-amber);
   font-size: 12px;
   margin-right: 2px;
-  text-shadow: 0 0 6px var(--accent-amber);
   flex-shrink: 0;
 }
 .item.bookmarked .star { display: inline; }
@@ -794,12 +777,12 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .cmd-panel {
   width: 560px;
   max-width: 90vw;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.97), rgba(15, 16, 20, 0.92));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-cyan);
   border-radius: 4px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 28px rgba(86,226,255,0.18);
-  font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 24px 40px rgba(5,9,16,0.6);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   overflow: hidden;
 }
 .cmd-header {
@@ -812,9 +795,9 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .cmd-prompt {
   color: var(--accent-cyan);
+  font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
   font-size: 16px;
-  text-shadow: 0 0 6px var(--accent-cyan);
 }
 .cmd-input {
   flex: 1;
@@ -824,7 +807,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: var(--text-bright);
   font-family: 'JetBrains Mono', monospace;
   font-size: 14px;
-  letter-spacing: 0.4px;
   caret-color: var(--accent-cyan);
 }
 .cmd-list {
@@ -851,6 +833,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .cmd-item:hover { background: rgba(255,255,255,0.04); }
 .cmd-item .cmd-label { font-weight: 500; }
 .cmd-item .cmd-key {
+  font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   color: var(--accent-cyan);
   background: rgba(86,226,255,0.08);
@@ -866,7 +849,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   border-top: 1px solid var(--border);
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -888,22 +870,21 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .decoder-panel {
   width: 620px;
   max-width: 92vw;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.97), rgba(15, 16, 20, 0.92));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-magenta);
   border-radius: 4px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 24px rgba(255,92,196,0.16);
+  box-shadow: 0 24px 40px rgba(5,9,16,0.6);
   font-family: 'JetBrains Mono', monospace;
   padding: 16px 20px 14px;
   animation: hud-boot 0.32s ease-out;
 }
 .decoder-title {
   color: var(--accent-magenta);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 1.2px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 13px;
   margin-bottom: 12px;
-  text-shadow: 0 0 6px rgba(255,92,196,0.5);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -926,12 +907,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .decoder-input-row:focus-within {
   border-color: var(--accent-magenta);
-  box-shadow: 0 0 0 1px var(--accent-magenta), 0 0 12px rgba(255,92,196,0.15);
+  box-shadow: 0 0 0 1px var(--accent-magenta);
 }
 .dec-arrow {
   color: var(--accent-magenta);
   font-weight: 700;
-  text-shadow: 0 0 5px var(--accent-magenta);
 }
 .decoder-input {
   flex: 1;
@@ -958,7 +938,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .decoder-line.visible { opacity: 1; transform: translateX(0); }
 .decoder-line a { color: var(--accent-cyan); text-decoration: none; }
-.decoder-line a:hover { text-shadow: 0 0 6px currentColor; }
+.decoder-line a:hover { color: var(--text-bright); }
 .decoder-line code {
   color: var(--text-bright);
   background: rgba(86,226,255,0.08);
@@ -979,7 +959,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   border-top: 1px solid var(--border);
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   text-align: right;
 }
 
@@ -999,11 +978,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   width: 760px;
   max-width: 94vw;
   max-height: 86vh;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.97), rgba(15, 16, 20, 0.92));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
   border-radius: 4px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 24px rgba(0,229,160,0.12);
+  box-shadow: 0 24px 40px rgba(5,9,16,0.6);
   font-family: 'JetBrains Mono', monospace;
   display: flex;
   flex-direction: column;
@@ -1011,12 +990,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .digest-title {
   color: var(--accent);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 1.2px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
   padding: 16px 22px 12px;
   border-bottom: 1px solid var(--border);
-  text-shadow: 0 0 6px rgba(0,229,160,0.5);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1028,7 +1006,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: var(--text-dim);
   font-size: 10px;
   font-weight: 600;
-  letter-spacing: 0.5px;
   margin-left: auto;
   text-shadow: none;
 }
@@ -1045,25 +1022,25 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .digest-body .digest-loading {
   color: var(--accent-cyan);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
-  letter-spacing: 0.5px;
 }
 .digest-body .digest-loading-spinner {
-  animation: scan-cursor-blink 0.7s steps(2) infinite;
   color: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .digest-body .digest-loading-spinner { animation: scan-cursor-blink 1.4s ease-in-out infinite; }
 }
 .digest-body .digest-error {
   color: var(--score-crit);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
 }
 .digest-body .digest-hint-msg {
   color: var(--text-dim);
   font-size: 11px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   margin-top: 10px;
-  letter-spacing: 0.3px;
   line-height: 1.6;
 }
 .digest-body .digest-hint-msg strong {
@@ -1076,21 +1053,18 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   font-size: 10px;
   color: var(--text-dim);
   opacity: 0.75;
-  letter-spacing: 0.3px;
 }
 .digest-body .digest-cta,
 .digest-body .digest-cta-btn {
   display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.4px;
   padding: 8px 16px;
   border-radius: 3px;
   background: rgba(255,181,71,0.10);
   border: 1px solid var(--accent-amber);
   color: var(--accent-amber);
-  text-shadow: 0 0 6px rgba(255,181,71,0.3);
   text-decoration: none;
   cursor: pointer;
   margin-top: 4px;
@@ -1121,27 +1095,27 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .mitre-modal[hidden] { display: none; }
 .mitre-panel {
   width: 820px; max-width: 94vw; max-height: 86vh;
-  background: linear-gradient(180deg, rgba(13,18,28,0.97), rgba(13,18,28,0.92));
+  background: linear-gradient(180deg, rgba(15, 16, 20,0.97), rgba(15, 16, 20,0.92));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-cyan);
   border-radius: 4px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 24px rgba(86,226,255,0.12);
+  box-shadow: 0 24px 40px rgba(5,9,16,0.6);
   font-family: 'JetBrains Mono', monospace;
   display: flex; flex-direction: column;
   animation: hud-boot 0.32s ease-out;
 }
 .mitre-title {
   color: var(--accent-cyan);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 1.2px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
   padding: 16px 22px 12px;
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.mitre-title .stat { color: var(--text-dim); font-size: 10px; font-weight: 500; letter-spacing: 0.5px; margin-left: auto; }
+.mitre-title .stat { color: var(--text-dim); font-size: 10px; font-weight: 500; margin-left: auto; }
 .mitre-body {
   flex: 1;
   overflow-y: auto;
@@ -1200,12 +1174,10 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .mitre-row .tcount.crit {
   color: var(--score-crit);
   font-weight: 700;
-  text-shadow: 0 0 6px rgba(255,77,106,0.4);
 }
 .mitre-hint {
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   padding: 10px 22px;
   border-top: 1px solid var(--border);
   display: flex;
@@ -1232,10 +1204,10 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   background: rgba(0,0,0,0.18);
 }
 .stats-tile .lbl {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -1245,16 +1217,14 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   font-weight: 700;
   color: var(--accent);
   font-variant-numeric: tabular-nums;
-  text-shadow: 0 0 8px rgba(0,229,160,0.4);
 }
-.stats-tile .val.cyan { color: var(--accent-cyan); text-shadow: 0 0 8px rgba(86,226,255,0.4); }
-.stats-tile .val.crit { color: var(--score-crit); text-shadow: 0 0 8px rgba(255,77,106,0.4); }
+.stats-tile .val.cyan { color: var(--accent-cyan); }
+.stats-tile .val.crit { color: var(--score-crit); }
 .stats-section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 1.1px;
   margin: 14px 0 8px;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--border);
@@ -1282,8 +1252,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .stats-bar-row .bar-fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent), var(--accent-cyan));
-  box-shadow: 0 0 6px rgba(0,229,160,0.4);
+  background: var(--accent);
 }
 .stats-bar-row .count {
   text-align: right;
@@ -1296,7 +1265,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .digest-hint {
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   padding: 10px 22px;
   border-top: 1px solid var(--border);
   display: flex;
@@ -1332,11 +1300,11 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   width: 680px;
   max-width: 92vw;
   max-height: 80vh;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.97), rgba(13, 18, 28, 0.92));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.97), rgba(15, 16, 20, 0.92));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
   border-radius: 4px;
-  box-shadow: 0 30px 80px rgba(0,0,0,0.7), 0 0 24px rgba(0,229,160,0.16);
+  box-shadow: 0 24px 40px rgba(5,9,16,0.6);
   font-family: 'JetBrains Mono', monospace;
   padding: 18px 22px 14px;
   display: flex;
@@ -1345,11 +1313,10 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .sv-title {
   color: var(--accent);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 1.2px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
+  font-size: 14px;
   margin-bottom: 14px;
-  text-shadow: 0 0 6px rgba(0,229,160,0.5);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1392,8 +1359,9 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .sv-fill {
   height: 100%;
   border-radius: 2px;
-  box-shadow: 0 0 6px currentColor;
-  animation: sv-fill-in 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sv-fill { animation: sv-fill-in 0.6s cubic-bezier(0.22, 1, 0.36, 1); }
 }
 @keyframes sv-fill-in { from { width: 0; opacity: 0; } to { opacity: 1; } }
 .sv-count {
@@ -1405,7 +1373,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .sv-hint {
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   padding-top: 10px;
   margin-top: 10px;
   border-top: 1px solid var(--border);
@@ -1419,7 +1386,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   left: 50%;
   transform: translateX(-50%);
   z-index: 1020;
-  background: rgba(13, 18, 28, 0.85);
+  background: rgba(15, 16, 20, 0.85);
   border: 1px solid var(--border);
   border-top: none;
   border-radius: 0 0 4px 4px;
@@ -1427,7 +1394,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.4px;
   backdrop-filter: blur(6px);
   display: flex;
   gap: 8px;
@@ -1443,7 +1409,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   padding: 0 4px;
   user-select: none;
 }
-.breadcrumb .bc-back:hover { text-shadow: 0 0 6px currentColor; }
+.breadcrumb .bc-back:hover { color: var(--text-bright); }
 .breadcrumb .bc-sep { color: var(--text-dim); opacity: 0.4; }
 .breadcrumb .bc-step { color: var(--text); }
 .breadcrumb .bc-step.current { color: var(--accent-cyan); font-weight: 700; }
@@ -1486,19 +1452,23 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 /* KEV edge flash - viewport edges pulse red when new KEV items arrive */
 .kev-flash {
   position: fixed;
-  inset: 0;
+  top: 0; left: 0; right: 0;
+  height: 2px;
   pointer-events: none;
   z-index: 1200;
   opacity: 0;
-  box-shadow: inset 0 0 80px rgba(255, 77, 106, 0.6);
+  background: var(--score-crit);
 }
-.kev-flash.firing {
-  animation: kev-edge-flash 1.6s ease-out;
+@media (prefers-reduced-motion: no-preference) {
+  .kev-flash.firing {
+    animation: kev-edge-flash 1.4s ease-out;
+  }
 }
+/* One-shot: a thin red top rule on KEV arrival, fades once. No glow. */
 @keyframes kev-edge-flash {
-  0%   { opacity: 0; box-shadow: inset 0 0 0   rgba(255, 77, 106, 0);   }
-  15%  { opacity: 1; box-shadow: inset 0 0 80px rgba(255, 77, 106, 0.75); }
-  100% { opacity: 0; box-shadow: inset 0 0 60px rgba(255, 77, 106, 0);    }
+  0%   { opacity: 0; }
+  20%  { opacity: 0.8; }
+  100% { opacity: 0; }
 }
 
 .item {
@@ -1535,19 +1505,18 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 /* Source-type color coding on meta */
 .item.src-rss       .meta .src { color: var(--accent-cyan); }
 .item.src-bluesky   .meta .src { color: #6db7ff; }
-.item.src-mastodon  .meta .src { color: #b48eff; }
-.item.src-github    .meta .src { color: #6bf5c8; }
+.item.src-mastodon  .meta .src { color: #8aa0c8; }
+.item.src-github    .meta .src { color: #7fd3b4; }
 .item.src-reddit    .meta .src { color: #ffaa66; }
 .item.src-ioc_feed  .meta .src { color: var(--accent-magenta); }
 
-/* Tag chip lift + glow on hover */
+/* Tag chip lift on hover */
 .tag {
-  transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  transition: filter 0.15s ease, transform 0.15s ease;
 }
 .tag:hover {
   filter: brightness(1.35) saturate(1.2);
   transform: translateY(-1px);
-  box-shadow: 0 0 10px currentColor;
 }
 
 .item.selected {
@@ -1585,33 +1554,23 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: #ffffff;
   padding: 0 2px;
   border-radius: 2px;
-  box-shadow: 0 0 6px rgba(86, 226, 255, 0.4);
-  text-shadow: 0 0 4px rgba(86, 226, 255, 0.6);
 }
 
-@keyframes cursor-blink {
-  0%, 100% { opacity: 1; text-shadow: 0 0 6px var(--accent); }
-  50% { opacity: 0.45; text-shadow: none; }
-}
-
-.item.selected .cursor {
-  animation: cursor-blink 1.2s ease-in-out infinite;
-}
+/* Selected-row cursor glyph is a static caret marker, not a blinking light. */
 
 @keyframes new-row-flash {
-  0% { background: rgba(86, 226, 255, 0.22); box-shadow: inset 2px 0 0 var(--accent-cyan); }
+  0% { background: rgba(86, 226, 255, 0.10); box-shadow: inset 2px 0 0 rgba(86, 226, 255, 0.5); }
   100% { background: transparent; box-shadow: none; }
 }
 
+/* One-shot, subtle: a genuinely new row fades in from a faint cyan tint. */
 .item.fresh {
-  animation: new-row-flash 2.4s ease-out;
+  animation: new-row-flash 1.8s ease-out;
 }
 
 .title.decoding {
   color: var(--accent-cyan) !important;
-  text-shadow: 0 0 4px rgba(86,226,255,0.5);
   font-family: 'JetBrains Mono', monospace !important;
-  letter-spacing: 0.2px;
 }
 
 .item .cursor {
@@ -1655,28 +1614,21 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 
 .item .score.crit {
-  --ring-color: #ff4d6a;
-  filter: drop-shadow(0 0 5px rgba(255,77,106,0.55));
-  animation: donut-crit-pulse 2.4s ease-in-out infinite;
+  --ring-color: #ff5d6e;
 }
-.item .score.high { --ring-color: #ff9940; filter: drop-shadow(0 0 3px rgba(255,153,64,0.35)); }
-.item .score.med  { --ring-color: #ffd000; filter: drop-shadow(0 0 2px rgba(255,208,0,0.25)); }
+.item .score.high { --ring-color: #ff9940; }
+.item .score.med  { --ring-color: #ffd000; }
 .item .score.low  { --ring-color: var(--score-low); }
-
-@keyframes donut-crit-pulse {
-  0%, 100% { filter: drop-shadow(0 0 5px rgba(255,77,106,0.45)); }
-  50%      { filter: drop-shadow(0 0 12px rgba(255,77,106,0.85)); }
-}
 
 /* Glitch on row click removed - just selection highlight is enough. */
 
 /* Severity stripe on the left edge of each row, color-keyed to score band */
-.item.band-crit { box-shadow: inset 3px 0 0 #ff4d6a; }
+.item.band-crit { box-shadow: inset 3px 0 0 #ff5d6e; }
 .item.band-high { box-shadow: inset 3px 0 0 #ff9940; }
 .item.band-med  { box-shadow: inset 3px 0 0 #ffd000; }
 .item.band-low  { box-shadow: inset 3px 0 0 rgba(160,174,192,0.4); }
 
-.item.selected.band-crit { box-shadow: inset 3px 0 0 #ff4d6a; }
+.item.selected.band-crit { box-shadow: inset 3px 0 0 #ff5d6e; }
 .item.selected.band-high { box-shadow: inset 3px 0 0 #ff9940; }
 .item.selected.band-med  { box-shadow: inset 3px 0 0 #ffd000; }
 .item.selected.band-low  { box-shadow: inset 3px 0 0 var(--accent-cyan); }
@@ -1778,22 +1730,18 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 .patch-brief-icon {
   font-size: 22px;
-  filter: drop-shadow(0 0 6px rgba(86,226,255,0.5));
   flex-shrink: 0;
 }
 .patch-brief-titles { flex: 1; min-width: 0; }
 .patch-brief-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px; font-weight: 600;
   color: var(--text-bright);
-  text-transform: lowercase;
-  letter-spacing: 0.4px;
 }
 .patch-brief-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   color: var(--text-dim);
-  letter-spacing: 0.3px;
   margin-top: 2px;
 }
 .patch-brief-dismiss {
@@ -1841,7 +1789,9 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .whats-new-worm {
   width: 36px; height: 28px; flex-shrink: 0;
   filter: drop-shadow(0 0 6px rgba(255,181,71,0.45));
-  animation: worm-bob 2.4s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .whats-new-worm { animation: worm-bob 2.4s ease-in-out infinite; }
 }
 .whats-new-worm .seg, .whats-new-worm .head { fill: var(--accent-amber); }
 .whats-new-worm .seg.s3 { opacity: 0.4; }
@@ -1852,17 +1802,14 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .whats-new-worm .mouth { fill: var(--bg); }
 .whats-new-titles { flex: 1; min-width: 0; }
 .whats-new-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px; font-weight: 600;
   color: var(--text-bright);
-  text-transform: lowercase;
-  letter-spacing: 0.4px;
 }
 .whats-new-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   color: var(--text-dim);
-  letter-spacing: 0.3px;
   margin-top: 2px;
 }
 .whats-new-dismiss {
@@ -1890,35 +1837,29 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   font-family: 'Space Grotesk', system-ui, sans-serif;
 }
 .whats-new-body.loading {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
 }
 
 /* Inline "pre-KEV velocity" pill: article touches a CVE that has crossed
-   the multi-source threshold but isn't on CISA KEV yet. Purple so it
-   reads as "intel signal" rather than "alarm" (red is reserved for KEV). */
+   the multi-source threshold but isn't on CISA KEV yet. Amber for warning
+   tier so it reads as intel signal, not alarm (red is reserved for KEV). */
 .prekev-inline {
   display: inline-flex;
   align-items: center;
   font-family: 'JetBrains Mono', monospace;
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.7px;
-  color: #c1abff;
-  background: rgba(124,77,255,0.14);
-  border: 1px solid rgba(124,77,255,0.55);
+  letter-spacing: 0.5px;
+  color: var(--accent-amber);
+  background: rgba(255,181,71,0.14);
+  border: 1px solid rgba(255,181,71,0.55);
   padding: 1px 6px;
   border-radius: 2px;
   margin-right: 6px;
-  text-shadow: 0 0 4px rgba(124,77,255,0.3);
   white-space: nowrap;
   flex-shrink: 0;
-  animation: prekev-pulse 3s ease-in-out infinite;
-}
-@keyframes prekev-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(124,77,255,0.0); }
-  50%      { box-shadow: 0 0 0 2px rgba(124,77,255,0.18); }
 }
 
 /* Inline "your stack" pill rendered next to the article title when the
@@ -1936,7 +1877,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   padding: 1px 6px;
   border-radius: 2px;
   margin-right: 6px;
-  text-shadow: 0 0 4px rgba(255,181,71,0.3);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -2017,7 +1957,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .help-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.7);
+  background: rgba(5,9,16,0.7);
   display: grid;
   place-items: center;
   z-index: 300;
@@ -2036,14 +1976,15 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 }
 
 .help-overlay .panel h3 {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
   color: var(--accent);
   margin-bottom: 12px;
 }
 
 .help-overlay .panel table { border-collapse: collapse; }
 .help-overlay .panel td { padding: 2px 12px 2px 0; vertical-align: top; }
-.help-overlay .panel td.key { color: var(--accent); font-weight: 700; white-space: nowrap; }
+.help-overlay .panel td.key { font-family: 'JetBrains Mono', monospace; color: var(--accent); font-weight: 700; white-space: nowrap; }
 
 .mono { font-family: 'JetBrains Mono', monospace; }
 .tag {
@@ -2052,24 +1993,18 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   padding: 1px 6px;
   border-radius: 2px;
   font-weight: 600;
-  background: rgba(180,142,255,0.32);
-  color: #d4bfff;
-  border: 1px solid rgba(180,142,255,0.55);
+  background: rgba(86,226,255,0.18);
+  color: #aee6ff;
+  border: 1px solid rgba(86,226,255,0.45);
 }
 .tag.ext { background: rgba(198,120,221,0.32); color: #e8b3f5; border-color: rgba(198,120,221,0.55); font-weight: 700; }
 /* MITRE Tags (Blue) */
 .tag.mitre { background: rgba(77,166,255,0.30); color: #8ec5ff; border-color: rgba(77,166,255,0.55); }
 .tag.kev {
   background: rgba(255, 77, 106, 0.2);
-  color: #ff4d6a;
-  border: 1px solid #ff4d6a;
+  color: #ff5d6e;
+  border: 1px solid #ff5d6e;
   font-weight: 700;
-  animation: pulse-kev 2s infinite;
-}
-@keyframes pulse-kev {
-  0% { box-shadow: 0 0 0 0 rgba(255, 77, 106, 0.6), 0 0 8px rgba(255, 77, 106, 0.5); }
-  70% { box-shadow: 0 0 0 6px rgba(255, 77, 106, 0), 0 0 14px rgba(255, 77, 106, 0.8); }
-  100% { box-shadow: 0 0 0 0 rgba(255, 77, 106, 0), 0 0 8px rgba(255, 77, 106, 0.5); }
 }
 /* Execution Artifacts (Orange) */
 .tag.artifact { background: rgba(255,153,64,0.32); color: #ffc188; border-color: rgba(255,153,64,0.55); font-weight: 700; }
@@ -2078,7 +2013,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
 .tag.hash { background: rgba(255,77,106,0.32); color: #ffa3b3; border-color: rgba(255,77,106,0.55); font-weight: 600; }
 
 /* YARA Tags (Green) */
-.tag.yara { background: rgba(0, 229, 160, 0.30); color: #6bf5c8; border-color: rgba(0, 229, 160, 0.55); font-weight: 700; }
+.tag.yara { background: rgba(45, 212, 156, 0.30); color: #7fd3b4; border-color: rgba(45, 212, 156, 0.55); font-weight: 700; }
 
 /* Threat actor / APT (deep magenta-purple): article references a known
    nation-state group, ransomware crew, or e-crime gang. Click pops an
@@ -2088,7 +2023,7 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: #e6b3f5;
   border: 1px solid rgba(198, 80, 220, 0.55);
   font-weight: 700;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   font-family: 'JetBrains Mono', monospace;
   text-transform: uppercase;
   font-size: 10px;
@@ -2120,8 +2055,6 @@ body.resizing * { cursor: col-resize !important; user-select: none !important; }
   color: var(--accent-amber);
   border: 1px solid rgba(255,181,71,0.55);
   font-weight: 700;
-  letter-spacing: 0.4px;
-  text-shadow: 0 0 4px rgba(255,181,71,0.35);
 }
 .tag.yours::before { content: '🎯 '; font-size: 9px; }
 
@@ -2150,9 +2083,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   z-index: 300; 
   left: 0; 
   top: 0; 
-  width: 100%; 
+  width: 100%;
   height: 100%;
-  background-color: rgba(0,0,0,0.6); 
+  background-color: rgba(5,9,16,0.6);
   backdrop-filter: blur(3px);
   align-items: center; 
   justify-content: center;
@@ -2170,14 +2103,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-radius: 6px; 
   width: 100%;
   max-width: 400px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+  box-shadow: 0 16px 40px rgba(5,9,16,0.6);
   max-height: 90vh;
   overflow-y: auto;
 }
 .modal-title {
   color: var(--accent);
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
   margin-bottom: 12px;
   padding-bottom: 8px;
   border-bottom: 1px solid var(--border);
@@ -2213,8 +2146,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .tut-worm {
   width: 44px; height: 34px; flex-shrink: 0;
-  filter: drop-shadow(0 0 8px rgba(0,229,160,0.5));
-  animation: worm-bob 2.2s ease-in-out infinite;
+  filter: drop-shadow(0 0 8px rgba(45, 212, 156,0.5));
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tut-worm { animation: worm-bob 2.2s ease-in-out infinite; }
 }
 .tut-worm .seg, .tut-worm .head { fill: var(--accent); }
 .tut-worm .seg.s3 { opacity: 0.35; }
@@ -2224,25 +2159,23 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .tut-worm .glint { fill: var(--accent-cyan); }
 .tut-worm .mouth { fill: var(--bg); }
 .tut-greeting {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 15px; font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 16px; font-weight: 600;
   color: var(--text-bright);
-  letter-spacing: 0.3px;
 }
 .tut-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim); letter-spacing: 0.4px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
+  color: var(--text-dim);
   margin-top: 2px;
 }
 .tut-section { margin-bottom: 16px; }
 .tut-section:last-of-type { margin-bottom: 8px; }
 .tut-section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent-cyan);
-  letter-spacing: 1.3px;
-  text-transform: uppercase;
   margin-bottom: 6px;
 }
 .tut-section-title kbd {
@@ -2292,31 +2225,28 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-top: 1px solid var(--border);
 }
 .tut-btn-primary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px; font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px; font-weight: 600;
   color: var(--bg);
   background: var(--accent);
   border: 1px solid var(--accent);
   padding: 9px 18px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
-  letter-spacing: 0.4px;
-  text-transform: lowercase;
-  transition: background 0.14s ease, box-shadow 0.14s ease;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .tut-btn-primary:hover {
-  background: #00f0a8;
-  box-shadow: 0 0 14px rgba(0,229,160,0.45);
+  background: #2dd49c;
 }
+.tut-btn-primary:active { transform: translateY(1px); }
 .tut-btn-secondary {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
   color: var(--text-dim);
   background: transparent;
   border: none;
   padding: 8px 4px;
   cursor: pointer;
-  letter-spacing: 0.3px;
 }
 .tut-btn-secondary:hover { color: var(--accent-cyan); }
 .modal-btn-group button {
@@ -2335,7 +2265,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   padding: 10px 16px;
   border-radius: 4px;
   font-size: 13px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   z-index: 200;
   opacity: 0;
   transform: translateY(10px);
@@ -2350,7 +2280,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   top: 56px;
   right: 22px;
   width: 168px;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.85), rgba(13, 18, 28, 0.65));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.85), rgba(15, 16, 20, 0.65));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-cyan);
   padding: 10px 12px 8px;
@@ -2374,11 +2304,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .hud-widget-title {
   color: var(--accent-cyan);
-  font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
   margin-bottom: 8px;
-  font-size: 10px;
-  letter-spacing: 1.2px;
-  text-shadow: 0 0 6px rgba(86,226,255,0.5);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -2396,7 +2327,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   align-items: center;
   margin-bottom: 3px;
 }
-.hud-label { color: var(--text-dim); font-size: 9px; letter-spacing: 0.8px; }
+.hud-label { color: var(--text-dim); font-size: 9px; letter-spacing: 0.5px; text-transform: uppercase; }
 .hud-value {
   color: var(--text-bright);
   font-weight: 700;
@@ -2405,18 +2336,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .hud-value.crit {
   color: var(--score-crit);
-  text-shadow: 0 0 8px rgba(255,77,106,0.6);
-  animation: hud-crit-pulse 1.5s ease-in-out infinite;
-}
-@keyframes hud-crit-pulse {
-  0%, 100% { text-shadow: 0 0 6px rgba(255,77,106,0.5); }
-  50% { text-shadow: 0 0 14px rgba(255,77,106,0.9); }
 }
 
 .hud-dist-label {
   color: var(--text-dim);
   font-size: 9px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
   margin-top: 10px;
   margin-bottom: 4px;
 }
@@ -2442,10 +2368,9 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   height: 0%;
   min-height: 2px;
   transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 0 6px currentColor;
   border-radius: 1px;
 }
-.hud-bar.crit { color: #ff4d6a; }
+.hud-bar.crit { color: #ff5d6e; }
 .hud-bar.high { color: #ff9940; }
 .hud-bar.med { color: #ffd000; }
 .hud-bar.low { color: #6b7a8f; }
@@ -2470,8 +2395,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .hud-progress-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--accent-cyan), var(--accent-magenta));
-  box-shadow: 0 0 6px var(--accent-cyan);
+  background: var(--accent-cyan);
   transition: width 1s linear;
 }
 
@@ -2499,8 +2423,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .hud-sparkline .spark {
   flex: 1;
-  background: linear-gradient(180deg, var(--accent), rgba(0,229,160,0.2));
-  box-shadow: 0 0 5px var(--accent);
+  background: linear-gradient(180deg, var(--accent), rgba(45, 212, 156,0.2));
   min-height: 2px;
   height: 2px;
   transition: height 0.4s cubic-bezier(0.22, 1, 0.36, 1);
@@ -2508,14 +2431,13 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .hud-sparkline .spark.peak {
   background: linear-gradient(180deg, var(--accent-cyan), rgba(86,226,255,0.2));
-  box-shadow: 0 0 6px var(--accent-cyan);
 }
 .hud-sparkline-axis {
   display: flex;
   justify-content: space-between;
   font-size: 8px;
   color: var(--text-dim);
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   margin-top: 2px;
 }
 
@@ -2589,7 +2511,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   line-height: 1.25;
   white-space: pre;
   margin-bottom: 22px;
-  text-shadow: 0 0 10px rgba(0,229,160,0.4);
   opacity: 0;
   transform: translateY(-4px);
   transition: opacity 0.35s ease, transform 0.35s ease;
@@ -2620,8 +2541,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .boot-worm {
   width: 80px; height: 60px;
-  filter: drop-shadow(0 0 10px rgba(0,229,160,0.55));
-  animation: worm-inline-bob 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 10px rgba(45, 212, 156,0.55));
 }
 .boot-worm.boot-worm-r {
   /* Mirror so the right worm faces the brand text. The two of them
@@ -2636,28 +2556,29 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .boot-worm .eye {
   fill: var(--bg);
   transform-origin: 25px 11px;
-  animation: worm-inline-blink 3.4s ease-in-out infinite;
 }
 .boot-worm.boot-worm-r .eye { animation-delay: -1.7s; }
 .boot-worm .glint { fill: var(--accent-cyan); }
 .boot-worm .mouth {
   fill: var(--bg);
   transform-origin: 28px 14.5px;
-  animation: worm-inline-chomp 1.6s ease-in-out infinite;
 }
 .boot-worm.boot-worm-r .mouth { animation-delay: -0.8s; }
+@media (prefers-reduced-motion: no-preference) {
+  .boot-worm { animation: worm-inline-bob 1.4s ease-in-out infinite; }
+  .boot-worm .eye { animation: worm-inline-blink 3.4s ease-in-out infinite; }
+  .boot-worm .mouth { animation: worm-inline-chomp 1.6s ease-in-out infinite; }
+  .boot-noms span { animation: boot-nom-bounce 1.6s ease-in-out infinite; }
+}
 .boot-noms {
   display: flex; gap: 10px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 22px;
   font-weight: 700;
   color: var(--accent);
-  text-shadow: 0 0 12px rgba(0,229,160,0.5);
-  letter-spacing: 1.4px;
 }
 .boot-noms span {
   display: inline-block;
-  animation: boot-nom-bounce 1.6s ease-in-out infinite;
 }
 .boot-noms span:nth-child(1) { animation-delay: 0s; }
 .boot-noms span:nth-child(2) { animation-delay: 0.2s; }
@@ -2667,27 +2588,21 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   18%, 30%      { transform: translateY(-7px) scale(1.12); opacity: 1; }
 }
 .boot-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 22px;
   font-weight: 700;
   color: var(--text-bright);
-  letter-spacing: 5.5px;
-  text-transform: uppercase;
+  letter-spacing: -0.01em;
   text-align: center;
-  text-shadow: 0 0 6px rgba(230,236,245,0.25);
 }
 .boot-title .accent {
   color: var(--accent);
-  text-shadow: 0 0 10px rgba(0,229,160,0.45);
-  letter-spacing: 0;
-  text-transform: none;
   margin-right: 4px;
 }
 .boot-tag {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
   color: var(--text-dim);
-  letter-spacing: 0.4px;
   font-style: italic;
 }
 /* Drifting crumb particles between the two worms - the food the worms
@@ -2702,9 +2617,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   width: 3px; height: 3px;
   border-radius: 50%;
   background: var(--accent-amber);
-  box-shadow: 0 0 5px rgba(255,181,71,0.7);
   opacity: 0;
-  animation: boot-crumb-drift 2.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .boot-crumbs .crumb { animation: boot-crumb-drift 2.6s ease-in-out infinite; }
 }
 .boot-crumbs .crumb.c1 { left: -8px; top: -22px; animation-delay: 0s; }
 .boot-crumbs .crumb.c2 { left: -4px; top: -28px; animation-delay: 0.6s; }
@@ -2733,7 +2649,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   align-items: baseline;
   gap: 10px;
   animation: boot-log-in 0.32s ease-out backwards;
-  letter-spacing: 0.2px;
 }
 .boot-log-line .ts {
   color: var(--text-dim);
@@ -2747,7 +2662,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   flex-shrink: 0;
   font-weight: 700;
   font-size: 10px;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
 }
 .boot-log-line .msg { color: var(--text); }
 .boot-log-line.lvl-ok   .lvl { color: var(--accent); }
@@ -2778,7 +2693,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   white-space: pre;
   margin: 0;
   min-height: 1.2em;
-  text-shadow: 0 0 8px rgba(255,181,71,0.7);
   overflow: hidden;
 }
 .feast-line {
@@ -2788,7 +2702,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   color: var(--accent);
   white-space: pre;
   margin: 0;
-  text-shadow: 0 0 6px rgba(0,229,160,0.3);
   overflow: hidden;
 }
 .feast-line .trail { color: var(--text-dim); opacity: 0.55; }
@@ -2802,8 +2715,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   width: 38px; height: 24px;
   display: inline-block;
   vertical-align: -7px;
-  filter: drop-shadow(0 0 5px rgba(0,229,160,0.4));
-  animation: worm-inline-bob 1.4s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px rgba(45, 212, 156,0.4));
 }
 .feast-line .worm-inline-sprite .seg, .feast-line .worm-inline-sprite .head { fill: var(--accent); }
 .feast-line .worm-inline-sprite .seg.s3 { opacity: 0.35; }
@@ -2812,13 +2724,16 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .feast-line .worm-inline-sprite .eye {
   fill: var(--bg);
   transform-origin: 25px 11px;
-  animation: worm-inline-blink 3.4s ease-in-out infinite;
 }
 .feast-line .worm-inline-sprite .glint { fill: var(--accent-cyan); }
 .feast-line .worm-inline-sprite .mouth {
   fill: var(--bg);
   transform-origin: 28px 14.5px;
-  animation: worm-inline-chomp 1.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .feast-line .worm-inline-sprite { animation: worm-inline-bob 1.4s ease-in-out infinite; }
+  .feast-line .worm-inline-sprite .eye { animation: worm-inline-blink 3.4s ease-in-out infinite; }
+  .feast-line .worm-inline-sprite .mouth { animation: worm-inline-chomp 1.6s ease-in-out infinite; }
 }
 @keyframes worm-inline-bob {
   0%, 100% { transform: translateY(0) rotate(0); }
@@ -2832,27 +2747,20 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   0%, 100% { transform: scaleY(0.5); }
   45%, 55% { transform: scaleY(1.6); }
 }
-.feast-line .t-crit { color: var(--score-crit); text-shadow: 0 0 5px rgba(255,77,106,0.45); font-weight: 700; }
-.feast-line .t-high { color: #ff9940; text-shadow: 0 0 4px rgba(255,153,64,0.35); font-weight: 600; }
+.feast-line .t-crit { color: var(--score-crit); font-weight: 700; }
+.feast-line .t-high { color: #ff9940; font-weight: 600; }
 .feast-line .t-med  { color: var(--accent-cyan); font-weight: 500; }
 .feast-line .t-burp { color: var(--text-dim); font-style: italic; }
-/* Threats about to be eaten brighten with a quick pulse. */
-@keyframes feast-panic {
-  0%, 100% { opacity: 1; filter: brightness(1.0); }
-  50%      { opacity: 1; filter: brightness(1.6); }
-}
-.feast-line .panic { animation: feast-panic 0.28s ease-in-out infinite; }
 .feast-meter {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   margin: 8px 0 0 0;
-  letter-spacing: 0.2px;
   white-space: pre;
   color: var(--text-dim);
 }
 .feast-meter .bar-bracket { color: var(--text-dim); }
-.feast-meter .bar-fill    { color: var(--accent); text-shadow: 0 0 6px rgba(0,229,160,0.4); }
-.feast-meter .bar-fill.hot { color: var(--accent-cyan); text-shadow: 0 0 8px rgba(86,226,255,0.55); }
+.feast-meter .bar-fill    { color: var(--accent); }
+.feast-meter .bar-fill.hot { color: var(--accent-cyan); }
 .feast-meter .bar-empty   { color: rgba(255,255,255,0.12); }
 .feast-meter .bar-pct     { color: var(--text-bright); font-weight: 700; }
 .feast-meter .bar-fed     { color: var(--accent); opacity: 0.85; margin-left: 4px; }
@@ -2861,7 +2769,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 12px;
   color: var(--accent-cyan);
   margin-top: 8px;
-  letter-spacing: 0.3px;
   min-height: 1.4em;
   opacity: 0.85;
 }
@@ -2870,12 +2777,10 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   left: 50%;
   transform: translateX(-50%);
   bottom: 32px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
-  letter-spacing: 0.5px;
   opacity: 0.6;
-  animation: skip-pulse 1.8s ease-in-out infinite;
 }
 .boot-skip kbd {
   background: var(--bg-card);
@@ -2886,10 +2791,6 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 10px;
   color: var(--accent-cyan);
   margin: 0 2px;
-}
-@keyframes skip-pulse {
-  0%, 100% { opacity: 0.45; }
-  50%      { opacity: 0.85; }
 }
 .boot-line {
   margin: 5px 0;
@@ -2913,7 +2814,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   bottom: 50px;
   width: 168px;
   max-height: 110px;
-  background: linear-gradient(180deg, rgba(13, 18, 28, 0.85), rgba(13, 18, 28, 0.65));
+  background: linear-gradient(180deg, rgba(15, 16, 20, 0.85), rgba(15, 16, 20, 0.65));
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent-amber);
   padding: 10px 12px 8px;
@@ -2923,7 +2824,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   z-index: 1040;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 14px rgba(255,181,71,0.08);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
   letter-spacing: 0.3px;
   pointer-events: none;
   overflow: hidden;
@@ -2931,11 +2832,12 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .term-log-title {
   color: var(--accent-amber);
-  font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-weight: 600;
   font-size: 10px;
-  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   margin-bottom: 6px;
-  text-shadow: 0 0 6px rgba(255,181,71,0.5);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -3005,8 +2907,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 .hud-tag-row .fill {
   height: 100%;
-  background: linear-gradient(90deg, var(--accent-magenta), var(--accent-cyan));
-  box-shadow: 0 0 5px var(--accent-magenta);
+  background: var(--accent-cyan);
   border-radius: 2px;
 }
 .hud-tag-row .count {
@@ -3031,8 +2932,7 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   font-size: 9px;
   line-height: 1.15;
   color: var(--accent-cyan);
-  opacity: 0.22;
-  text-shadow: 0 0 4px var(--accent-cyan);
+  opacity: 0.12;
   white-space: pre;
   user-select: none;
   text-align: center;
@@ -3040,7 +2940,11 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 .data-stream::before, .data-stream::after {
   content: attr(data-content);
   display: block;
-  animation: stream-scroll 18s linear infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .data-stream::before, .data-stream::after {
+    animation: stream-scroll 18s linear infinite;
+  }
 }
 .data-stream::after {
   animation-delay: -9s;
@@ -3062,14 +2966,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
   border-bottom: 2px solid transparent;
   color: var(--text-dim);
   padding: 8px 10px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.4px;
   cursor: pointer;
   border-radius: 0;
   white-space: nowrap;
   flex-shrink: 0;
+  transition: color 0.15s ease, border-color 0.15s ease, background-color 0.15s ease;
 }
 /* Admin-only surfaces stay invisible until /api/me confirms admin status.
    The body.cfg-admin class is set by applyAdminVisibility(true). This
@@ -3078,12 +2982,14 @@ button:disabled { opacity: 0.4; cursor: not-allowed; }
 body:not(.cfg-admin) [data-admin-only="true"] {
   display: none !important;
 }
-.cfg-tab-btn:hover { color: var(--text); background: transparent; }
+.cfg-tab-btn:hover { color: var(--text); background: var(--bg-hover); }
+.cfg-tab-btn:active { transform: translateY(1px); }
+.cfg-tab-btn.active:hover { background: rgba(45, 212, 156,0.14); }
 .cfg-tab-pro {
   display: inline-block;
   font-family: 'JetBrains Mono', monospace;
   font-size: 7px;
-  letter-spacing: 0.9px;
+  letter-spacing: 0.5px;
   background: rgba(255,181,71,0.12);
   border: 1px solid rgba(255,181,71,0.5);
   color: var(--accent-amber);
@@ -3132,7 +3038,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .cfg-alert-row .meta .kind {
   display: inline-block;
   font-size: 9px;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.5px;
   background: rgba(86,226,255,0.08);
   border: 1px solid rgba(86,226,255,0.3);
   color: var(--accent-cyan);
@@ -3156,35 +3062,34 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 3px 8px;
   border-radius: 2px;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 .cfg-alert-row .acts button:hover { color: var(--accent); border-color: var(--accent); }
+.cfg-alert-row .acts button:active { transform: translateY(1px); }
 .cfg-alert-row .acts button.rm:hover { color: var(--score-crit); border-color: var(--score-crit); }
 .btn-pro-upgrade {
   background: rgba(255,181,71,0.10);
   border: 1px solid var(--accent-amber);
   color: var(--accent-amber);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.4px;
   padding: 9px 16px;
-  border-radius: 3px;
+  border-radius: 4px;
   cursor: pointer;
-  text-shadow: 0 0 6px rgba(255,181,71,0.3);
-  text-transform: uppercase;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .btn-pro-upgrade:hover {
   background-color: var(--accent-amber);
   color: var(--bg);
   border-color: var(--accent-amber);
 }
+.btn-pro-upgrade:active { transform: translateY(1px); }
 
 /* --- Pro tokens tab --- */
 .cfg-token-row {
@@ -3224,15 +3129,15 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 3px 8px;
   border-radius: 2px;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 .cfg-token-row .acts button:hover { color: var(--score-crit); border-color: var(--score-crit); }
+.cfg-token-row .acts button:active { transform: translateY(1px); }
 
 .cfg-token-reveal {
   margin-top: 14px;
@@ -3242,11 +3147,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: rgba(255,181,71,0.06);
 }
 .cfg-token-reveal-head {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
+  font-weight: 600;
   color: var(--accent-amber);
   text-transform: uppercase;
-  letter-spacing: 0.7px;
+  letter-spacing: 0.5px;
   margin-bottom: 8px;
   display: flex;
   justify-content: space-between;
@@ -3256,7 +3162,6 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   font-size: 9px;
   color: var(--text-dim);
   text-transform: none;
-  letter-spacing: 0.3px;
 }
 .cfg-token-reveal-value {
   font-family: 'JetBrains Mono', monospace;
@@ -3295,9 +3200,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   padding: 10px 12px;
 }
 .cve-card .label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 9px;
-  letter-spacing: 1px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--text-dim);
   margin-bottom: 6px;
@@ -3307,23 +3213,21 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   font-size: 18px;
   font-weight: 700;
   color: var(--text-bright);
-  letter-spacing: -0.3px;
 }
 .cve-card.crit  .value { color: var(--score-crit); }
 .cve-card.high  .value { color: #ff9940; }
 .cve-card.med   .value { color: #ffd000; }
 .cve-card.low   .value { color: var(--accent); }
 .cve-card .sub {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
   color: var(--text-dim);
   margin-top: 4px;
 }
 .cve-section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.9px;
-  text-transform: uppercase;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--accent);
   margin: 16px 0 6px;
   padding-bottom: 4px;
@@ -3385,13 +3289,11 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .cve-timeline-row .tl-icon {
   font-size: 13px;
   text-align: center;
-  filter: drop-shadow(0 0 4px rgba(0,229,160,0.3));
 }
 .cve-timeline-row .tl-date {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.3px;
 }
 .cve-timeline-row .tl-body {
   display: flex; flex-direction: column;
@@ -3399,8 +3301,9 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   min-width: 0;
 }
 .cve-timeline-row .tl-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
+  font-weight: 600;
   color: var(--accent-cyan);
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -3455,7 +3358,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 }
 .cve-section-title .ai-tag {
   font-size: 9px;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   background: rgba(255,181,71,0.12);
   border: 1px solid rgba(255,181,71,0.4);
   color: var(--accent-amber);
@@ -3479,21 +3382,22 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   border-radius: 0 3px 3px 0;
 }
 .cve-ai-loading {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--accent-amber);
-  letter-spacing: 0.4px;
 }
 .cve-ai-loading::after {
   content: '_';
-  animation: scan-cursor-blink 0.7s steps(2) infinite;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cve-ai-loading::after { animation: scan-cursor-blink 1.4s ease-in-out infinite; }
 }
 .cve-ai-upsell {
   border: 1px solid var(--accent-amber);
   background: rgba(255,181,71,0.06);
   padding: 12px 14px;
   border-radius: 3px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
   line-height: 1.6;
@@ -3508,13 +3412,13 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   padding: 6px 12px;
   border-radius: 3px;
   cursor: pointer;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .cve-ai-upsell .ai-cta:hover { background-color: var(--accent-amber); color: var(--bg); }
+.cve-ai-upsell .ai-cta:active { transform: translateY(1px); }
 .cve-modal-body .cve-links {
   display: flex;
   flex-wrap: wrap;
@@ -3522,14 +3426,14 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   margin-top: 18px;
 }
 .cve-modal-body .cve-links a {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--accent-cyan);
   text-decoration: none;
   padding: 4px 8px;
   border: 1px solid var(--border);
   border-radius: 2px;
-  letter-spacing: 0.3px;
+  transition: border-color 0.15s ease, color 0.15s ease;
 }
 .cve-modal-body .cve-links a:hover { border-color: var(--accent); color: var(--accent); }
 
@@ -3542,8 +3446,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 }
 .momentum-table th {
   text-align: left;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
-  letter-spacing: 0.8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--text-dim);
   padding: 8px 6px;
@@ -3551,7 +3457,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 }
 .momentum-table td {
   padding: 7px 6px;
-  border-bottom: 1px solid rgba(42,51,64,0.4);
+  border-bottom: 1px solid rgba(40, 43, 51,0.4);
   vertical-align: middle;
 }
 .momentum-table tr:hover td { background: rgba(86,226,255,0.04); }
@@ -3574,11 +3480,11 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 }
 .momentum-table .delta.up   { color: var(--accent); }
 .momentum-table .delta.down { color: var(--score-crit); }
-.momentum-table .delta.huge { color: var(--accent-amber); text-shadow: 0 0 6px rgba(255,181,71,0.4); }
+.momentum-table .delta.huge { color: var(--accent-amber); }
 .momentum-empty {
   padding: 18px 8px;
   text-align: center;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
 }
@@ -3593,11 +3499,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.3px;
   background: rgba(86,226,255,0.02);
 }
 .score-spark[hidden] { display: none; }
-.score-spark .spark-label { color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.7px; flex-shrink: 0; }
+.score-spark .spark-label { font-family: 'Space Grotesk', system-ui, sans-serif; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0; }
 .score-spark .spark-bars {
   display: inline-flex;
   align-items: flex-end;
@@ -3626,39 +3531,41 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   align-items: center;
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
-  background: rgba(0,229,160,0.02);
+  background: rgba(45, 212, 156,0.02);
 }
 .channels-strip[hidden] { display: none; }
 .channels-strip .ch-label {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
-  letter-spacing: 0.8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   color: var(--text-dim);
   text-transform: uppercase;
   margin-right: 4px;
 }
 .channels-strip .ch-chip {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--accent);
-  background: rgba(0,229,160,0.06);
-  border: 1px solid rgba(0,229,160,0.3);
+  background: rgba(45, 212, 156,0.06);
+  border: 1px solid rgba(45, 212, 156,0.3);
   border-radius: 2px;
   padding: 2px 8px;
   cursor: pointer;
-  letter-spacing: 0.3px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .channels-strip .ch-chip:hover {
-  background: rgba(0,229,160,0.18);
+  background: rgba(45, 212, 156,0.18);
   color: var(--text-bright);
 }
+.channels-strip .ch-chip:active { transform: translateY(1px); }
 .channels-strip .ch-chip.active {
   background-color: var(--accent);
   color: var(--bg);
   font-weight: 700;
 }
 .channels-strip .ch-add {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
   color: var(--text-dim);
   background: transparent;
@@ -3688,15 +3595,15 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 3px 8px;
   border-radius: 2px;
   cursor: pointer;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 .cfg-channel-row button:hover { color: var(--score-crit); border-color: var(--score-crit); }
+.cfg-channel-row button:active { transform: translateY(1px); }
 
 /* Per-article AI explainer (✨ button on reader pane + result slot) */
 .tui-reader .rd-actions button.ai-explain-btn {
@@ -3723,9 +3630,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   white-space: pre-wrap;
 }
 .article-explain-head {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
-  letter-spacing: 0.8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   color: var(--accent-amber);
   margin-bottom: 6px;
@@ -3736,11 +3644,11 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .article-explain-head .meta { color: var(--text-dim); font-size: 9px; }
 .article-explain.loading {
   color: var(--accent-amber);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
 }
 .article-explain.upsell {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
 }
@@ -3753,13 +3661,13 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   padding: 5px 10px;
   border-radius: 3px;
   cursor: pointer;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 .article-explain.upsell .cta:hover { background-color: var(--accent-amber); color: var(--bg); }
+.article-explain.upsell .cta:active { transform: translateY(1px); }
 
 /* Score chip is now clickable: cursor + subtle hover ring. */
 .item .score { cursor: pointer; }
@@ -3775,8 +3683,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   border: 1px solid var(--border);
   border-left: 2px solid var(--accent);
   border-radius: 4px;
-  box-shadow: 0 14px 40px rgba(0,0,0,0.5), 0 0 14px rgba(0,229,160,0.10);
-  font-family: 'JetBrains Mono', monospace;
+  box-shadow: 0 16px 40px rgba(5,9,16,0.6);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text);
   padding: 12px 14px;
@@ -3786,7 +3694,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .score-explain .se-title {
   color: var(--accent);
   font-size: 10px;
-  letter-spacing: 0.8px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
   margin-bottom: 4px;
   display: flex;
@@ -3794,18 +3703,18 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   align-items: baseline;
 }
 .score-explain .se-total {
+  font-family: 'JetBrains Mono', monospace;
   font-size: 18px;
   color: var(--text-bright);
   font-weight: 700;
   margin-bottom: 10px;
-  letter-spacing: -0.5px;
 }
 .score-explain .se-row {
   display: flex;
   justify-content: space-between;
   gap: 8px;
   padding: 5px 0;
-  border-top: 1px solid rgba(42,51,64,0.5);
+  border-top: 1px solid rgba(40, 43, 51,0.5);
   line-height: 1.45;
 }
 .score-explain .se-row:first-of-type { border-top: 0; }
@@ -3822,6 +3731,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   word-break: break-word;
 }
 .score-explain .se-weight {
+  font-family: 'JetBrains Mono', monospace;
   color: var(--accent);
   font-weight: 700;
   flex-shrink: 0;
@@ -3833,13 +3743,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   border-top: 1px solid var(--border);
   font-size: 10px;
   color: var(--text-dim);
-  letter-spacing: 0.3px;
 }
 .score-explain .se-foot a { color: var(--accent-cyan); }
 .cfg-tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
-  text-shadow: 0 0 8px rgba(0,229,160,0.4);
+  background: rgba(45, 212, 156,0.08);
 }
 
 .cfg-section {
@@ -3851,22 +3760,20 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   border-radius: 3px;
 }
 .cfg-section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  font-weight: 700;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--text-bright);
   margin-bottom: 10px;
-  letter-spacing: 0.5px;
 }
 .cfg-accent { color: var(--accent-cyan); margin-right: 4px; }
 
 .cfg-label {
   display: block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 12px;
   color: var(--text-dim);
   margin-bottom: 4px;
-  letter-spacing: 0.3px;
 }
 .cfg-input {
   width: 100%;
@@ -3875,20 +3782,19 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: 2px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   outline: none;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .cfg-input:focus {
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 0 1px var(--accent-cyan), 0 0 10px rgba(86,226,255,0.15);
+  box-shadow: 0 0 0 1px var(--accent-cyan);
 }
 .cfg-section button.primary {
   margin-top: 10px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
-  letter-spacing: 0.5px;
 }
 /* Anchor-as-button styling for download links in cfg sections. The
    plain button.primary selector doesn't apply to <a>, so download
@@ -3901,9 +3807,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
-  letter-spacing: 0.5px;
   padding: 7px 12px;
   border-radius: 3px;
   text-decoration: none;
@@ -3911,6 +3816,9 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   cursor: pointer;
   transition: background 0.14s, border-color 0.14s, color 0.14s;
 }
+.cfg-dl-btn:active,
+.cfg-dl-btn-secondary:active,
+.cfg-dl-btn-tertiary:active { transform: translateY(1px); }
 .cfg-dl-btn {
   background: var(--accent);
   color: var(--bg);
@@ -3918,9 +3826,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   font-weight: 700;
 }
 .cfg-dl-btn:hover {
-  background: #00f0a8;
+  background: #2dd49c;
   color: var(--bg);
-  box-shadow: 0 0 10px rgba(0,229,160,0.4);
 }
 .cfg-dl-btn-secondary {
   background: transparent;
@@ -3945,19 +3852,20 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   color: var(--text);
   cursor: pointer;
 }
 .cfg-hint {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   color: var(--text-dim);
   line-height: 1.5;
   margin-top: 10px;
 }
 .cfg-hint code {
+  font-family: 'JetBrains Mono', monospace;
   background: var(--bg);
   padding: 1px 4px;
   border: 1px solid var(--border);
@@ -3987,14 +3895,13 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   flex-wrap: wrap;
   margin: 8px 12px 0;
   padding: 8px 12px;
-  border: 1px solid rgba(0,229,160,0.32);
+  border: 1px solid rgba(45, 212, 156,0.32);
   border-left: 2px solid var(--accent);
   border-radius: 3px;
-  background: rgba(0,229,160,0.04);
-  font-family: 'JetBrains Mono', monospace;
+  background: rgba(45, 212, 156,0.04);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text-dim);
-  letter-spacing: 0.2px;
 }
 .guest-banner .gb-msg { color: var(--text); }
 .guest-banner .gb-msg .gb-tag {
@@ -4002,10 +3909,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   padding: 1px 7px;
   margin-right: 8px;
   font-size: 9px;
-  letter-spacing: 1.2px;
+  letter-spacing: 0.5px;
   text-transform: uppercase;
-  background: rgba(0,229,160,0.12);
-  border: 1px solid rgba(0,229,160,0.45);
+  background: rgba(45, 212, 156,0.12);
+  border: 1px solid rgba(45, 212, 156,0.45);
   color: var(--accent);
   border-radius: 2px;
   vertical-align: middle;
@@ -4018,8 +3925,6 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   padding: 4px 12px;
   border-radius: 2px;
   font-size: 11px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
   font-weight: 600;
   transition: background 0.12s, color 0.12s;
 }
@@ -4050,13 +3955,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   color: var(--text);
-  letter-spacing: 0.2px;
 }
 .cfg-auth-strip[hidden] { display: none; }
-.cfg-auth-strip.signed-in { border-left-color: var(--accent); background: rgba(0,229,160,0.04); }
+.cfg-auth-strip.signed-in { border-left-color: var(--accent); background: rgba(45, 212, 156,0.04); }
 .cfg-auth-strip.signed-in.pro { border-left-color: var(--accent-amber); background: rgba(255,181,71,0.04); }
 .cfg-auth-strip .email { color: var(--text-bright); font-weight: 600; }
 .cfg-auth-strip .pro-badge {
@@ -4064,7 +3968,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   color: var(--bg);
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   padding: 1px 6px;
   border-radius: 2px;
   margin-left: 6px;
@@ -4080,18 +3984,18 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 4px 10px;
   border-radius: 3px;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
+.cfg-auth-strip button:active { transform: translateY(1px); }
 .cfg-auth-strip button.upgrade {
   background: rgba(255,181,71,0.10);
   border-color: var(--accent-amber);
   color: var(--accent-amber);
-  text-shadow: 0 0 6px rgba(255,181,71,0.25);
 }
 .cfg-auth-strip button.upgrade:hover {
   background: rgba(255,181,71,0.18);
@@ -4121,9 +4025,9 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   display: inline-block;
   margin-right: 6px;
 }
-.cfg-src-dot.ok { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+.cfg-src-dot.ok { background: var(--accent); }
 .cfg-src-dot.stale { background: var(--accent-amber); }
-.cfg-src-dot.err { background: var(--score-crit); box-shadow: 0 0 6px var(--score-crit); }
+.cfg-src-dot.err { background: var(--score-crit); }
 
 /* Watched accounts list + curated picker, inline in the c-modal Bluesky tab. */
 .cfg-account-list {
@@ -4152,19 +4056,20 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 3px 8px;
   border-radius: 3px;
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
 .cfg-account-item .rm:hover { color: var(--score-crit); border-color: var(--score-crit); }
+.cfg-account-item .rm:active { transform: translateY(1px); }
 .cfg-account-empty {
   padding: 10px;
   text-align: center;
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
   opacity: 0.7;
 }
@@ -4179,7 +4084,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: transparent;
   color: var(--text);
   border: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   padding: 7px 12px;
   border-radius: 3px;
@@ -4189,6 +4094,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   gap: 8px;
   transition: border-color 0.12s ease, background-color 0.12s ease;
 }
+.cfg-curated-toggle:active { transform: translateY(1px); }
 .cfg-curated-toggle:hover { border-color: var(--accent-cyan); background: rgba(86,226,255,0.05); }
 .cfg-curated-toggle.open .cfg-curated-caret { transform: rotate(90deg); }
 .cfg-curated-caret { display: inline-block; transition: transform 0.15s ease; color: var(--accent-cyan); }
@@ -4204,10 +4110,10 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .cfg-curated-row .watched-tag {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
-  letter-spacing: 0.6px;
+  letter-spacing: 0.5px;
   color: var(--accent);
-  background: rgba(0,229,160,0.10);
-  border: 1px solid rgba(0,229,160,0.35);
+  background: rgba(45, 212, 156,0.10);
+  border: 1px solid rgba(45, 212, 156,0.35);
   padding: 2px 7px;
   border-radius: 2px;
   text-transform: uppercase;
@@ -4218,7 +4124,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: var(--bg);
   border: 1px solid var(--border);
   color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 12px;
   padding: 6px 9px;
   border-radius: 3px;
@@ -4238,11 +4144,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 .cfg-curated-cat { border-bottom: 1px solid var(--border); }
 .cfg-curated-cat:last-child { border-bottom: none; }
 .cfg-curated-cat-title {
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 10px;
+  font-weight: 600;
   color: var(--accent-cyan);
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   padding: 6px 10px;
   background: rgba(86,226,255,0.04);
   border-bottom: 1px solid var(--border);
@@ -4287,8 +4194,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 }
 .cfg-curated-row .act { margin-left: auto; flex-shrink: 0; }
 .cfg-curated-row .act button {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 11px;
   padding: 3px 8px;
   background: transparent;
   border: 1px solid var(--border);
@@ -4298,23 +4205,24 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 .cfg-curated-row .act button:hover {
-  background: rgba(0,229,160,0.08);
-  border-color: rgba(0,229,160,0.45);
+  background: rgba(45, 212, 156,0.08);
+  border-color: rgba(45, 212, 156,0.45);
   color: var(--accent);
 }
+.cfg-curated-row .act button:active { transform: translateY(1px); }
 .cfg-curated-row.added { opacity: 0.55; }
 .cfg-curated-row.added .act button {
   cursor: default;
-  border-color: rgba(0,229,160,0.3);
+  border-color: rgba(45, 212, 156,0.3);
   color: var(--accent);
-  background: rgba(0,229,160,0.06);
+  background: rgba(45, 212, 156,0.06);
 }
-.cfg-curated-row.added .act button:hover { background: rgba(0,229,160,0.06); }
+.cfg-curated-row.added .act button:hover { background: rgba(45, 212, 156,0.06); }
 .cfg-curated-empty {
   padding: 20px;
   text-align: center;
   color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
+  font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 11px;
 }
 
@@ -4347,8 +4255,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   font-weight: 700;
   letter-spacing: 0.4px;
   color: var(--accent);
-  background: rgba(0,229,160,0.08);
-  border: 1px solid rgba(0,229,160,0.3);
+  background: rgba(45, 212, 156,0.08);
+  border: 1px solid rgba(45, 212, 156,0.3);
   padding: 1px 6px;
   border-radius: 2px;
 }
@@ -4377,6 +4285,17 @@ body:not(.cfg-admin) [data-admin-only="true"] {
   background: rgba(86,226,255,0.2);
   color: var(--text-bright);
   padding: 0;
+}
+
+/* Hard a11y stop: anyone who asks for reduced motion gets none, including
+   inline-styled and one-shot animations. Color, not motion, carries state. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 </style>
 </head>
@@ -4410,7 +4329,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <span id="scanTarget">--</span>
       <span class="scan-cursor">_</span>
     </span>
-    <span class="live" id="liveIndicator" title="Auto-refresh on. Press c to configure."><span class="dot"></span>LIVE</span>
+    <span class="live" id="liveIndicator" title="Time since the freshest item landed. Auto-refresh on; press c to configure."><span class="nl">last nom</span> <b id="lastNomAge">-</b></span>
   </div>
 
   <!-- Guest-mode banner: shown to anon hosted-mode visitors so the
@@ -4512,14 +4431,14 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     </div>
 
     <div class="tut-section">
-      <div class="tut-section-title">:: the feed ::</div>
+      <div class="tut-section-title">The feed</div>
       <p class="tut-body">
         Articles scored 00-99 by relevance, ranked top down. Click any row to read the source; double-click opens in a new tab. Filter by source / score / unread state from the left rail.
       </p>
     </div>
 
     <div class="tut-section">
-      <div class="tut-section-title">:: keyboard shortcuts ::</div>
+      <div class="tut-section-title">Keyboard shortcuts</div>
       <div class="tut-keys">
         <span class="tut-key"><kbd>j</kbd><kbd>k</kbd></span><span class="tut-key-desc">prev / next article</span>
         <span class="tut-key"><kbd>enter</kbd></span><span class="tut-key-desc">open source in new tab</span>
@@ -4533,14 +4452,14 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     </div>
 
     <div class="tut-section">
-      <div class="tut-section-title">:: config (press <kbd>c</kbd>) ::</div>
+      <div class="tut-section-title">Config (press <kbd>c</kbd>)</div>
       <p class="tut-body">
         Sources, Bluesky watched accounts, Filtering, Behaviour, your Profile + stack keywords (to highlight CVEs hitting tech you actually run), Email digest, REST API tokens. Everything per-user, synced across devices once you sign in.
       </p>
     </div>
 
     <div class="tut-section">
-      <div class="tut-section-title">:: the worm ::</div>
+      <div class="tut-section-title">The worm</div>
       <p class="tut-body">
         The sprite in the bottom-left bar reflects worm mood (hibernating / feeding / frenzy) based on KEV activity. Type <code>nom()</code> in the console for a treat.
       </p>
@@ -4556,8 +4475,8 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="settingsModal" class="modal" onclick="if(event.target===this)closeSettingsModal()">
   <div class="modal-content" style="max-width: 620px; max-height: 86vh; overflow-y: auto;">
     <div class="modal-title" style="display:flex;align-items:center;gap:10px;">
-      <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;text-shadow:0 0 8px rgba(0,229,160,0.5);">&gt;_</span>
-      <span>oM noM Security Feeds // worm controls</span>
+      <span style="color:var(--accent);font-family:'JetBrains Mono',monospace;"></span>
+      <span>oM noM Security Feeds (worm controls)</span>
     </div>
 
     <div class="cfg-tabs" style="display:flex;gap:0;margin-top:14px;border-bottom:1px solid var(--border);flex-wrap:wrap;overflow-x:auto;-webkit-overflow-scrolling:touch;">
@@ -4579,7 +4498,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
            Watched accounts and the curated picker are useless without
            that session because the fetcher has nothing to auth with. -->
       <div id="cfgBlueskyGate" class="cfg-section" hidden>
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Bluesky not enabled</div>
+        <div class="cfg-section-title">Bluesky not enabled</div>
         <div class="cfg-hint" id="cfgBlueskyGateHint" style="margin-top:0;margin-bottom:14px;">
           Bluesky integration isn't enabled on this deployment yet.
         </div>
@@ -4589,7 +4508,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <!-- Configured view: actual functional UI. -->
       <div id="cfgBlueskyContent" hidden>
         <div class="cfg-section" id="cfgBskyYourSection">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your watched accounts</div>
+          <div class="cfg-section-title">Your watched accounts</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Bluesky researchers you've added on top of the curated list. Only their security-relevant posts make it into your feed (zero-score posts are dropped).
           </div>
@@ -4602,7 +4521,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Curated researchers</div>
+          <div class="cfg-section-title">Curated researchers</div>
           <div class="cfg-hint" id="cfgCuratedHint" style="margin-top:0;margin-bottom:10px;">
             <span id="cfgCuratedHintCount">107</span> hand-picked Bluesky researchers are already in your feed by default - no action needed. Use the list below to peek at who they are, or search through them.
           </div>
@@ -4625,7 +4544,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
       <!-- Free/anonymous: upgrade prompt -->
       <div id="cfgAlertsLocked" class="cfg-section" hidden>
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Webhook alerts (Pro)</div>
+        <div class="cfg-section-title">Webhook alerts (Pro)</div>
         <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
           Get a Slack / Discord / generic webhook ping the moment something matches a rule you saved.
           CISA KEV catalog additions, specific CVEs, keyword matches, tag matches - all fire within a minute of the article landing in the feed.
@@ -4637,7 +4556,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <!-- Pro: actual rule list + new-rule form -->
       <div id="cfgAlertsLive" hidden>
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your alert rules</div>
+          <div class="cfg-section-title">Your alert rules</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Rules fire on new articles only; dedup means the same article can't fire the same rule twice.
             Webhook URLs must be <code>https://</code>; loopback / private addresses are rejected.
@@ -4646,7 +4565,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Add new rule</div>
+          <div class="cfg-section-title">Add new rule</div>
           <div class="cfg-alert-form">
             <label class="cfg-label">Trigger</label>
             <select id="cfgAlertKind" class="cfg-input" onchange="toggleCfgAlertPattern()">
@@ -4683,7 +4602,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
       <!-- Locked variant for non-Pro -->
       <div id="cfgChannelsLocked" class="cfg-section" hidden>
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Channels (Pro)</div>
+        <div class="cfg-section-title">Channels (Pro)</div>
         <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
           Save a search query as a named channel. <code>DLL hijacking</code>, <code>macOS malware</code>, <code>my stack</code> - each one becomes a one-click filter on the article list. Search the operator's full corpus, save the slice that matters to you.
         </div>
@@ -4693,7 +4612,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <!-- Pro: live list + create form -->
       <div id="cfgChannelsLive" hidden>
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your channels</div>
+          <div class="cfg-section-title">Your channels</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Channels show as quick-filter chips above the article list. Click one to apply its search; click again to clear.
           </div>
@@ -4701,7 +4620,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Add new channel</div>
+          <div class="cfg-section-title">Add new channel</div>
           <div class="cfg-alert-form">
             <label class="cfg-label">Name</label>
             <input id="cfgChannelName" type="text" class="cfg-input" placeholder="e.g. macOS, supply chain, my-stack" maxlength="60">
@@ -4718,7 +4637,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     <div class="cfg-tab" data-tab="profile" hidden style="padding:18px 4px 4px;">
       <!-- Locked variant for non-Pro -->
       <div id="cfgProfileLocked" class="cfg-section" hidden>
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Personalization (Pro)</div>
+        <div class="cfg-section-title">Personalization (Pro)</div>
         <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
           Write 1-2 sentences about what you run / what you care about ("I run a Linux web shop in fintech, my team owns SIEM"). Click <strong>Personalize my feed</strong> and the AI re-sorts the visible list so the things YOU care about float to the top - on top of the keyword scoring.
         </div>
@@ -4727,18 +4646,18 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <!-- Pro: editor + run button -->
       <div id="cfgProfileLive" hidden>
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your profile</div>
+          <div class="cfg-section-title">Your profile</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Plain text. 1-2 sentences. Mention your tech stack, role, threat model, and what you specifically care about. The shorter and more specific, the better the re-ranking.
           </div>
           <textarea id="cfgProfileText" class="cfg-input" rows="4" style="resize:vertical;min-height:80px;" maxlength="500" placeholder="e.g. I run a 50-person fintech, Linux + nginx + Postgres, my team owns SIEM. I care about identity, supply chain, and anything affecting our crown jewels."></textarea>
           <button class="primary" type="button" onclick="saveCfgProfile()" style="margin-top:10px;">Save profile</button>
-          <button type="button" onclick="runPersonalize()" style="margin-top:10px;margin-left:8px;background:rgba(255,181,71,0.10);border:1px solid var(--accent-amber);color:var(--accent-amber);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:600;letter-spacing:0.4px;padding:8px 14px;border-radius:3px;cursor:pointer;text-transform:uppercase;">✨ Personalize my feed</button>
+          <button type="button" onclick="runPersonalize()" style="margin-top:10px;margin-left:8px;background:rgba(255,181,71,0.10);border:1px solid var(--accent-amber);color:var(--accent-amber);font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;font-weight:600;padding:8px 14px;border-radius:4px;cursor:pointer;">✨ Personalize my feed</button>
           <div class="cfg-hint" id="cfgProfileStatus" style="margin-top:8px;font-size:10px;"></div>
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your stack</div>
+          <div class="cfg-section-title">Your stack</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Comma-separated keywords for the tech you actually run. Articles that mention any keyword get tagged <code>yours:&lt;keyword&gt;</code> so they stand out in the feed. No AI cost - simple word-boundary match on title, summary, and existing tags.
           </div>
@@ -4748,7 +4667,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> ATT&amp;CK Navigator export</div>
+          <div class="cfg-section-title">ATT&amp;CK Navigator export</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Download a MITRE ATT&amp;CK Navigator layer JSON showing TTP frequency across your bookmarked articles. Paste into <a href="https://mitre-attack.github.io/attack-navigator/" target="_blank" rel="noopener" style="color:var(--accent-cyan);">attack-navigator</a> &rarr; <code>Open Existing Layer</code> &rarr; <code>Upload from local</code> to see a coverage heat-map.
           </div>
@@ -4760,7 +4679,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Patch Tuesday alerts</div>
+          <div class="cfg-section-title">Patch Tuesday alerts</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Calendar-pinned vendors auto-brief on patch days. Toggle which vendors you want to see briefs for. Defaults: MS + Adobe + Oracle on (calendar-pinned); Apple + Linux + Browser off (threshold-triggered, coming soon).
           </div>
@@ -4774,7 +4693,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Email digest</div>
+          <div class="cfg-section-title">Email digest</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Drop the daily AI brief into your inbox so you don't have to remember to open the app. Same content as the in-app brief; delivered via Resend.
           </div>
@@ -4791,7 +4710,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
       <!-- Free/anonymous: upgrade prompt -->
       <div id="cfgTokensLocked" class="cfg-section" hidden>
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> REST API access (Pro)</div>
+        <div class="cfg-section-title">REST API access (Pro)</div>
         <div class="cfg-hint" style="margin-top:0;margin-bottom:14px;">
           Generate bearer tokens for the read API: pipe articles into Splunk, Sigma, your SIEM, a CI workflow, or whatever you want. Tokens authenticate the same surface your browser session can hit (read articles, mark read, bookmarks, watched accounts).
         </div>
@@ -4802,7 +4721,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       <!-- Pro: live token list + create -->
       <div id="cfgTokensLive" hidden>
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Your API tokens</div>
+          <div class="cfg-section-title">Your API tokens</div>
           <div class="cfg-hint" style="margin-top:0;margin-bottom:10px;">
             Use the <code>Authorization: Bearer &lt;token&gt;</code> header to authenticate to <code>https://omnomfeeds.com/api/*</code>. The full token is shown <strong>once</strong> at creation; we only store its SHA-256 hash. Lost it? Delete and mint a new one.
           </div>
@@ -4810,7 +4729,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Mint new token</div>
+          <div class="cfg-section-title">Mint new token</div>
           <div class="cfg-alert-form">
             <label class="cfg-label">Label</label>
             <input id="cfgTokenName" type="text" class="cfg-input" placeholder="e.g. siem-ingest, ci-pipeline, mac-laptop" maxlength="80">
@@ -4820,12 +4739,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
             <div class="cfg-token-reveal-head">New token <span>copy now - it will not be shown again</span></div>
             <div class="cfg-token-reveal-value" id="cfgTokenRevealValue"></div>
             <button class="primary" type="button" onclick="copyCfgToken()" style="margin-top:8px;">Copy</button>
-            <button type="button" onclick="dismissCfgTokenReveal()" style="margin-top:8px;margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 14px;font-family:'JetBrains Mono',monospace;font-size:11px;cursor:pointer;border-radius:3px;">Done</button>
+            <button type="button" onclick="dismissCfgTokenReveal()" style="margin-top:8px;margin-left:6px;background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:7px 14px;font-family:'Space Grotesk',system-ui,sans-serif;font-size:12px;cursor:pointer;border-radius:4px;">Done</button>
           </div>
         </div>
 
         <div class="cfg-section">
-          <div class="cfg-section-title"><span class="cfg-accent">::</span> Example</div>
+          <div class="cfg-section-title">Example</div>
           <div class="cfg-hint" style="margin-top:0;font-size:11px;line-height:1.7;">
 <pre style="margin:0;color:var(--text);background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:10px 12px;font-family:'JetBrains Mono',monospace;font-size:11px;overflow-x:auto;">curl -H "Authorization: Bearer $TOKEN" \
   https://omnomfeeds.com/api/articles?min_score=20&amp;limit=50</pre>
@@ -4837,12 +4756,12 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     <!-- Filtering / scoring transparency -->
     <div class="cfg-tab" data-tab="filtering" hidden style="padding:18px 4px 4px;">
       <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> How the worm picks what to eat</div>
+        <div class="cfg-section-title">How the worm picks what to eat</div>
         <div class="cfg-hint" id="cfgScoringHowItWorks">loading...</div>
       </div>
 
       <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Scoring categories</div>
+        <div class="cfg-section-title">Scoring categories</div>
         <input type="text" id="cfgScoringSearch" class="cfg-input" placeholder="filter categories / keywords..." oninput="renderScoringTab()" style="margin-bottom:10px;">
         <div id="cfgScoringList" class="cfg-scoring-list">loading...</div>
       </div>
@@ -4851,7 +4770,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     <!-- Behavior tab -->
     <div class="cfg-tab" data-tab="behavior" hidden style="padding:18px 4px 4px;">
       <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Auto-refresh</div>
+        <div class="cfg-section-title">Auto-refresh</div>
         <label class="cfg-label">Interval (seconds, 0 = off)</label>
         <input type="number" id="cfgAutoSec" class="cfg-input" min="0" step="10" style="max-width:140px;">
         <button class="primary" onclick="saveBehaviorConfig()">Apply</button>
@@ -4859,7 +4778,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
       </div>
 
       <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Aesthetic</div>
+        <div class="cfg-section-title">Aesthetic</div>
         <label class="cfg-checkbox"><input type="checkbox" id="cfgDecode" onchange="saveCfgToggle('decode', this)" checked> <span>Decode-text animation on new items</span></label>
         <label class="cfg-checkbox" style="margin-top:6px;"><input type="checkbox" id="cfgScanner" onchange="saveCfgToggle('scanner', this)" checked> <span>Source-scanning ticker in status bar</span></label>
       </div>
@@ -4868,7 +4787,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     <!-- Sources tab -->
     <div class="cfg-tab" data-tab="sources" hidden style="padding:18px 4px 4px;">
       <div class="cfg-section">
-        <div class="cfg-section-title"><span class="cfg-accent">::</span> Source health</div>
+        <div class="cfg-section-title">Source health</div>
         <div id="cfgSourceList" class="cfg-source-list">loading...</div>
         <div id="cfgSourceHintSelfhost" class="cfg-hint" style="margin-top:8px;">For feed-level edits (add/remove RSS sources), edit your <code>config.json</code> directly - its path is shown in the startup log.</div>
         <div id="cfgSourceHintHosted" class="cfg-hint" style="margin-top:8px;" hidden>This list is a live snapshot of what the deployment is currently fetching. The set of sources is curated; you don't manage it.</div>
@@ -4905,7 +4824,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <!-- IOC Decoder modal -->
 <div id="decoderModal" class="decoder-modal" hidden>
   <div class="decoder-panel">
-    <div class="decoder-title">:: IOC TASTE TEST</div>
+    <div class="decoder-title">IOC taste test</div>
     <div class="decoder-input-row"><span class="dec-arrow">&gt;</span><input type="text" id="decoderInput" class="decoder-input" placeholder="paste hash, CVE, IPv4, URL, or domain..." autocomplete="off" spellcheck="false"></div>
     <div id="decoderResult" class="decoder-result"></div>
     <div class="decoder-hint">ENTER decode · ESC close</div>
@@ -4918,7 +4837,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="momentumModal" class="digest-modal" hidden onclick="if(event.target===this)closeMomentum()">
   <div class="digest-panel">
     <div class="digest-title">
-      <span>:: WHAT'S HEATING UP</span>
+      <span>What's heating up</span>
       <span class="digest-provider" id="momentumLabel">last 7 days vs prior 7 days</span>
     </div>
     <div class="digest-body" id="momentumBody">loading...</div>
@@ -4935,7 +4854,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="cveModal" class="digest-modal" hidden onclick="if(event.target===this)closeCveModal()">
   <div class="digest-panel cve-panel">
     <div class="digest-title">
-      <span id="cveModalTitle">:: CVE DEEP-DIVE</span>
+      <span id="cveModalTitle">CVE deep-dive</span>
       <span class="digest-provider" id="cveModalKev"></span>
     </div>
     <div class="cve-modal-body" id="cveModalBody">loading...</div>
@@ -4949,7 +4868,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="digestModal" class="digest-modal" hidden>
   <div class="digest-panel">
     <div class="digest-title">
-      <span>:: WORM'S DIGEST // last 24h</span>
+      <span>Worm's digest, last 24h</span>
       <span class="digest-provider" id="digestProvider"></span>
     </div>
     <div id="digestBody" class="digest-body"></div>
@@ -4964,7 +4883,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="statsModal" class="mitre-modal" hidden onclick="if(event.target===this)closeStatsView()">
   <div class="mitre-panel">
     <div class="mitre-title">
-      <span>:: FEAST STATS</span>
+      <span>Feast stats</span>
       <span id="statsHeadline" class="stat"></span>
     </div>
     <div class="mitre-body" id="statsBody">loading...</div>
@@ -4979,7 +4898,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <div id="mitreModal" class="mitre-modal" hidden onclick="if(event.target===this)closeMitreView()">
   <div class="mitre-panel">
     <div class="mitre-title">
-      <span>:: MITRE ATT&amp;CK COVERAGE</span>
+      <span>MITRE ATT&amp;CK coverage</span>
       <span id="mitreStat" class="stat"></span>
     </div>
     <div class="mitre-body">
@@ -4996,7 +4915,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 <!-- Sources visualization modal -->
 <div id="sourcesViz" class="sources-viz" hidden>
   <div class="sv-panel">
-    <div class="sv-title">:: FEEDING TUBES // FLOW</div>
+    <div class="sv-title">Feeding tubes, flow</div>
     <div id="svChart" class="sv-chart"></div>
     <div class="sv-hint">click a source to filter · ESC close</div>
   </div>
@@ -5011,7 +4930,7 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
 <!-- Floating HUD widget - persistent stats console -->
 <div id="hudWidget" class="hud-widget">
-  <div class="hud-widget-title">:: STATUS</div>
+  <div class="hud-widget-title">Status</div>
   <div class="hud-row"><span class="hud-label">ITEMS</span><span class="hud-value" id="hudItems">--</span></div>
   <div class="hud-row"><span class="hud-label">UNREAD</span><span class="hud-value" id="hudUnread">--</span></div>
   <div class="hud-row"><span class="hud-label">KEV</span><span class="hud-value" id="hudKev">--</span></div>
@@ -5030,25 +4949,25 @@ body:not(.cfg-admin) [data-admin-only="true"] {
 
 <!-- Secondary HUD: top tags / techniques -->
 <div id="hudTagsWidget" class="hud-widget hud-secondary">
-  <div class="hud-widget-title">:: TOP SIGNAL</div>
+  <div class="hud-widget-title">Top signal</div>
   <div id="hudTagList" class="hud-tag-list">scanning...</div>
 </div>
 
 <!-- Tertiary HUD: 24h activity sparkline -->
 <div id="hudActivityWidget" class="hud-widget hud-tertiary">
-  <div class="hud-widget-title">:: ACTIVITY 24H</div>
+  <div class="hud-widget-title">Activity 24h</div>
   <div id="hudSparkline" class="hud-sparkline"></div>
   <div class="hud-sparkline-axis"><span>-24h</span><span>now</span></div>
 </div>
 
 <!-- Quaternary HUD: MITRE tactic radar -->
 <div id="hudRadarWidget" class="hud-widget hud-quaternary">
-  <div class="hud-widget-title">:: MITRE COVERAGE</div>
+  <div class="hud-widget-title">MITRE coverage</div>
   <svg id="hudRadar" class="hud-radar" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
     <defs>
       <linearGradient id="radarSweepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-        <stop offset="0%" stop-color="#b48eff" stop-opacity="0"/>
-        <stop offset="100%" stop-color="#b48eff" stop-opacity="0.6"/>
+        <stop offset="0%" stop-color="#56d3e0" stop-opacity="0"/>
+        <stop offset="100%" stop-color="#56d3e0" stop-opacity="0.6"/>
       </linearGradient>
     </defs>
     <g class="radar-grid"></g>
@@ -5058,14 +4977,14 @@ body:not(.cfg-admin) [data-admin-only="true"] {
     <g class="radar-labels"></g>
     <g class="radar-sweep">
       <path d="M 80 80 L 130 80 A 50 50 0 0 0 102.5 36.7 Z" fill="url(#radarSweepGrad)"/>
-      <line x1="80" y1="80" x2="130" y2="80" stroke="#b48eff" stroke-width="0.6" opacity="0.8"/>
+      <line x1="80" y1="80" x2="130" y2="80" stroke="#56d3e0" stroke-width="0.6" opacity="0.8"/>
     </g>
   </svg>
 </div>
 
 <!-- Bottom terminal event log - scrolling activity console -->
 <div id="termLog" class="term-log">
-  <div class="term-log-title">:: SYS</div>
+  <div class="term-log-title">Sys</div>
   <div id="termLogLines" class="term-log-lines"></div>
 </div>
 
@@ -5119,7 +5038,7 @@ async function loadArticles(opts) {
       <span style="color:var(--accent);">SCAN</span>
       <span style="color:var(--text-dim);">]</span>
       <span class="loading-text" id="loadingText"> fetching corpus</span>
-      <span style="color:var(--accent-cyan);animation:scan-cursor-blink 0.7s steps(2) infinite;">_</span>
+      <span style="color:var(--accent-cyan);">_</span>
     </div>`;
     const phrases = ['fetching corpus', 'decoding stream', 'parsing feed', 'indexing items'];
     let pi = 0;
@@ -5159,7 +5078,7 @@ function renderArticles(articles) {
   if (!articles || articles.length === 0) {
     list.innerHTML = `
       <div class="item empty-shrug" style="color:var(--text-dim); white-space: normal; padding: 22px 18px; line-height: 1.5;">
-        <pre style="font-family:'JetBrains Mono',monospace; color:var(--accent); font-size: 14px; margin: 0 0 10px 0; text-shadow: 0 0 6px rgba(0,229,160,0.35);">¯\\_(~~~_o)_/¯</pre>
+        <pre style="font-family:'JetBrains Mono',monospace; color:var(--accent); font-size: 14px; margin: 0 0 10px 0;">¯\\_(~~~_o)_/¯</pre>
         nothing tastes like that. try clearing a filter or hitting <span style="color:var(--accent-cyan);font-weight:600;">r</span> to refresh.
       </div>`;
     selectedIndex = -1;
@@ -5284,7 +5203,7 @@ function updateFilterChips() {
   if (currentSearch)          filters.push({ k: 'q',      v: `/${currentSearch}/`, clear: () => { currentSearch = ''; } });
   if (!filters.length) { wrap.hidden = true; wrap.innerHTML = ''; return; }
   wrap.hidden = false;
-  wrap.innerHTML = '<span class="label">FILTERS ::</span>' + filters.map((f, i) =>
+  wrap.innerHTML = '<span class="label">Filters</span>' + filters.map((f, i) =>
     `<span class="filter-chip" data-i="${i}"><span class="k">${esc(f.k)}=</span><span class="v">${esc(String(f.v))}</span><span class="x" data-i="${i}" title="Remove filter">×</span></span>`
   ).join('');
   wrap.querySelectorAll('.x').forEach(el => {
@@ -5366,8 +5285,8 @@ function buildCommandList() {
     { label: 'Feast stats',           key: 'S', action: () => openStatsView() },
     { label: 'AI intel brief (last 24h)', key: 'I', action: () => openDigest(false) },
     { label: 'Momentum (week-over-week movers)', key: 'H', action: () => openMomentum() },
-    { label: 'AI intel brief :: force refresh', action: () => openDigest(true) },
-    { label: 'While you were gone :: personal intel brief', key: 'W', action: () => loadWhatsNew({ force: true }) },
+    { label: 'AI intel brief - force refresh', action: () => openDigest(true) },
+    { label: 'While you were gone - personal intel brief', key: 'W', action: () => loadWhatsNew({ force: true }) },
     { label: 'Undo last filter change', key: 'U', action: () => undoLastFilter() },
     { label: 'Toggle preview pane', key: 'SPC', action: () => { previewOpen = !previewOpen; updatePreview(); } },
     { label: 'Toggle unread-only filter', key: 'u', action: () => filterAction(() => { unreadOnly = !unreadOnly; }) },
@@ -5576,8 +5495,8 @@ function openSourcesView() {
   const max = sorted[0] ? sorted[0][1] : 1;
   const chart = document.getElementById('svChart');
   const typeColor = {
-    rss: '#56e2ff', bluesky: '#6db7ff', mastodon: '#b48eff',
-    github: '#6bf5c8', reddit: '#ffaa66', ioc_feed: '#ff5cc4',
+    rss: '#56d3e0', bluesky: '#6db7ff', mastodon: '#8aa0c8',
+    github: '#7fd3b4', reddit: '#ffaa66', ioc_feed: '#ff5cc4',
   };
   chart.innerHTML = sorted.map(([name, count]) => {
     const pct = (count / max) * 100;
@@ -5851,7 +5770,7 @@ function renderStatsView(s) {
       <div class="stats-tile"><div class="lbl">still waiting</div><div class="val cyan">${unread.toLocaleString()}</div></div>
       <div class="stats-tile"><div class="lbl">KEV-listed</div><div class="val ${kevCount > 0 ? 'crit' : ''}">${kevCount.toLocaleString()}</div></div>
     </div>
-    ${burps > 0 ? `<div class="mitre-hint" style="border:1px solid var(--border); border-radius:3px; padding:10px 14px; margin:0 0 18px 0; background: rgba(0,229,160,0.04);"><span>burps logged this install</span><span style="color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;">${burps.toLocaleString()} *burp*</span></div>` : ''}
+    ${burps > 0 ? `<div class="mitre-hint" style="border:1px solid var(--border); border-radius:3px; padding:10px 14px; margin:0 0 18px 0; background: rgba(45, 212, 156,0.04);"><span>burps logged this install</span><span style="color:var(--accent);font-weight:700;font-family:'JetBrains Mono',monospace;">${burps.toLocaleString()} *burp*</span></div>` : ''}
     <div class="stats-section-title">top feeding tubes</div>
     ${srcHtml}
     <div class="stats-section-title">most-chewed tags</div>
@@ -6123,19 +6042,19 @@ function showCvePopover(evt, cveId, isKev) {
   const cve = String(cveId).toUpperCase();
   const yr = (cve.match(/CVE-(\d{4})/) || [,'?'])[1];
   const kevBadge = isKev
-    ? `<span style="color:var(--score-crit);font-weight:700;text-shadow:0 0 6px rgba(255,77,106,0.6);animation:hud-crit-pulse 1.5s ease-in-out infinite;">● ACTIVE KEV</span>`
+    ? `<span style="color:var(--score-crit);font-weight:700;">● ACTIVE KEV</span>`
     : `<span style="color:var(--text-dim);">no KEV listing</span>`;
   pop.style.minWidth = '320px';
   pop.style.maxWidth = '420px';
   pop.innerHTML = `
-    <div style="padding:6px 12px 4px;color:var(--accent-cyan);font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.6px;">
-      <span style="color:var(--text-dim);">CVE ::</span>
+    <div style="padding:6px 12px 4px;color:var(--accent-cyan);font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;">
+      <span style="color:var(--text-dim);">CVE</span>
       <span style="color:#ffa3b3;font-weight:700;">${esc(cve)}</span>
       <span style="color:var(--text-dim);margin-left:6px;">${esc(yr)}</span>
     </div>
     <div style="padding:4px 12px 6px;font-size:11px;">${kevBadge}</div>
-    <div id="cveDetailBlock" style="padding:0 12px 6px;font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:0.3px;">
-      <span class="cve-loading" style="color:var(--accent-cyan);">[NVD] fetching detail<span style="animation:scan-cursor-blink 0.7s steps(2) infinite;">_</span></span>
+    <div id="cveDetailBlock" style="padding:0 12px 6px;font-size:10px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;">
+      <span class="cve-loading" style="color:var(--accent-cyan);">[NVD] fetching detail<span>_</span></span>
     </div>
     <div class="opt" data-deepdive="${esc(cve)}" style="color:var(--accent-amber);font-weight:700;">Deep-dive (CVSS + EPSS + AI summary) →</div>
     <div class="opt" data-url="https://nvd.nist.gov/vuln/detail/${esc(cve)}">Open in NVD ➜</div>
@@ -6309,7 +6228,7 @@ async function explainCurrentArticle() {
   if (!a) return;
   const slot = document.getElementById('articleExplainSlot');
   if (!slot) return;
-  slot.innerHTML = `<div class="article-explain loading">[AI] writing plain-English summary<span style="animation:scan-cursor-blink 0.7s steps(2) infinite;">_</span></div>`;
+  slot.innerHTML = `<div class="article-explain loading">[AI] writing plain-English summary<span>_</span></div>`;
   try {
     const r = await fetch('/api/articles/explain/' + encodeURIComponent(a.id), { credentials: 'same-origin' });
     if (r.status === 401) {
@@ -6353,7 +6272,7 @@ async function openCveDeepDive(cveId) {
   const id = String(cveId).toUpperCase();
   m.hidden = false;
   inputMode = true;
-  document.getElementById('cveModalTitle').textContent = ':: ' + id;
+  document.getElementById('cveModalTitle').textContent = id;
   document.getElementById('cveModalKev').textContent = '';
   document.getElementById('cveModalProvider').textContent = '';
   document.getElementById('cveModalBody').innerHTML =
@@ -6602,8 +6521,8 @@ async function _showInsightCard(evt, kind, slug) {
     const kindBit   = d.kind ? `<span style="color:var(--text-dim);">kind:</span> <span style="color:var(--accent-cyan);">${esc(d.kind)}</span>` : '';
     const searchTerm = (d.aliases && d.aliases[0]) || d.display || slug;
     pop.innerHTML = `
-      <div style="padding:6px 12px 4px;color:${kindCol};font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.6px;text-transform:uppercase;">
-        :: ${esc(kindLabel)}
+      <div style="padding:6px 12px 4px;color:${kindCol};font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.5px;text-transform:uppercase;">
+        ${esc(kindLabel)}
       </div>
       <div style="padding:4px 12px 6px;color:var(--text-bright);font-size:14px;font-weight:700;font-family:'JetBrains Mono',monospace;">${esc(d.display)}</div>
       <div style="padding:0 12px 8px;color:var(--text-dim);font-size:10.5px;line-height:1.5;">
@@ -6645,8 +6564,8 @@ function showMitrePopover(evt, tag) {
   const subId = String(tag).includes('.') ? tag : '';
   const url = `https://attack.mitre.org/techniques/${String(tag).replace('.', '/')}/`;
   pop.innerHTML = `
-    <div style="padding:6px 12px 4px;color:var(--accent-cyan);font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.6px;">
-      <span style="color:var(--text-dim);">MITRE ATT&amp;CK ::</span> <span style="color:#8ec5ff;font-weight:700;">${esc(tag)}</span>
+    <div style="padding:6px 12px 4px;color:var(--accent-cyan);font-size:10px;border-bottom:1px solid var(--border);margin-bottom:4px;letter-spacing:0.5px;">
+      <span style="color:var(--text-dim);">MITRE ATT&amp;CK</span> <span style="color:#8ec5ff;font-weight:700;">${esc(tag)}</span>
     </div>
     <div style="padding:4px 12px 8px;color:var(--text-bright);font-size:12px;font-weight:600;font-family:'IBM Plex Sans',sans-serif;">${esc(name)}</div>
     <div class="opt" data-url="${esc(url)}">Open in MITRE ATT&amp;CK ➜</div>
@@ -6893,7 +6812,7 @@ function buildFavicon(kev) {
   const ctx = c.getContext('2d');
   ctx.clearRect(0, 0, 32, 32);
 
-  const color = kev > 0 ? '#ff4d6a' : '#00e5a0';
+  const color = kev > 0 ? '#ff5d6e' : '#2dd49c';
 
   // Tail segments (taper from faint to bright as we move toward the head).
   ctx.fillStyle = color;
@@ -6908,20 +6827,20 @@ function buildFavicon(kev) {
   ctx.shadowBlur = 0;
 
   // Eye + cyan glint (white when alarmed).
-  ctx.fillStyle = '#0a0e14';
+  ctx.fillStyle = '#15171c';
   ctx.beginPath(); ctx.arc(23, 12, 1.6, 0, Math.PI * 2); ctx.fill();
-  ctx.fillStyle = kev > 0 ? '#ffffff' : '#56e2ff';
+  ctx.fillStyle = kev > 0 ? '#ffffff' : '#56d3e0';
   ctx.beginPath(); ctx.arc(23.5, 11.5, 0.6, 0, Math.PI * 2); ctx.fill();
 
   // Mouth.
-  ctx.fillStyle = '#0a0e14';
+  ctx.fillStyle = '#15171c';
   ctx.beginPath();
   ctx.ellipse(27, 15, 2.4, 1.0, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // KEV count badge (top-right corner).
   if (kev > 0) {
-    ctx.fillStyle = '#ff4d6a';
+    ctx.fillStyle = '#ff5d6e';
     ctx.fillRect(20, 0, 12, 12);
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 9px monospace';
@@ -7327,7 +7246,7 @@ async function loadAuthStrip() {
     }
     // Admin gets a deep link into the dashboard.
     const adminLink = me.is_admin
-      ? '<a href="/admin" style="margin-right:12px;font-family:JetBrains Mono,monospace;font-size:11px;letter-spacing:0.6px;text-transform:uppercase;color:var(--accent-amber);">admin &rarr;</a>'
+      ? '<a href="/admin" style="margin-right:12px;font-family:\'Space Grotesk\',system-ui,sans-serif;font-size:12px;color:var(--accent-amber);">admin &rarr;</a>'
       : '';
     strip.innerHTML =
       '<span>Signed in as <span class="email">' + esc(me.email || '') + '</span>' + proBadge + proExpiry + '</span>' +
@@ -8635,8 +8554,8 @@ function openHelp() {
         <tr><td class="key">: / ^K</td><td>command palette (fuzzy-search any action)</td></tr>
         <tr><td class="key">D</td><td>IOC decoder (paste hash / CVE / IP / URL / domain)</td></tr>
         <tr><td class="key">v</td><td>sources distribution visualization</td></tr>
-        <tr><td class="key">I</td><td>AI intel brief :: what happened in the last 24h (BYOK)</td></tr>
-        <tr><td class="key">W</td><td>"while you were gone" :: AI brief since YOUR last visit (Pro)</td></tr>
+        <tr><td class="key">I</td><td>AI intel brief - what happened in the last 24h (BYOK)</td></tr>
+        <tr><td class="key">W</td><td>"while you were gone" - AI brief since YOUR last visit (Pro)</td></tr>
         <tr><td class="key">U</td><td>undo last filter change</td></tr>
         <tr><td class="key">?</td><td>this overlay (ESC / q to close)</td></tr>
       </table>
@@ -9263,7 +9182,7 @@ function __toggleSpicyMode() {
   localStorage.setItem('secfeed.spicy', on ? 'on' : 'off');
   pushMeSettings();
   if (typeof toast === 'function') {
-    toast(on ? 'spicy mode :: extra peppers' : 'spicy mode :: cooled down');
+    toast(on ? 'spicy mode - extra peppers' : 'spicy mode - cooled down');
   }
 }
 // Capture phase + stopImmediatePropagation so a partial "nom" sequence
@@ -9621,12 +9540,34 @@ function surfaceBillingReturn() {
       document.body.setAttribute('data-worm-mood', m.label || 'eating');
       const logo = document.getElementById('wormLogoSvg');
       if (logo) {
-        logo.setAttribute('title', 'worm mood :: ' + m.label + ' (' + m.kev_24h + ' KEV in last 24h)');
+        logo.setAttribute('title', 'worm mood - ' + m.label + ' (' + m.kev_24h + ' KEV in last 24h)');
       }
     } catch (e) { /* mood is decorative - swallow errors */ }
   }
   tick();
   setInterval(tick, 300000);
+})();
+</script>
+
+<script>
+// last-nom indicator: mirror the freshest article's age into the status line.
+// currentArticles + timeAgo are top-level globals from the main reader script.
+(function(){
+  function tick(){
+    var el = document.getElementById('lastNomAge');
+    if (!el) return;
+    try {
+      if (typeof currentArticles !== 'undefined' && currentArticles.length && typeof timeAgo === 'function') {
+        var newest = currentArticles[0];
+        for (var i = 1; i < currentArticles.length; i++) {
+          if (currentArticles[i].published_at > newest.published_at) newest = currentArticles[i];
+        }
+        el.textContent = (timeAgo(newest.published_at) || 'now').replace(/\s*ago$/, '');
+      }
+    } catch (e) {}
+  }
+  tick();
+  setInterval(tick, 1000);
 })();
 </script>
 

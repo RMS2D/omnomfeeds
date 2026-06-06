@@ -3,12 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Pre-KEV Watch - oM noM Security Feeds</title>
+<title>Pre-KEV watch - oM noM Security Feeds</title>
 <meta name="description" content="CVEs trending across multiple security sources but not yet on the CISA KEV catalog. Early-warning view ahead of formal listing. EPSS percentile + latest mention for each.">
 <link rel="icon" type="image/svg+xml" href="/favicon.svg">
 <link rel="alternate" type="application/rss+xml" title="oM noM Security Feeds - High signal" href="/feed.xml">
 
-<meta property="og:title" content="Pre-KEV Watch - oM noM Security Feeds">
+<meta property="og:title" content="Pre-KEV watch - oM noM Security Feeds">
 <meta property="og:description" content="CVEs trending across security sources before CISA adds them to the KEV catalog. Early-warning view with EPSS scores and latest mentions.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://omnomfeeds.com/pre-kev">
@@ -22,535 +22,244 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0a0e14;
-  --bg-card: #14191f;
-  --bg-row: #11161d;
-  --border: #2a3340;
-  --border-hi: #3a4555;
-  --text: #e6ecf5;
-  --text-dim: #b8c4d4;
-  --text-bright: #ffffff;
-  --accent: #00e5a0;
-  --accent-cyan: #56e2ff;
-  --accent-amber: #ffb547;
-  --score-crit: #ff4d6a;
-  --kev-amber: #ffb547;
+  --bg:#15171c; --panel:#181b21; --row:#1b1e25; --border:#2b3039; --bhi:#3b424d;
+  --text:#e9ebf0; --dim:#8d93a0; --faint:#5d636e; --bright:#ffffff;
+  --accent:#2dd49c; --accent-hi:#54e3b4; --crit:#ff5d6e; --warn:#f0b552;
+  --elev: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
 }
-html, body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 14px;
-  line-height: 1.55;
-  min-height: 100vh;
-}
-a { color: var(--accent-cyan); text-decoration: none; }
-a:hover { color: var(--accent); }
-code, .mono { font-family: 'JetBrains Mono', monospace; }
+html,body { background: var(--bg); color: var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px; line-height:1.55; min-height:100vh; font-variant-numeric: tabular-nums; }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.022; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+a { color: var(--accent); text-decoration: none; }
+.mono { font-family:'JetBrains Mono',monospace; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
-.top {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 24px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-card);
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.brand {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--text-bright);
-  font-weight: 600;
-  letter-spacing: 0.4px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brand .worm-sprite {
-  width: 32px; height: 25px; flex-shrink: 0;
-  animation: worm-bob 2.4s ease-in-out infinite;
-  filter: drop-shadow(0 0 5px rgba(255,181,71,0.4));
-}
-.brand .worm-sprite .seg, .brand .worm-sprite .head { fill: var(--kev-amber); }
-.brand .worm-sprite .seg.s3 { opacity: 0.35; }
-.brand .worm-sprite .seg.s2 { opacity: 0.6; }
-.brand .worm-sprite .seg.s1 { opacity: 0.85; }
-.brand .worm-sprite .eye   { fill: var(--bg); }
-.brand .worm-sprite .glint { fill: var(--accent-cyan); }
-.brand .worm-sprite .mouth { fill: var(--bg); }
-@keyframes worm-bob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-1.5px); }
-}
-.brand .tag {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  background: rgba(255,181,71,0.12);
-  border: 1px solid var(--kev-amber);
-  color: var(--kev-amber);
-  padding: 1px 6px;
-  border-radius: 2px;
-  margin-left: 6px;
-}
-nav.top-nav {
-  display: flex;
-  gap: 18px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.6px;
-  text-transform: uppercase;
-}
-nav.top-nav a { color: var(--text-dim); }
-nav.top-nav a:hover { color: var(--accent-cyan); }
+.page { max-width: 980px; margin: 0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--bg) 320px); position:relative; z-index:1; min-height:100vh; }
 
-.wrap {
-  max-width: 1100px;
-  margin: 0 auto;
-  padding: 32px 24px 80px;
+/* spine row: continuous left gutter + content */
+.row { display:flex; align-items:stretch; }
+.row > .gut { width:50px; flex-shrink:0; border-right:1px solid var(--border); display:flex; align-items:flex-start; justify-content:center; padding-top:14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--faint); }
+.row > .main { flex:1; min-width:0; }
+.rule { border-bottom:1px solid var(--border); }
+
+.worm { width:28px; height:22px; }
+.worm .seg, .worm .head { fill: var(--accent); }
+.worm .seg.s3 { opacity:0.35; } .worm .seg.s2 { opacity:0.6; } .worm .seg.s1 { opacity:0.85; }
+.worm .eye, .worm .mouth { fill: var(--bg); } .worm .glint { fill: var(--bright); }
+@media (prefers-reduced-motion: no-preference) {
+  #brandWorm { animation: bob 3.4s ease-in-out infinite; transform-origin:center; }
+  #brandWorm.chomp .mouth { animation: chomp 0.5s ease-out; transform-origin:28px 14.5px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+  @keyframes chomp { 0%,100%{transform:scaleY(0.5)} 40%{transform:scaleY(1.7) scaleX(0.9)} }
 }
 
-.hero { margin-bottom: 26px; }
-.eyebrow {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1.6px;
-  text-transform: uppercase;
-  color: var(--kev-amber);
-  margin-bottom: 10px;
-}
-.eyebrow .pulse {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--kev-amber);
-  margin-right: 8px;
-  vertical-align: middle;
-  animation: kev-pulse 1.8s ease-in-out infinite;
-}
-@keyframes kev-pulse {
-  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,181,71,0.6); }
-  50%      { opacity: 0.55; box-shadow: 0 0 0 5px rgba(255,181,71,0); }
-}
-h1 {
-  font-size: 36px;
-  line-height: 1.15;
-  letter-spacing: -0.4px;
-  color: var(--text-bright);
-  margin-bottom: 10px;
-  font-weight: 700;
-}
-.lead {
-  font-size: 16px;
-  color: var(--text-dim);
-  max-width: 740px;
-}
-.lead strong { color: var(--text); }
+/* status-line header */
+.statusbar { display:flex; align-items:center; gap:12px; padding:13px 20px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+.statusbar .bd { color:var(--bright); font-weight:600; letter-spacing:0.2px; }
+.statusbar nav { display:flex; gap:16px; margin-left:8px; }
+.statusbar nav a { color:var(--dim); font-size:11.5px; padding-bottom:2px; border-bottom:1px solid transparent; }
+.statusbar nav a:hover { color:var(--text); border-bottom-color:var(--bhi); }
+.statusbar nav a.cur { color:var(--bright); border-bottom-color:var(--accent); }
+.statusbar .grow { flex:1; border-bottom:1px dotted var(--border); height:1px; transform:translateY(-2px); min-width:20px; }
+.statusbar .nom { color:var(--dim); } .statusbar .nom b { color:var(--accent); font-weight:600; }
+.statusbar .signin { color:var(--accent); }
 
-.what {
-  background: linear-gradient(180deg, rgba(255,181,71,0.04), rgba(255,181,71,0.01));
-  border: 1px solid rgba(255,181,71,0.22);
-  border-left: 2px solid var(--kev-amber);
-  border-radius: 4px;
-  padding: 14px 18px;
-  margin: 22px 0 18px;
-  font-size: 13.5px;
-  line-height: 1.6;
-}
-.what h2 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--kev-amber);
-  margin-bottom: 6px;
-}
-.what .row { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; }
-.what .row > div { flex: 1; min-width: 240px; }
-.what .row strong { color: var(--text-bright); }
+/* hero */
+.hero { padding:46px 20px 30px; }
+.hero h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(28px,5vw,46px); font-weight:700; letter-spacing:-0.02em; line-height:1.05; color:var(--bright); }
+.hero .sub { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--dim); margin-top:16px; max-width:74ch; line-height:1.6; }
+.hero .sub b { color:var(--text); font-weight:600; }
 
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 14px;
-  align-items: center;
-  margin: 18px 0;
-  padding: 12px 14px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.4px;
-}
-.controls .label {
-  text-transform: uppercase;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  margin-right: 4px;
-}
-.btn-group {
-  display: flex;
-  gap: 0;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-.btn-group button {
-  background: transparent;
-  border: none;
-  border-right: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 6px 12px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 11px;
-  letter-spacing: inherit;
-}
-.btn-group button:last-child { border-right: none; }
-.btn-group button:hover { color: var(--text); background: rgba(255,181,71,0.05); }
-.btn-group button.active {
-  background: rgba(255,181,71,0.12);
-  color: var(--kev-amber);
-  font-weight: 600;
-}
-.meta {
-  margin-left: auto;
-  color: var(--text-dim);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-.refresh-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 4px 10px;
-  margin-left: 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  font-family: inherit;
-  font-size: 10px;
-  letter-spacing: inherit;
-  text-transform: inherit;
-}
-.refresh-btn:hover { color: var(--kev-amber); border-color: var(--kev-amber); }
+/* inline-label rule */
+.seclabel { display:flex; align-items:center; gap:12px; padding:28px 20px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.seclabel .c { color:var(--faint); }
+.seclabel .ext { flex:1; border-bottom:1px solid var(--border); height:1px; }
+.seclabel .note { color:var(--faint); text-transform:none; letter-spacing:0; }
 
-.tbl-wrap {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  overflow: hidden;
-}
-table { width: 100%; border-collapse: collapse; }
-th {
-  text-align: left;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding: 11px 14px;
-  border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.18);
-  font-weight: 600;
-}
-td {
-  padding: 14px 14px;
-  border-bottom: 1px solid var(--bg-row);
-  vertical-align: middle;
-}
-tr:hover td { background: rgba(255,181,71,0.025); }
-tr:last-child td { border-bottom: none; }
-td.rank {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--text-dim);
-  width: 56px;
-  text-align: center;
-}
-td.rank .num {
-  display: inline-block;
-  min-width: 28px;
-  padding: 4px 8px;
-  background: var(--bg-row);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text);
-}
-td.rank.top-1 .num { background: rgba(255,77,106,0.12); border-color: var(--score-crit); color: var(--score-crit); }
-td.rank.top-2 .num { background: rgba(255,181,71,0.12); border-color: var(--kev-amber); color: var(--kev-amber); }
-td.rank.top-3 .num { background: rgba(0,229,160,0.12); border-color: var(--accent); color: var(--accent); }
-td.cve {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-td.cve a { color: var(--accent-cyan); }
-td.cve a:hover { color: var(--accent); text-decoration: underline; text-decoration-color: rgba(0,229,160,0.3); }
-.chip {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  padding: 2px 6px;
-  margin-left: 8px;
-  border-radius: 2px;
-  font-weight: 600;
-}
-.chip.epss {
-  background: rgba(255,181,71,0.10);
-  border: 1px solid rgba(255,181,71,0.50);
-  color: var(--kev-amber);
-  vertical-align: middle;
-}
-.chip.epss.hot {
-  background: rgba(255,77,106,0.10);
-  border-color: var(--score-crit);
-  color: var(--score-crit);
-}
-td.sources {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  color: var(--kev-amber);
-  font-weight: 600;
-  text-align: right;
-  width: 96px;
-}
-td.sources .label {
-  display: block;
-  font-size: 9px;
-  color: var(--text-dim);
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  font-weight: 400;
-  margin-top: 2px;
-}
-td.latest {
-  color: var(--text-dim);
-  font-size: 13px;
-  line-height: 1.4;
-}
-td.latest .ti {
-  color: var(--text);
-  display: block;
-  margin-bottom: 2px;
-  max-width: 480px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-td.latest .src {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--accent-cyan);
-  letter-spacing: 0.4px;
-}
-td.latest .ago {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-left: 6px;
-}
-td.latest .ago::before { content: "· "; }
-td.latest .no-mention {
-  color: var(--text-dim);
-  font-style: italic;
-  font-size: 12px;
-}
+/* reticle-framed brief panel (the focus item) */
+.brief { position:relative; margin:6px 20px 10px; padding:18px 20px; background:color-mix(in srgb,var(--accent) 4%,transparent); }
+.brief .cn { position:absolute; width:13px; height:13px; border:0 solid var(--accent); }
+.brief .tl{top:-2px;left:-2px;border-top-width:1.5px;border-left-width:1.5px;}
+.brief .tr{top:-2px;right:-2px;border-top-width:1.5px;border-right-width:1.5px;}
+.brief .bl{bottom:-2px;left:-2px;border-bottom-width:1.5px;border-left-width:1.5px;}
+.brief .br{bottom:-2px;right:-2px;border-bottom-width:1.5px;border-right-width:1.5px;}
+.brief .cols { display:flex; gap:24px; flex-wrap:wrap; }
+.brief .cols > div { flex:1; min-width:240px; font-size:13.5px; color:var(--dim); line-height:1.6; }
+.brief .cols strong { color:var(--text); font-weight:600; }
+@media (max-width:680px){ .brief .cols{gap:12px} }
 
-.empty {
-  padding: 60px 20px;
-  text-align: center;
-  color: var(--text-dim);
-  font-style: italic;
-}
-.loading {
-  padding: 40px 20px;
-  text-align: center;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-.loading .dots::after {
-  content: '';
-  animation: loading-dots 1.6s steps(4, end) infinite;
+/* control strip - sharp ledger toolbar */
+.controls { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin:6px 20px 0; padding:12px 14px; background:var(--bg); border:1px solid var(--border); font-family:'JetBrains Mono',monospace; font-size:12px; }
+.controls .label { text-transform:uppercase; color:var(--faint); font-size:10.5px; letter-spacing:0.6px; margin-right:2px; }
+.btn-group { display:flex; gap:0; border:1px solid var(--border); }
+.btn-group button { background:transparent; border:none; border-right:1px solid var(--border); color:var(--dim); padding:6px 12px; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:12px; letter-spacing:0; transition:background-color .15s, color .15s; }
+.btn-group button:last-child { border-right:none; }
+.btn-group button:hover { color:var(--text); background:var(--row); }
+.btn-group button:active { transform:translateY(1px); }
+.btn-group button:focus-visible { outline:1px solid var(--accent); outline-offset:-1px; }
+.btn-group button.active { background:color-mix(in srgb,var(--accent) 16%,transparent); color:var(--bright); font-weight:700; box-shadow:inset 0 -2px 0 var(--accent); }
+.controls .meta { margin-left:auto; color:var(--dim); font-size:11px; letter-spacing:0; }
+.refresh-btn { background:transparent; border:1px solid var(--border); color:var(--dim); padding:5px 11px; margin-left:10px; cursor:pointer; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0; transition:background-color .15s, border-color .15s, color .15s; }
+.refresh-btn:hover { color:var(--accent); border-color:var(--accent); background:var(--row); }
+.refresh-btn:active { transform:translateY(1px); }
+.refresh-btn:focus-visible { outline:1px solid var(--accent); outline-offset:2px; }
+
+/* ledger table */
+.tbl-wrap { margin:14px 20px 0; border:1px solid var(--border); }
+table { width:100%; border-collapse:collapse; }
+th { text-align:left; font-family:'JetBrains Mono',monospace; font-size:10px; letter-spacing:0.6px; text-transform:uppercase; color:var(--faint); padding:11px 14px; border-bottom:1px solid var(--border); background:var(--bg); font-weight:600; }
+td { padding:13px 14px; border-bottom:1px solid var(--row); vertical-align:middle; }
+tr:hover td { background:color-mix(in srgb,var(--accent) 4%,transparent); }
+tr:last-child td { border-bottom:none; }
+td.rank { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--dim); width:56px; text-align:center; }
+td.rank .num { display:inline-block; min-width:28px; padding:4px 8px; background:var(--row); border:1px solid var(--border); color:var(--text); }
+td.rank.top-1 .num { background:color-mix(in srgb,var(--crit) 12%,transparent); border-color:var(--crit); color:var(--crit); }
+td.rank.top-2 .num { background:color-mix(in srgb,var(--warn) 12%,transparent); border-color:var(--warn); color:var(--warn); }
+td.rank.top-3 .num { background:color-mix(in srgb,var(--accent) 12%,transparent); border-color:var(--accent); color:var(--accent); }
+td.cve { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:600; white-space:nowrap; }
+td.cve a { color:var(--accent); }
+td.cve a:hover { color:var(--accent-hi); text-decoration:underline; }
+.chip { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; text-transform:uppercase; padding:2px 6px; margin-left:8px; border-radius:2px; font-weight:600; }
+.chip.epss { background:color-mix(in srgb,var(--warn) 10%,transparent); border:1px solid color-mix(in srgb,var(--warn) 55%,transparent); color:var(--warn); vertical-align:middle; }
+.chip.epss.hot { background:color-mix(in srgb,var(--crit) 10%,transparent); border-color:var(--crit); color:var(--crit); }
+td.sources { font-family:'JetBrains Mono',monospace; font-size:14px; color:var(--warn); font-weight:600; text-align:right; width:96px; }
+td.sources .label { display:block; font-family:'JetBrains Mono',monospace; font-size:9.5px; color:var(--faint); letter-spacing:0.4px; font-weight:400; margin-top:3px; text-transform:uppercase; }
+td.latest { color:var(--dim); font-size:13px; line-height:1.4; }
+td.latest .ti { color:var(--text); display:block; margin-bottom:2px; max-width:480px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+td.latest .src { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--accent); letter-spacing:0; }
+td.latest .ago { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--faint); margin-left:6px; }
+td.latest .ago::before { content:": "; }
+td.latest .no-mention { color:var(--faint); font-style:italic; font-size:12px; }
+
+.empty { padding:54px 20px; text-align:center; color:var(--dim); font-style:italic; }
+.loading { padding:38px 20px; text-align:center; color:var(--dim); font-family:'JetBrains Mono',monospace; font-size:13px; letter-spacing:0; }
+.loading .dots::after { content:'...'; }
+@media (prefers-reduced-motion: no-preference) {
+  .loading .dots::after { content:''; animation: loading-dots 1.6s steps(4, end) infinite; }
 }
 @keyframes loading-dots {
-  0%   { content: ''; }
-  25%  { content: '.'; }
-  50%  { content: '..'; }
-  75%  { content: '...'; }
-  100% { content: ''; }
+  0% { content:''; } 25% { content:'.'; } 50% { content:'..'; } 75% { content:'...'; } 100% { content:''; }
 }
 
-.cta-strip {
-  margin-top: 28px;
-  padding: 16px 20px;
-  background: linear-gradient(180deg, rgba(0,229,160,0.04), rgba(0,229,160,0.01));
-  border: 1px solid rgba(0,229,160,0.22);
-  border-left: 2px solid var(--accent);
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-.cta-strip .cs-msg { color: var(--text); font-size: 14px; }
-.cta-strip .cs-msg strong { color: var(--text-bright); }
-.cta-strip a.btn {
-  display: inline-flex;
-  align-items: center;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  padding: 8px 16px;
-  border-radius: 3px;
-  font-weight: 600;
-}
-.cta-strip a.btn-primary {
-  background: var(--accent);
-  color: var(--bg);
-}
-.cta-strip a.btn-secondary {
-  border: 1px solid var(--border);
-  color: var(--text);
-}
-.cta-strip a.btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
-.cta-strip a.btn-primary:hover { background: var(--accent-cyan); }
+/* cta - reticle-free emerald-ruled strip */
+.cta-strip { margin:24px 20px 0; padding:16px 20px; background:color-mix(in srgb,var(--accent) 4%,transparent); border:1px solid var(--border); border-left:2px solid var(--accent); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+.cta-strip .cs-msg { color:var(--text); font-size:14px; line-height:1.5; }
+.cta-strip .cs-msg strong { color:var(--bright); }
+.cta-strip .cs-actions { display:flex; gap:10px; align-items:center; }
+.cta-strip a.btn { display:inline-flex; align-items:center; font-family:'JetBrains Mono',monospace; font-size:12px; font-weight:600; letter-spacing:0.2px; padding:9px 16px; border:1px solid var(--accent); transition:background-color .15s, border-color .15s, color .15s; }
+.cta-strip a.btn:active { transform:translateY(1px); }
+.cta-strip a.btn:focus-visible { outline:1px solid var(--accent); outline-offset:2px; }
+.cta-strip a.btn-primary { background:var(--accent); color:var(--bg); }
+.cta-strip a.btn-primary:hover { background:var(--accent-hi); border-color:var(--accent-hi); }
+.cta-strip a.btn-secondary { background:transparent; color:var(--accent); }
+.cta-strip a.btn-secondary:hover { background:color-mix(in srgb,var(--accent) 10%,transparent); }
 
-footer {
-  margin-top: 48px;
-  padding-top: 22px;
-  border-top: 1px solid var(--border);
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 14px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  letter-spacing: 0.4px;
-}
-footer a { color: var(--text-dim); }
-footer a:hover { color: var(--accent-cyan); }
+/* footer status line */
+.foot { display:flex; flex-wrap:wrap; gap:10px 14px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); }
+.foot a { color:var(--dim); } .foot a:hover { color:var(--accent); }
+.foot .grow { flex:1; min-width:20px; }
+.foot .sep { color:var(--border); }
 
 @media (max-width: 720px) {
-  .wrap { padding: 22px 14px 60px; }
-  h1 { font-size: 26px; }
-  .lead { font-size: 14px; }
-  th { padding: 8px 8px; font-size: 9px; }
-  td { padding: 10px 8px; font-size: 12px; }
-  td.rank { width: 44px; }
-  td.rank .num { padding: 3px 6px; }
-  td.sources { width: 70px; font-size: 13px; }
-  td.cve { font-size: 12px; }
-  td.latest { font-size: 11px; }
-  td.latest .ti { max-width: 200px; }
-  .controls { font-size: 10px; }
+  .hero { padding:32px 16px 24px; }
+  th { padding:8px 8px; font-size:9px; }
+  td { padding:10px 8px; font-size:12px; }
+  td.rank { width:44px; }
+  td.rank .num { padding:3px 6px; }
+  td.sources { width:70px; font-size:13px; }
+  td.cve { font-size:12px; }
+  td.latest { font-size:11px; }
+  td.latest .ti { max-width:200px; }
+  .controls { font-size:10px; }
+  .tbl-wrap, .controls, .brief, .cta-strip { margin-left:14px; margin-right:14px; }
 }
 </style>
 </head>
 <body>
+<div class="page">
 
-<div class="top">
-  <div class="brand">
-    <svg class="worm-sprite" viewBox="0 0 36 28" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg>
-    oM noM Security Feeds
-    <span class="tag">pre-kev</span>
-  </div>
-  <nav class="top-nav">
-    <a href="/">about</a>
-    <a href="/trending">trending</a>
-    <a href="/mitre-live">mitre live</a>
-    <a href="/live">live</a>
-    <a href="/api">api</a>
-    <a href="/app">reader</a>
-    <a href="/pro">pro</a>
-  </nav>
-</div>
-
-<div class="wrap">
-
-  <div class="hero">
-    <div class="eyebrow"><span class="pulse"></span>:: early warning ::</div>
-    <h1>Pre-KEV Watch</h1>
-    <p class="lead">CVEs heating up across <strong>multiple security sources</strong> but <strong>not yet on the CISA Known Exploited Vulnerabilities catalog</strong>. The list KEV is about to pull from. Sorted by source count then EPSS percentile; latest mention attached so you can read the original context.</p>
+  <div class="row rule">
+    <div class="gut"><svg id="brandWorm" class="worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></div>
+    <div class="main"><div class="statusbar">
+      <span class="bd">oM noM</span><span style="color:var(--faint)">//</span>
+      <nav><a href="/">home</a><a href="/live">live</a><a href="/trending">trending</a><a class="cur" href="/pre-kev">pre-kev</a><a href="/mitre-live">mitre</a><a href="/api">api</a><a href="/pro">pro</a></nav>
+      <span class="grow"></span>
+      <span class="nom">last nom <b id="pkAgo">-</b></span>
+      <a class="signin" href="/login">[ sign in ]</a>
+    </div></div>
   </div>
 
-  <div class="what">
-    <h2>:: what this is ::</h2>
-    <div class="row">
-      <div><strong>Pre-KEV</strong> is our own bucket. A CVE lands here when at least <strong>N distinct curated sources</strong> mention it inside the lookback window AND CISA hasn't formally added it to KEV yet. By the time KEV adds something, you've usually been in incident response for days. This list is the lead time.</div>
-      <div>We aggregate ~80 RSS feeds, vendor PSIRTs, security-side Bluesky &amp; Mastodon, GitHub Advisories. A single source posting about a CVE doesn't trigger Pre-KEV - we need <strong>cross-source consensus</strong>. False positives get filtered by the source-count threshold.</div>
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main"><div class="hero">
+      <h1>Pre-KEV watch</h1>
+      <div class="sub">CVEs heating up across <b>multiple security sources</b> but <b>not yet on the CISA Known Exploited Vulnerabilities catalog</b>. The list KEV is about to pull from. Sorted by source count then EPSS percentile; latest mention attached so you can read the original context.</div>
+    </div></div>
+  </div>
+
+  <div class="row"><div class="gut">01</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> what this is <span class="ext"></span></div>
+    <div class="brief"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+      <div class="cols">
+        <div><strong>Pre-KEV</strong> is our own bucket. A CVE lands here when at least <strong>N distinct curated sources</strong> mention it inside the lookback window AND CISA hasn't formally added it to KEV yet. By the time KEV adds something, you've usually been in incident response for days. This list is the lead time.</div>
+        <div>We aggregate ~80 RSS feeds, vendor PSIRTs, security-side Bluesky &amp; Mastodon, GitHub Advisories. A single source posting about a CVE doesn't trigger Pre-KEV; we need <strong>cross-source consensus</strong>. False positives get filtered by the source-count threshold.</div>
+      </div>
     </div>
-  </div>
+  </div></div>
 
-  <div class="controls">
-    <span class="label">Window:</span>
-    <div class="btn-group" id="windowGroup">
-      <button             data-hours="24">24h</button>
-      <button class="active" data-hours="72">72h</button>
-      <button             data-hours="168">7d</button>
-      <button             data-hours="336">14d</button>
-    </div>
-    <span class="label" style="margin-left:14px;">Min sources:</span>
-    <div class="btn-group" id="minGroup">
-      <button             data-min="2">2</button>
-      <button class="active" data-min="3">3</button>
-      <button             data-min="4">4</button>
-      <button             data-min="5">5+</button>
-    </div>
-    <span class="meta" id="genMeta">loading...</span>
-    <button class="refresh-btn" onclick="loadPreKEV(true)" title="force a refresh now">refresh</button>
-  </div>
+  <div class="row"><div class="gut">02</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> watch list <span class="note">cross-source consensus, pre-listing</span> <span class="ext"></span></div>
 
-  <div class="tbl-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th style="width:56px;">#</th>
-          <th>CVE</th>
-          <th style="width:96px;text-align:right;">Sources</th>
-          <th>Latest mention</th>
-        </tr>
-      </thead>
-      <tbody id="rows">
-        <tr><td colspan="4" class="loading">scanning sources<span class="dots"></span></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="cta-strip">
-    <div class="cs-msg">
-      Want webhook alerts when a CVE crosses the Pre-KEV threshold, or KEV adds something you care about? <strong>Pro is $10/mo.</strong>
+    <div class="controls">
+      <span class="label">Window:</span>
+      <div class="btn-group" id="windowGroup">
+        <button             data-hours="24">24h</button>
+        <button class="active" data-hours="72">72h</button>
+        <button             data-hours="168">7d</button>
+        <button             data-hours="336">14d</button>
+      </div>
+      <span class="label" style="margin-left:14px;">Min sources:</span>
+      <div class="btn-group" id="minGroup">
+        <button             data-min="2">2</button>
+        <button class="active" data-min="3">3</button>
+        <button             data-min="4">4</button>
+        <button             data-min="5">5+</button>
+      </div>
+      <span class="meta" id="genMeta">loading...</span>
+      <button class="refresh-btn" onclick="loadPreKEV(true)" title="force a refresh now">refresh</button>
     </div>
-    <div>
-      <a class="btn btn-secondary" href="/trending" style="margin-right:6px;">All trending CVEs</a>
-      <a class="btn btn-primary" href="/pro">See Pro →</a>
-    </div>
-  </div>
 
-  <footer>
-    <span>oM noM Security Feeds · MIT licensed · self-host or hosted</span>
-    <span>
-      <a href="/api">API</a> ·
-      <a href="/feed.xml">RSS</a> ·
-      <a href="https://github.com/RMS2D/omnomfeeds">GitHub</a> ·
-      <a href="/privacy">Privacy</a>
-    </span>
-  </footer>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:56px;">#</th>
+            <th>CVE</th>
+            <th style="width:96px;text-align:right;">Sources</th>
+            <th>Latest mention</th>
+          </tr>
+        </thead>
+        <tbody id="rows">
+          <tr><td colspan="4" class="loading">scanning sources<span class="dots"></span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="cta-strip">
+      <div class="cs-msg">
+        Want webhook alerts when a CVE crosses the Pre-KEV threshold, or KEV adds something you care about? <strong>Pro is $10/mo.</strong>
+      </div>
+      <div class="cs-actions">
+        <a class="btn btn-secondary" href="/trending">All trending CVEs</a>
+        <a class="btn btn-primary" href="/pro">See Pro &rarr;</a>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut"></div><div class="main"><div class="foot">
+    <span>oM noM Security Feeds</span><span class="sep">·</span><span>MIT licensed</span><span class="sep">·</span><span>self-host or hosted</span>
+    <span class="grow"></span>
+    <a href="/api">api</a><a href="/feed.xml">rss</a><a href="https://github.com/RMS2D/omnomfeeds">github</a><a href="/privacy">privacy</a>
+  </div></div></div>
 
 </div>
 
@@ -677,6 +386,33 @@ async function loadPreKEV(showLoading) {
 
 loadPreKEV(true);
 setInterval(() => loadPreKEV(false), 60000);
+</script>
+
+<script>
+// last-nom ticker. The page refreshes its data every 60s; genMeta gets a
+// fresh "HH:MM:SS" stamp on each successful pull. Watch genMeta, reset the
+// status-line age to "just now" + chomp the worm on a fresh scan, then tick.
+(function(){
+  var meta=document.getElementById('genMeta'), ago=document.getElementById('pkAgo'), worm=document.getElementById('brandWorm');
+  if(!meta||!ago) return;
+  var landed=null, lastStamp=null;
+  function fmt(sec){
+    if(sec<2) return 'just now';
+    if(sec<60) return Math.floor(sec)+'s';
+    if(sec<3600) return Math.floor(sec/60)+'m';
+    if(sec<86400) return Math.floor(sec/3600)+'h';
+    return Math.floor(sec/86400)+'d';
+  }
+  function paint(){ if(landed!==null) ago.textContent=fmt((Date.now()-landed)/1000); }
+  new MutationObserver(function(){
+    var m=/\d{1,2}:\d{2}:\d{2}/.exec(meta.textContent||'');
+    if(m && m[0]!==lastStamp){
+      lastStamp=m[0]; landed=Date.now(); paint();
+      if(worm){ worm.classList.add('chomp'); setTimeout(function(){worm.classList.remove('chomp');},520); }
+    }
+  }).observe(meta,{childList:true,characterData:true,subtree:true});
+  setInterval(paint,1000);
+})();
 </script>
 </body>
 </html>

@@ -237,17 +237,17 @@ func (w *Worker) send(ctx context.Context, to string, body digestBody) error {
 
 func buildHTMLBody(body digestBody, siteBase string) string {
 	var b strings.Builder
-	b.WriteString(`<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#0a0e14;color:#e6ecf5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.65;">`)
+	b.WriteString(`<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#15171c;color:#e9ebf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.65;">`)
 	b.WriteString(`<table cellpadding="0" cellspacing="0" border="0" style="max-width:640px;margin:0 auto;">`)
-	b.WriteString(`<tr><td style="padding:0 0 18px;font-family:'JetBrains Mono',monospace;color:#00e5a0;font-size:13px;letter-spacing:0.6px;">~~~_o) oM noM Security Feeds</td></tr>`)
+	b.WriteString(`<tr><td style="padding:0 0 18px;font-family:'JetBrains Mono',monospace;color:#2dd49c;font-size:13px;letter-spacing:0.6px;">~~~_o) oM noM Security Feeds</td></tr>`)
 	b.WriteString(`<tr><td style="padding:0 0 8px;color:#ffffff;font-size:20px;font-weight:600;">Daily intel brief - ` + body.Generated.Format("Mon, Jan 2 2006") + `</td></tr>`)
-	b.WriteString(`<tr><td style="padding:0 0 22px;color:#e6ecf5;white-space:pre-wrap;">` + escapeHTML(body.Brief) + `</td></tr>`)
-	b.WriteString(`<tr><td style="padding:14px 0 6px;color:#56e2ff;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.6px;border-top:1px solid #2a3340;text-transform:uppercase;">:: top picks ::</td></tr>`)
+	b.WriteString(`<tr><td style="padding:0 0 22px;color:#e9ebf0;white-space:pre-wrap;">` + escapeHTML(body.Brief) + `</td></tr>`)
+	b.WriteString(`<tr><td style="padding:14px 0 6px;color:#56d3e0;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:0.6px;border-top:1px solid #2b3039;text-transform:uppercase;">// top picks</td></tr>`)
 	for i, p := range body.Picks {
-		b.WriteString(fmt.Sprintf(`<tr><td style="padding:8px 0;border-bottom:1px solid #2a3340;"><div style="font-size:11px;color:#b8c4d4;font-family:'JetBrains Mono',monospace;">%d &middot; score %02d &middot; %s</div><a href="%s" style="color:#56e2ff;text-decoration:none;font-weight:600;">%s</a></td></tr>`,
+		b.WriteString(fmt.Sprintf(`<tr><td style="padding:8px 0;border-bottom:1px solid #2b3039;"><div style="font-size:11px;color:#b8c4d4;font-family:'JetBrains Mono',monospace;">%d &middot; score %02d &middot; %s</div><a href="%s" style="color:#56d3e0;text-decoration:none;font-weight:600;">%s</a></td></tr>`,
 			i+1, p.Score, escapeHTML(p.Source), escapeHTML(p.URL), escapeHTML(p.Title)))
 	}
-	b.WriteString(`<tr><td style="padding:22px 0 0;color:#b8c4d4;font-size:11px;font-family:'JetBrains Mono',monospace;">manage your digest schedule at <a href="` + siteBase + `/app" style="color:#56e2ff;">` + siteBase + `/app</a> (Config (c) → Profile)</td></tr>`)
+	b.WriteString(`<tr><td style="padding:22px 0 0;color:#b8c4d4;font-size:11px;font-family:'JetBrains Mono',monospace;">manage your digest schedule at <a href="` + siteBase + `/app" style="color:#56d3e0;">` + siteBase + `/app</a> (Config (c) → Profile)</td></tr>`)
 	b.WriteString(`</table></body></html>`)
 	return b.String()
 }

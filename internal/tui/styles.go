@@ -4,14 +4,14 @@ import "github.com/charmbracelet/lipgloss"
 
 // Palette mirrors the web reader's CSS custom properties.
 var (
-	accent       = lipgloss.Color("#00e5a0")
-	accentCyan   = lipgloss.Color("#56e2ff")
-	accentAmber  = lipgloss.Color("#ffb547")
-	accentRed    = lipgloss.Color("#ff5470")
+	accent       = lipgloss.Color("#2dd49c")
+	accentCyan   = lipgloss.Color("#56d3e0")
+	accentAmber  = lipgloss.Color("#f0b552")
+	accentRed    = lipgloss.Color("#ff5d6e")
 	textBright   = lipgloss.Color("#ffffff")
-	textDim      = lipgloss.Color("#b8c4d4")
-	border       = lipgloss.Color("#2a3340")
-	borderBright = lipgloss.Color("#3f4d62")
+	textDim      = lipgloss.Color("#8d93a0")
+	border       = lipgloss.Color("#2b3039")
+	borderBright = lipgloss.Color("#3b424d")
 )
 
 var (
@@ -19,17 +19,17 @@ var (
 				Foreground(accent).
 				Bold(true)
 	headerBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#0e1218")).
+			Background(lipgloss.Color("#181b21")).
 			Foreground(textBright)
 
 	titleStyle         = lipgloss.NewStyle().Foreground(textBright).Bold(true)
-	readTitleStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#6a7686"))
+	readTitleStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#5d636e"))
 	selectedTitleStyle = lipgloss.NewStyle().Foreground(accent).Bold(true)
 	dimStyle           = lipgloss.NewStyle().Foreground(textDim)
 	errorStyle         = lipgloss.NewStyle().Foreground(accentRed).Bold(true).Padding(1, 2)
 
 	rowStyle         = lipgloss.NewStyle()
-	selectedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#1a2530"))
+	selectedRowStyle = lipgloss.NewStyle().Background(lipgloss.Color("#232a33"))
 	selectedBarStyle = lipgloss.NewStyle().Background(accent)
 
 	paneBorderStyle = lipgloss.NewStyle().Foreground(border)
@@ -43,7 +43,7 @@ var (
 	previewHeroTitleStyle = lipgloss.NewStyle().
 				Foreground(textBright).
 				Bold(true).
-				Background(lipgloss.Color("#14191f")).
+				Background(lipgloss.Color("#1b1e25")).
 				Padding(0, 1)
 	previewMetaStyle = lipgloss.NewStyle().
 				Foreground(textDim)
@@ -60,22 +60,22 @@ var (
 				BorderForeground(border)
 
 	statusBarStyle = lipgloss.NewStyle().
-			Background(lipgloss.Color("#0e1218"))
+			Background(lipgloss.Color("#181b21"))
 
 	modalStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(accent).
 			Padding(1, 2).
-			Background(lipgloss.Color("#0a0e14"))
+			Background(lipgloss.Color("#15171c"))
 
 	modalKEVStyle = lipgloss.NewStyle().
 			BorderStyle(lipgloss.RoundedBorder()).
 			BorderForeground(accentRed).
 			Padding(1, 2).
-			Background(lipgloss.Color("#0a0e14"))
+			Background(lipgloss.Color("#15171c"))
 
 	modalBackdropStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("#050709"))
+				Background(lipgloss.Color("#101216"))
 
 	modalSectionStyle = lipgloss.NewStyle().
 				Foreground(accentCyan).
@@ -119,11 +119,11 @@ func scoreStyle(score int, kev bool) lipgloss.Style {
 	case kev:
 		return lipgloss.NewStyle().Foreground(textBright).Background(accentRed).Bold(true)
 	case score >= 60:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#0a0e14")).Background(accent).Bold(true)
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#15171c")).Background(accent).Bold(true)
 	case score >= 30:
-		return lipgloss.NewStyle().Foreground(lipgloss.Color("#0a0e14")).Background(accentAmber).Bold(true)
+		return lipgloss.NewStyle().Foreground(lipgloss.Color("#15171c")).Background(accentAmber).Bold(true)
 	default:
-		return lipgloss.NewStyle().Foreground(textDim).Background(lipgloss.Color("#14191f"))
+		return lipgloss.NewStyle().Foreground(textDim).Background(lipgloss.Color("#1b1e25"))
 	}
 }
 
@@ -137,6 +137,6 @@ func tagChip(tag string) lipgloss.Style {
 	case tag == "0day" || tag == "zero-day" || tag == "exploit" || tag == "rce":
 		return lipgloss.NewStyle().Foreground(textBright).Background(accentAmber).MarginRight(1)
 	default:
-		return lipgloss.NewStyle().Foreground(textDim).Background(lipgloss.Color("#14191f")).MarginRight(1)
+		return lipgloss.NewStyle().Foreground(textDim).Background(lipgloss.Color("#1b1e25")).MarginRight(1)
 	}
 }

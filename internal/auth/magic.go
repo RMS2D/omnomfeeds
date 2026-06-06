@@ -186,9 +186,9 @@ func magicConfirmHTML(token string) string {
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0a0e14; --bg-card: #14191f; --border: #2a3340;
-  --text: #e6ecf5; --text-dim: #b8c4d4; --text-bright: #ffffff;
-  --accent: #00e5a0;
+  --bg: #15171c; --bg-card: #14191f; --border: #2b3039;
+  --text: #e9ebf0; --text-dim: #b8c4d4; --text-bright: #ffffff;
+  --accent: #2dd49c;
 }
 html, body {
   background: var(--bg); color: var(--text);
@@ -210,7 +210,7 @@ html, body {
   font-size: 13px; color: var(--text-bright); font-weight: 600;
   letter-spacing: 0.4px; margin-bottom: 14px;
 }
-.brand .worm { color: var(--accent); text-shadow: 0 0 8px rgba(0,229,160,0.4); }
+.brand .worm { color: var(--accent); text-shadow: 0 0 8px rgba(45,212,156,0.4); }
 h1 { font-size: 22px; font-weight: 600; color: var(--text-bright); margin-bottom: 8px; letter-spacing: -0.2px; }
 .subhead { color: var(--text-dim); font-size: 13px; margin-bottom: 22px; }
 .btn {
@@ -219,10 +219,10 @@ h1 { font-size: 22px; font-weight: 600; color: var(--text-bright); margin-bottom
   font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600;
   letter-spacing: 0.3px; border: 1px solid var(--accent);
   cursor: pointer; transition: all 0.14s ease; text-decoration: none;
-  background: rgba(0,229,160,0.10); color: var(--accent);
-  text-shadow: 0 0 6px rgba(0,229,160,0.3);
+  background: rgba(45,212,156,0.10); color: var(--accent);
+  text-shadow: 0 0 6px rgba(45,212,156,0.3);
 }
-.btn:hover { background: rgba(0,229,160,0.2); color: var(--text-bright); box-shadow: 0 0 14px rgba(0,229,160,0.25); }
+.btn:hover { background: rgba(45,212,156,0.2); color: var(--text-bright); box-shadow: 0 0 14px rgba(45,212,156,0.25); }
 .fineprint {
   margin-top: 18px; font-family: 'JetBrains Mono', monospace;
   font-size: 10px; color: var(--text-dim); text-align: center;
@@ -300,9 +300,9 @@ func buildMagicHTML(link string) string {
 	// already covered by the textBody arg in Send().
 	return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>Sign in</title></head>
-<body style="margin:0;padding:24px;background:#0a0e14;color:#e6ecf5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;">
+<body style="margin:0;padding:24px;background:#15171c;color:#e9ebf0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.6;">
 <table cellpadding="0" cellspacing="0" border="0" style="max-width:520px;margin:0 auto;">
-<tr><td style="padding:18px 0;font-family:'JetBrains Mono',monospace;color:#00e5a0;font-size:13px;letter-spacing:0.6px;">
+<tr><td style="padding:18px 0;font-family:'JetBrains Mono',monospace;color:#2dd49c;font-size:13px;letter-spacing:0.6px;">
   ~~~_o)  oM noM Security Feeds
 </td></tr>
 <tr><td style="padding:8px 0 18px;font-size:18px;font-weight:600;color:#ffffff;">
@@ -312,15 +312,15 @@ func buildMagicHTML(link string) string {
   Click the button below to finish signing in. The link is valid for 15 minutes and can only be used once.
 </td></tr>
 <tr><td style="padding:0 0 26px;">
-  <a href="` + link + `" style="display:inline-block;padding:11px 22px;background:rgba(0,229,160,0.12);border:1px solid #00e5a0;border-radius:4px;color:#00e5a0;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Sign me in &rarr;</a>
+  <a href="` + link + `" style="display:inline-block;padding:11px 22px;background:rgba(45,212,156,0.12);border:1px solid #2dd49c;border-radius:4px;color:#2dd49c;font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:600;text-decoration:none;letter-spacing:0.3px;">Sign me in &rarr;</a>
 </td></tr>
 <tr><td style="padding:0 0 8px;color:#b8c4d4;font-size:13px;">
   Or paste this URL into your browser:
 </td></tr>
-<tr><td style="padding:0 0 28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#56e2ff;word-break:break-all;">
+<tr><td style="padding:0 0 28px;font-family:'JetBrains Mono',monospace;font-size:11px;color:#56d3e0;word-break:break-all;">
   ` + link + `
 </td></tr>
-<tr><td style="padding:18px 0 0;border-top:1px solid #2a3340;color:#b8c4d4;font-size:12px;">
+<tr><td style="padding:18px 0 0;border-top:1px solid #2b3039;color:#b8c4d4;font-size:12px;">
   Didn't request this? You can safely ignore the email; the link will expire on its own.
 </td></tr>
 </table>

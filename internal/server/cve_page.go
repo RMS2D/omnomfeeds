@@ -211,7 +211,7 @@ func (s *Server) renderCVEPage(ctx context.Context, id string) ([]byte, int) {
 func (s *Server) renderCVENotFound(id string) []byte {
 	var b strings.Builder
 	writeCVEHead(&b, id, "No data on this CVE - oM noM Security Feeds", "We don't have NVD data or any article mentions for "+id+". It may not exist, or it may be too new for our index.")
-	b.WriteString(`<div class="wrap"><div class="hero"><div class="eyebrow">:: not found ::</div><h1>`)
+	b.WriteString(`<div class="wrap"><div class="hero"><div class="eyebrow">not found</div><h1>`)
 	b.WriteString(html.EscapeString(id))
 	b.WriteString(`</h1><p class="lead">We don't have NVD metadata or any article mentions for this CVE-ID. It may be brand-new, mistyped, or outside our index. <a href="/trending">See trending CVEs</a> instead.</p></div></div>`)
 	writeCVEFoot(&b)
@@ -265,7 +265,7 @@ func (s *Server) renderCVEPageHTML(
 
 	writeCVEHead(&b, id, title, metaDesc)
 
-	b.WriteString(`<div class="wrap"><div class="hero"><div class="eyebrow">:: vulnerability context ::</div><h1>`)
+	b.WriteString(`<div class="wrap"><div class="hero"><div class="eyebrow">vulnerability context</div><h1>`)
 	b.WriteString(html.EscapeString(id))
 	b.WriteString(`</h1>`)
 
@@ -333,7 +333,7 @@ func (s *Server) renderCVEPageHTML(
 	b.WriteString(`<div class="grid">`)
 
 	// Details panel.
-	b.WriteString(`<section class="panel"><h2>:: details ::</h2><dl class="kv">`)
+	b.WriteString(`<section class="panel"><h2>details</h2><dl class="kv">`)
 	if isKEV {
 		b.WriteString(`<dt>CISA KEV status</dt><dd class="hot">In catalog - actively exploited</dd>`)
 	} else {
@@ -363,7 +363,7 @@ func (s *Server) renderCVEPageHTML(
 
 	// Timeline.
 	if len(timeline) > 0 {
-		b.WriteString(`<section class="panel"><h2>:: timeline ::</h2><ul class="timeline">`)
+		b.WriteString(`<section class="panel"><h2>timeline</h2><ul class="timeline">`)
 		for _, e := range timeline {
 			fmt.Fprintf(&b, `<li><span class="t">%s</span><span class="d">%s</span></li>`,
 				html.EscapeString(shortDate(e.At)), html.EscapeString(e.Label))
@@ -372,9 +372,9 @@ func (s *Server) renderCVEPageHTML(
 	}
 
 	// Articles panel.
-	b.WriteString(`<section class="panel articles"><h2>:: source mentions <span class="count">`)
+	b.WriteString(`<section class="panel articles"><h2>source mentions <span class="count">`)
 	fmt.Fprintf(&b, `%d`, len(articles))
-	b.WriteString(`</span> ::</h2>`)
+	b.WriteString(`</span></h2>`)
 	if len(articles) == 0 {
 		b.WriteString(`<div class="empty">No articles in our index mention this CVE yet.</div>`)
 	} else {
@@ -409,7 +409,7 @@ func (s *Server) renderCVEPageHTML(
 
 	// Consensus panel (which sources are talking).
 	if len(consensus) > 0 {
-		b.WriteString(`<section class="panel"><h2>:: source consensus ::</h2><ul class="consensus">`)
+		b.WriteString(`<section class="panel"><h2>source consensus</h2><ul class="consensus">`)
 		max := len(consensus)
 		if max > 15 {
 			max = 15
@@ -606,40 +606,43 @@ func writeCVEFoot(b *strings.Builder) {
 // the <head>. Keeps each page self-contained.
 const cvePageCSS = `<style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0a0e14;--bg-card:#14191f;--bg-row:#11161d;--border:#2a3340;--text:#e6ecf5;--text-dim:#b8c4d4;--text-bright:#fff;--accent:#00e5a0;--accent-cyan:#56e2ff;--accent-amber:#ffb547;--score-crit:#ff4d6a}
-html,body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;line-height:1.55;min-height:100vh}
+:root{--bg:#15171c;--bg-card:#1b1e25;--bg-row:#181b21;--border:#2b3039;--text:#e9ebf0;--text-dim:#8d93a0;--text-bright:#fff;--accent:#2dd49c;--accent-cyan:#56d3e0;--accent-amber:#f0b552;--score-crit:#ff5d6e}
+html,body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',system-ui,sans-serif;font-size:14px;line-height:1.55;min-height:100vh;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:9999;opacity:.022;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
 a{color:var(--accent-cyan);text-decoration:none}
 a:hover{color:var(--accent)}
 code,.mono{font-family:'JetBrains Mono',monospace}
 .top{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--bg-card);gap:16px;flex-wrap:wrap}
 .brand{font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--text-bright);font-weight:600;letter-spacing:.4px;display:flex;align-items:center;gap:10px}
-.brand .worm-sprite{width:32px;height:25px;flex-shrink:0;animation:wb 2.4s ease-in-out infinite;filter:drop-shadow(0 0 5px rgba(0,229,160,.35))}
+.brand .worm-sprite{width:30px;height:23px;flex-shrink:0;animation:wb 2.8s ease-in-out infinite}
 .brand .worm-sprite .seg,.brand .worm-sprite .head{fill:var(--accent)}
 .brand .worm-sprite .seg.s3{opacity:.35}
 .brand .worm-sprite .seg.s2{opacity:.6}
 .brand .worm-sprite .seg.s1{opacity:.85}
 .brand .worm-sprite .eye{fill:var(--bg)}
-.brand .worm-sprite .glint{fill:var(--accent-cyan)}
+.brand .worm-sprite .glint{fill:var(--text-bright)}
 .brand .worm-sprite .mouth{fill:var(--bg)}
 @keyframes wb{0%,100%{transform:translateY(0)}50%{transform:translateY(-1.5px)}}
-.brand .tag{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:1.4px;text-transform:uppercase;background:rgba(0,229,160,.12);border:1px solid var(--accent);color:var(--accent);padding:1px 6px;border-radius:2px;margin-left:6px}
+.brand .tag{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.3px;color:var(--text-dim);margin-left:4px}
+.brand .tag::before{content:"// "}
 nav.top-nav{display:flex;gap:18px;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.6px;text-transform:uppercase}
 nav.top-nav a{color:var(--text-dim)}
 nav.top-nav a:hover{color:var(--accent-cyan)}
 .wrap{max-width:1080px;margin:0 auto;padding:32px 24px 80px}
 .hero{margin-bottom:18px}
-.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.4px;text-transform:uppercase;color:var(--accent-cyan);margin-bottom:8px}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.eyebrow::before{content:"// "}
 h1{font-size:34px;line-height:1.1;letter-spacing:-.3px;color:var(--text-bright);margin-bottom:14px;font-family:'JetBrains Mono',monospace}
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.chip{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.6px;padding:5px 11px;border-radius:3px;border:1px solid var(--border);background:var(--bg-row);color:var(--text-dim)}
-.chip.kev{background:rgba(255,77,106,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600;text-transform:uppercase}
-.chip.cvss.crit{background:rgba(255,77,106,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600}
-.chip.cvss.high{background:rgba(255,181,71,.10);border-color:rgba(255,181,71,.55);color:var(--accent-amber);font-weight:600}
-.chip.cvss.med{background:rgba(86,226,255,.08);border-color:rgba(86,226,255,.4);color:var(--accent-cyan)}
-.chip.cvss.low{background:rgba(0,229,160,.08);border-color:rgba(0,229,160,.4);color:var(--accent)}
-.chip.epss{background:rgba(86,226,255,.06);border-color:rgba(86,226,255,.32);color:var(--accent-cyan)}
-.chip.epss.warn{background:rgba(255,181,71,.10);border-color:rgba(255,181,71,.55);color:var(--accent-amber);font-weight:600}
-.chip.epss.hot{background:rgba(255,77,106,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600}
+.chip{display:inline-block;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.6px;padding:5px 11px;border-radius:2px;border:1px solid var(--border);background:var(--bg-row);color:var(--text-dim)}
+.chip.kev{background:rgba(255,93,110,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600;text-transform:uppercase}
+.chip.cvss.crit{background:rgba(255,93,110,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600}
+.chip.cvss.high{background:rgba(240,181,82,.10);border-color:rgba(240,181,82,.55);color:var(--accent-amber);font-weight:600}
+.chip.cvss.med{background:rgba(86,211,224,.08);border-color:rgba(86,211,224,.4);color:var(--accent-cyan)}
+.chip.cvss.low{background:rgba(45,212,156,.08);border-color:rgba(45,212,156,.4);color:var(--accent)}
+.chip.epss{background:rgba(86,211,224,.06);border-color:rgba(86,211,224,.32);color:var(--accent-cyan)}
+.chip.epss.warn{background:rgba(240,181,82,.10);border-color:rgba(240,181,82,.55);color:var(--accent-amber);font-weight:600}
+.chip.epss.hot{background:rgba(255,93,110,.12);border-color:var(--score-crit);color:var(--score-crit);font-weight:600}
 .chip.cwe,.chip.otx{color:var(--text-dim)}
 .lead{font-size:15.5px;color:var(--text);max-width:840px;line-height:1.6;margin-bottom:8px}
 .meta-line{color:var(--text-dim);font-size:12px;font-family:'JetBrains Mono',monospace;margin-bottom:6px}
@@ -647,8 +650,9 @@ h1{font-size:34px;line-height:1.1;letter-spacing:-.3px;color:var(--text-bright);
 .grid{display:grid;grid-template-columns:1fr 1.4fr;gap:16px;margin-top:22px}
 .grid .articles{grid-column:1/-1}
 @media (max-width:820px){.grid{grid-template-columns:1fr}}
-.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:5px;padding:18px 20px}
-.panel h2{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:1.2px;color:var(--accent-cyan);text-transform:uppercase;margin-bottom:12px;font-weight:600}
+.panel{background:var(--bg-card);border:1px solid var(--border);border-radius:2px;padding:18px 20px}
+.panel h2{font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.6px;color:var(--accent);text-transform:uppercase;margin-bottom:13px;font-weight:600}
+.panel h2::before{content:"// "}
 .panel h2 .count{color:var(--accent);font-size:10px;margin-left:6px}
 dl.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px}
 dl.kv dt{color:var(--text-dim);font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.5px;text-transform:uppercase;padding-top:3px}
@@ -678,11 +682,11 @@ ul.consensus .src{color:var(--text)}
 ul.consensus .cnt{color:var(--accent);font-family:'JetBrains Mono',monospace;font-size:12px}
 .empty{padding:14px 0;color:var(--text-dim);font-style:italic;font-size:13px}
 .more-note{margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text-dim);font-style:italic}
-.cta-strip{margin-top:28px;padding:16px 20px;background:linear-gradient(180deg,rgba(0,229,160,.04),rgba(0,229,160,.01));border:1px solid rgba(0,229,160,.22);border-left:2px solid var(--accent);border-radius:4px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.cta-strip{margin-top:28px;padding:16px 20px;background:color-mix(in srgb,var(--accent) 5%,transparent);border:1px solid color-mix(in srgb,var(--accent) 28%,transparent);border-left:2px solid var(--accent);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .cta-strip .cs-msg{color:var(--text);font-size:14px}
 .cta-strip .cs-msg strong{color:var(--text-bright)}
 .cta-strip .cs-actions{display:flex;gap:10px;align-items:center}
-.cta-strip a.btn{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.8px;text-transform:uppercase;padding:8px 16px;border-radius:3px;font-weight:600}
+.cta-strip a.btn{display:inline-flex;align-items:center;font-family:'JetBrains Mono',monospace;font-size:11px;letter-spacing:.8px;text-transform:uppercase;padding:8px 16px;border-radius:2px;font-weight:600}
 .cta-strip a.btn-primary{background:var(--accent);color:var(--bg)}
 .cta-strip a.btn-primary:hover{background:var(--accent-cyan)}
 .cta-strip a.btn-secondary{border:1px solid var(--border);color:var(--text)}

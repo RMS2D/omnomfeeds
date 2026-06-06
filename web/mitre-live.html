@@ -26,496 +26,294 @@
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 :root {
-  --bg: #0a0e14;
-  --bg-card: #11161d;
-  --bg-row: #161c25;
-  --border: #2a3340;
-  --border-hi: #3a4555;
-  --text: #e6ecf5;
-  --text-dim: #8a96a8;
-  --text-bright: #ffffff;
-  --accent: #00e5a0;
-  --accent-cyan: #56e2ff;
-  --accent-amber: #ffb547;
-  --score-crit: #ff4d6a;
+  --bg:#15171c; --panel:#181b21; --row:#1b1e25; --border:#2b3039; --bhi:#3b424d;
+  --text:#e9ebf0; --dim:#8d93a0; --faint:#5d636e; --bright:#ffffff;
+  --accent:#2dd49c; --accent-hi:#54e3b4; --crit:#ff5d6e; --warn:#f0b552;
+  --elev: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+  /* Aliases: the preserved render JS emits a few inline styles against the
+     old token names. Map them onto the graphite-glass palette so spliced
+     markup resolves without touching the scripts. */
+  --bborder:var(--border); --bborder-hi:var(--bhi);
+  --text-dim:var(--dim); --text-bright:var(--bright);
+  --bg-card:var(--panel); --bg-row:var(--row);
 }
 html, body {
-  background:
-    radial-gradient(ellipse 80% 50% at 15% -10%, rgba(0, 229, 160, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 50% at 85% -10%, rgba(255, 77, 106, 0.05) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 80% at 50% 110%, rgba(86, 226, 255, 0.04) 0%, transparent 65%),
-    var(--bg);
+  background: var(--bg);
   color: var(--text);
   font-family: 'Space Grotesk', system-ui, sans-serif;
   font-size: 13px;
   line-height: 1.5;
   min-height: 100vh;
+  font-variant-numeric: tabular-nums;
 }
-a { color: var(--accent-cyan); text-decoration: none; }
-a:hover { text-decoration: underline; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hi); }
+.mono { font-family: 'JetBrains Mono', monospace; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
 
-/* Subtle CRT scanline overlay: thin horizontal lines for the hackerish feel
-   without making text unreadable. Pointer events off so it never blocks
-   clicks. */
+/* Fixed grain overlay, the single texture flourish. Pointer events off. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
-  background: repeating-linear-gradient(
-    180deg,
-    rgba(86, 226, 255, 0) 0px,
-    rgba(86, 226, 255, 0) 2px,
-    rgba(86, 226, 255, 0.035) 3px,
-    rgba(86, 226, 255, 0) 4px
-  );
   pointer-events: none;
   z-index: 100;
-  mix-blend-mode: screen;
+  opacity: 0.022;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-header {
-  border-bottom: 1px solid var(--border);
-  padding: 14px 22px;
+/* Page shell: one surface, hairline rails, the spine gutter inside. */
+.page {
+  max-width: 1900px;
+  margin: 0 auto;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--bg) 320px);
+  position: relative;
+  z-index: 1;
+  min-height: 100vh;
+}
+
+/* Spine row: continuous left gutter + content. */
+.row { display: flex; align-items: stretch; }
+.row > .gut {
+  width: 50px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
   display: flex;
-  align-items: center;
-  gap: 14px;
-  background: linear-gradient(180deg, #11161d 0%, var(--bg) 100%);
-}
-header .brand {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--text-bright);
-  letter-spacing: 0.2px;
-}
-header .stage-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  color: var(--text-dim);
-}
-header .stage-chip .live-dot {
-  width: 6px; height: 6px;
-  background: var(--accent);
-  border-radius: 50%;
-  box-shadow: 0 0 6px 1px var(--accent);
-  animation: pulse-dot 1.6s ease-in-out infinite;
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50%      { opacity: 0.4; transform: scale(0.7); }
-}
-header nav { margin-left: auto; display: flex; gap: 18px; }
-header nav a {
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 14px;
   font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  border-bottom: 1px solid transparent;
-  padding-bottom: 2px;
+  color: var(--faint);
 }
-header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); text-decoration: none; }
+.row > .main { flex: 1; min-width: 0; }
+.rule { border-bottom: 1px solid var(--border); }
+.pad { padding: 0 20px; }
 
-.wrap { max-width: 1900px; margin: 0 auto; padding: 18px 16px 40px; }
-
-/* Status strip across the top: 4 stat cards summarising the window */
-.status-strip {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 18px;
-}
-.status-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  padding: 12px 16px;
-  position: relative;
-  overflow: hidden;
-}
-.status-card .label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-}
-.status-card .value {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 36px;
-  font-weight: 700;
-  color: var(--text-bright);
-  line-height: 1;
-  letter-spacing: -0.5px;
-}
-.status-card .value.accent { color: var(--accent); }
-.status-card .value.cyan   { color: var(--accent-cyan); }
-.status-card .value.amber  { color: var(--accent-amber); }
-.status-card .value.crit   { color: var(--score-crit); }
-.status-card .sub {
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-top: 4px;
-  font-family: 'JetBrains Mono', monospace;
+/* Worm sprite */
+.worm { width: 28px; height: 22px; }
+.worm .seg, .worm .head { fill: var(--accent); }
+.worm .seg.s3 { opacity: 0.35; } .worm .seg.s2 { opacity: 0.6; } .worm .seg.s1 { opacity: 0.85; }
+.worm .eye, .worm .mouth { fill: var(--bg); } .worm .glint { fill: var(--bright); }
+@media (prefers-reduced-motion: no-preference) {
+  #brandWorm { animation: bob 3.4s ease-in-out infinite; transform-origin: center; }
+  #brandWorm.chomp .mouth { animation: chomp 0.5s ease-out; transform-origin: 28px 14.5px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+  @keyframes chomp { 0%,100%{transform:scaleY(0.5)} 40%{transform:scaleY(1.7) scaleX(0.9)} }
 }
 
-/* Window selector */
+/* Status-line header */
+.statusbar { display:flex; align-items:center; gap:12px; padding:13px 20px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+.statusbar .bd { color:var(--bright); font-weight:600; letter-spacing:0.2px; }
+.statusbar nav { display:flex; gap:16px; margin-left:8px; flex-wrap:wrap; }
+.statusbar nav a { color:var(--dim); font-size:11.5px; padding-bottom:2px; border-bottom:1px solid transparent; }
+.statusbar nav a:hover { color:var(--text); border-bottom-color:var(--bhi); }
+.statusbar nav a.cur { color:var(--bright); border-bottom-color:var(--accent); }
+.statusbar .grow { flex:1; border-bottom:1px dotted var(--border); height:1px; transform:translateY(-2px); min-width:20px; }
+.statusbar .nom { color:var(--dim); } .statusbar .nom b { color:var(--accent); font-weight:600; }
+.statusbar .signin { color:var(--accent); }
+
+/* Inline-label rule: '// section -------' with the label set into the divider. */
+.seclabel { display:flex; align-items:center; gap:12px; padding:26px 20px 12px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.seclabel .c { color:var(--faint); }
+.seclabel .hint { flex-shrink:1; min-width:0; color:var(--faint); text-transform:none; letter-spacing:0; font-size:11px; }
+.seclabel .ext { flex:1; border-bottom:1px solid var(--border); height:1px; min-width:16px; }
+/* Critical label keeps emerald chrome; the severity reads on the data below. */
+.seclabel.crit-label .c { color:var(--faint); }
+
+/* Stats ledger (masthead): big tabular numbers, hairline-split. */
+.statledger { display:flex; flex-wrap:wrap; gap:0; }
+.statledger .s { flex:1; min-width:150px; padding:16px 20px; border-right:1px solid var(--border); border-top:1px solid var(--border); }
+.statledger .s:last-child { border-right:none; }
+.statledger .s .l { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); letter-spacing:0.3px; margin-bottom:7px; }
+.statledger .s .n { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:34px; font-weight:700; color:var(--bright); letter-spacing:-0.5px; line-height:1; }
+/* Severity tints live ONLY on these data values. */
+.statledger .s .n.accent { color:var(--accent); }
+.statledger .s .n.crit   { color:var(--crit); }
+.statledger .s .n.amber  { color:var(--warn); }
+.statledger .s .n.cyan   { color:var(--text); }
+.statledger .s .sub { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); margin-top:7px; line-height:1.4; }
+
+/* Window selector ledger: mono tabs, sharp, emerald active underline. */
 .controls {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border);
 }
 .controls .label {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.controls .btn {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
   font-size: 11px;
   letter-spacing: 0.5px;
-  padding: 5px 10px;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: all 0.15s;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin-right: 2px;
 }
-.controls .btn:hover { color: var(--text); border-color: var(--border-hi); }
+.controls .btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--dim);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 5px 11px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background-color .15s, border-color .15s, color .15s;
+}
+.controls .btn:hover { color: var(--text); border-color: var(--bhi); background: var(--row); }
+.controls .btn:active { transform: translateY(1px); }
+.controls .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .controls .btn.active {
-  background: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
   border-color: var(--accent);
-  color: #0a0e14;
+  color: var(--bright);
   font-weight: 600;
-  box-shadow: 0 0 12px -2px rgba(0, 229, 160, 0.5);
 }
 .controls .meta {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  color: var(--faint);
+}
+/* Navigator export: emerald-outlined, fills emerald on hover. */
+.controls .btn.export-btn {
   margin-left: auto;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-
-/* Section heading. Matches the ":: SECTION ::" convention from the
-   self-host TUI / admin dashboard for cross-surface consistency. */
-.section-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin: 22px 0 12px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
-}
-.section-head h2 {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--accent-cyan);
-  font-weight: 600;
-}
-.section-head .hint {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-left: auto;
-}
-
-/* CRITICAL RIGHT NOW: severity-themed variant of the hot row. The eye should
-   land here BEFORE the surging band - "what's bad" outranks "what's moving". */
-.section-head.crit-head h2 { color: var(--score-crit); }
-.section-head.crit-head h2::before {
-  content: "⚠ ";
-  color: var(--score-crit);
-}
-.hot-row.crit-row .hot {
-  border: 1px solid var(--score-crit);
-  background: linear-gradient(135deg,
-    rgba(255, 77, 106, 0.08) 0%,
-    var(--bg-card) 60%,
-    rgba(255, 77, 106, 0.16) 100%);
-  box-shadow: 0 0 18px -4px rgba(255, 77, 106, 0.45);
-  animation: pulse-crit 2.8s ease-in-out infinite;
-}
-.hot-row.crit-row .hot:hover {
-  box-shadow: 0 0 28px -2px rgba(255, 77, 106, 0.65);
-}
-.hot-row.crit-row .hot-mw { color: var(--score-crit); text-shadow: 0 0 14px rgba(255, 77, 106, 0.5); }
-.hot-row.crit-row .hot-tid { text-shadow: 0 0 12px rgba(255, 77, 106, 0.35); }
-@keyframes pulse-crit {
-  0%, 100% { box-shadow: 0 0 14px -6px rgba(255, 77, 106, 0.4); }
-  50%      { box-shadow: 0 0 26px -2px rgba(255, 77, 106, 0.65); }
-}
-/* Severity badge cluster on each crit card */
-.crit-badges {
-  display: flex;
-  gap: 5px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.crit-badges .b {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9.5px;
-  font-weight: 700;
-  letter-spacing: 0.7px;
-  padding: 2px 7px;
-  border-radius: 2px;
-  text-transform: uppercase;
-}
-.crit-badges .b.kev   { background: var(--score-crit); color: var(--text-bright); }
-.crit-badges .b.score { background: var(--accent); color: #0a0e14; }
-.crit-badges .b.crit  { background: rgba(255, 77, 106, 0.15); color: var(--score-crit); border: 1px solid rgba(255, 77, 106, 0.45); }
-
-/* Tech-card severity flag in the kill chain - subtle red dot when the
-   technique has any critical mention */
-.tech .crit-dot {
-  display: inline-block;
-  width: 6px;
-  height: 6px;
-  background: var(--score-crit);
-  border-radius: 50%;
-  margin-right: 4px;
-  box-shadow: 0 0 6px rgba(255, 77, 106, 0.7);
-  animation: pulse-crit-dot 2s ease-in-out infinite;
-  vertical-align: middle;
-}
-@keyframes pulse-crit-dot {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: 0.5; }
-}
-
-/* Slim "also surging" inline strip - replaces the old full-card HOT band
-   when the surge signal isn't the headline (the kill chain already
-   highlights surging techniques in their tactic columns). */
-.hot-strip {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 14px;
-  margin: 8px 0 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--accent-amber);
-  border-radius: 4px;
-}
-.hot-strip[hidden] { display: none; }
-.hot-strip .label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--accent-amber);
-  font-weight: 700;
-  margin-right: 6px;
-}
-.hot-strip .pill {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 6px;
-  padding: 4px 10px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11.5px;
-  color: var(--text);
-  text-decoration: none;
-  cursor: pointer;
-  transition: all 0.14s;
-}
-.hot-strip .pill:hover {
-  background: var(--bg-row);
-  border-color: var(--accent-amber);
-}
-.hot-strip .pill .tid {
-  font-weight: 700;
-  color: var(--text-bright);
-  letter-spacing: 0.3px;
-}
-.hot-strip .pill .pname {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 12px;
-  color: var(--text);
-  font-weight: 500;
-  max-width: 280px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.hot-strip .pill .sep {
-  color: var(--border-hi);
-  font-size: 10px;
-  margin: 0 1px;
-}
-.hot-strip .pill .mw {
+  border: 1px solid var(--accent);
   color: var(--accent);
   font-weight: 600;
 }
-.hot-strip .pill.is-surging { border-color: var(--score-crit); }
-.hot-strip .pill.is-surging .mw { color: var(--score-crit); }
-.hot-strip .pill.is-fresh { border-color: var(--accent); }
-.hot-strip .pill .ratio {
-  font-size: 10px;
-  background: var(--score-crit);
-  color: var(--text-bright);
-  padding: 1px 5px;
-  border-radius: 2px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-}
-.hot-strip .pill .fresh-tag {
-  font-size: 10px;
+.controls .btn.export-btn:hover {
   background: var(--accent);
-  color: #0a0e14;
-  padding: 1px 5px;
-  border-radius: 2px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
+  color: var(--bg);
+  border-color: var(--accent);
 }
 
-/* Hot-right-now: the featured surging/fresh band above the kill chain. Larger
-   cards than the per-tactic grid so the operator's eye lands here first. */
+/* CRITICAL RIGHT NOW: reticle-framed emphasis band. The 4 emerald L-corners
+   do the framing; severity stays on the data values inside. */
+.crit-frame { position: relative; margin: 4px 20px 6px; }
+.crit-frame .cn { position: absolute; width: 13px; height: 13px; border: 0 solid var(--accent); pointer-events: none; }
+.crit-frame .tl { top:-2px; left:-2px; border-top-width:1.5px; border-left-width:1.5px; }
+.crit-frame .tr { top:-2px; right:-2px; border-top-width:1.5px; border-right-width:1.5px; }
+.crit-frame .bl { bottom:-2px; left:-2px; border-bottom-width:1.5px; border-left-width:1.5px; }
+.crit-frame .br { bottom:-2px; right:-2px; border-bottom-width:1.5px; border-right-width:1.5px; }
+
+/* Hot-row cards (used by critical band): sharp panels, severity on the data. */
 .hot-row {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 .hot-row .hot {
-  background: var(--bg-card);
+  background: var(--row);
   border: 1px solid var(--border);
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 12px 14px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s;
   position: relative;
   display: block;
 }
-.hot-row .hot:hover { background: var(--bg-row); border-color: var(--border-hi); }
+.hot-row .hot:hover { background: var(--bg); border-color: var(--bhi); }
+.hot-row .hot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .hot-row .hot.is-surging {
-  border-color: var(--score-crit);
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(255, 77, 106, 0.12) 100%);
-  animation: pulse-surge 2.4s ease-in-out infinite;
+  border-color: var(--crit);
+  background: color-mix(in srgb, var(--crit) 8%, var(--row));
 }
 .hot-row .hot.is-fresh {
   border-color: var(--accent);
-  background: linear-gradient(135deg, var(--bg-card) 0%, rgba(0, 229, 160, 0.08) 100%);
+  background: color-mix(in srgb, var(--accent) 6%, var(--row));
 }
-.hot-row .hot-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 10px;
-}
-.hot-row .hot-tid {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-bright);
-  letter-spacing: 0.5px;
-  text-shadow: 0 0 12px rgba(86, 226, 255, 0.25);
-}
-.hot-row .hot-mw {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--accent);
-  line-height: 1;
-  text-shadow: 0 0 14px rgba(0, 229, 160, 0.35);
-}
-.hot-row .hot.is-surging .hot-mw {
-  color: var(--score-crit);
-  text-shadow: 0 0 14px rgba(255, 77, 106, 0.45);
-}
-.hot-row .hot-name {
-  font-size: 14px;
-  color: var(--text);
-  margin-top: 6px;
-  line-height: 1.35;
-  font-weight: 500;
-}
-.hot-row .hot-meta {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  margin-top: 8px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-.hot-row .hot-tactic {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--accent-cyan);
-}
-.hot-row .hot-badge {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 2px;
-}
-.hot-row .hot-badge.surge { background: var(--score-crit); color: var(--text-bright); }
-.hot-row .hot-badge.fresh { background: var(--accent); color: #0a0e14; }
+.hot-row .hot-head { display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.hot-row .hot-tid { font-family:'JetBrains Mono',monospace; font-size:19px; font-weight:700; color:var(--bright); }
+.hot-row .hot-mw { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:27px; font-weight:700; color:var(--accent); line-height:1; }
+.hot-row .hot.is-surging .hot-mw { color: var(--crit); }
+.hot-row .hot-name { font-size:13.5px; color:var(--text); margin-top:6px; line-height:1.35; font-weight:500; }
+.hot-row .hot-meta { display:flex; gap:10px; align-items:center; margin-top:8px; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--dim); }
+.hot-row .hot-tactic { font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; color:var(--dim); letter-spacing:0.3px; }
+.hot-row .hot-badge { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; font-weight:700; padding:2px 6px; border-radius:2px; }
+.hot-row .hot-badge.surge { background:var(--crit); color:var(--bright); }
+.hot-row .hot-badge.fresh { background:var(--accent); color:var(--bg); }
 .hot-row .empty-pane { grid-column: 1 / -1; }
 
-/* Ungrouped row: techniques whose tactic our enrichment doesn't carry. */
-.other-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 6px;
+/* Critical-row variant: severity red lives on these data cards only. */
+.hot-row.crit-row .hot { border:1px solid var(--crit); background: color-mix(in srgb, var(--crit) 6%, var(--row)); }
+.hot-row.crit-row .hot:hover { background: color-mix(in srgb, var(--crit) 10%, var(--row)); border-color: var(--crit); }
+.hot-row.crit-row .hot-mw { color: var(--crit); }
+.hot-row.crit-row .hot-tid { color: var(--bright); }
+/* Severity badge cluster on each crit card */
+.crit-badges { display:flex; gap:5px; flex-wrap:wrap; margin-top:6px; }
+.crit-badges .b {
+  display:inline-flex; align-items:center; gap:4px;
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:700;
+  letter-spacing:0.5px; padding:2px 7px; border-radius:2px; text-transform:uppercase;
 }
+.crit-badges .b.kev   { background: var(--crit); color: var(--bright); }
+.crit-badges .b.score { background: var(--accent); color: var(--bg); }
+.crit-badges .b.crit  { background: color-mix(in srgb, var(--crit) 15%, transparent); color: var(--crit); border: 1px solid color-mix(in srgb, var(--crit) 45%, transparent); }
 
-/* The kill chain: 14 columns, fits a 1900px viewport without scroll.
-   Each column gets its own canonical ATT&CK hue so the matrix reads as a
-   matrix, not 14 dim grey rectangles. */
+/* Slim "also surging" inline strip. */
+.hot-strip {
+  display:flex; flex-wrap:wrap; align-items:center; gap:8px;
+  padding:10px 14px; margin:6px 20px 10px;
+  background: var(--row);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--warn);
+  border-radius: 2px;
+}
+.hot-strip[hidden] { display: none; }
+.hot-strip .label { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--warn); font-weight:700; letter-spacing:0.5px; text-transform:uppercase; margin-right:6px; }
+.hot-strip .pill {
+  display:inline-flex; align-items:baseline; gap:6px;
+  padding:4px 10px; background:var(--bg); border:1px solid var(--border); border-radius:2px;
+  font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:11.5px;
+  color:var(--text); text-decoration:none; cursor:pointer;
+  transition: background-color .15s, border-color .15s;
+}
+.hot-strip .pill:hover { background:var(--row); border-color:var(--warn); }
+.hot-strip .pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.hot-strip .pill .tid { font-weight:700; color:var(--bright); }
+.hot-strip .pill .pname { font-family:'Space Grotesk',system-ui,sans-serif; font-size:12px; color:var(--text); font-weight:500; max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hot-strip .pill .sep { color:var(--bhi); font-size:10px; margin:0 1px; }
+.hot-strip .pill .mw { color:var(--accent); font-weight:600; }
+.hot-strip .pill.is-surging { border-color:var(--crit); }
+.hot-strip .pill.is-surging .mw { color:var(--crit); }
+.hot-strip .pill.is-fresh { border-color:var(--accent); }
+.hot-strip .pill .ratio { font-size:10px; background:var(--crit); color:var(--bright); padding:1px 5px; border-radius:2px; font-weight:700; letter-spacing:0.4px; }
+.hot-strip .pill .fresh-tag { font-size:10px; background:var(--accent); color:var(--bg); padding:1px 5px; border-radius:2px; font-weight:700; letter-spacing:0.4px; }
+
+/* Kill chain: 14 columns. Each column keeps its canonical ATT&CK data hue so
+   the matrix reads as a matrix. The hue is DATA, never chrome. */
 .kill-chain {
   display: grid;
   grid-template-columns: repeat(14, minmax(105px, 1fr));
   gap: 5px;
   overflow-x: auto;
-  padding-bottom: 8px;
+  padding: 0 20px 8px;
   scrollbar-color: var(--border) var(--bg);
   scrollbar-width: thin;
 }
 .kill-chain::-webkit-scrollbar { height: 8px; }
 .kill-chain::-webkit-scrollbar-track { background: var(--bg); }
-.kill-chain::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.kill-chain::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
 .tactic {
-  background: var(--bg-card);
+  background: var(--row);
   border: 1px solid var(--border);
   border-top: 2px solid var(--tactic-hue, var(--border));
-  border-radius: 4px;
+  border-radius: 2px;
   padding: 10px 8px;
   min-height: 220px;
   display: flex;
   flex-direction: column;
   position: relative;
-  transition: all 0.25s ease;
+  transition: background-color 0.25s ease, opacity 0.25s ease;
 }
-/* Per-tactic accent borrowed from ATT&CK Navigator convention. The hue
-   colours the top border, the tactic name, the mention count, and the
-   subtle activity glow at the column's bottom. */
+/* Per-tactic data hue (ATT&CK Navigator convention): top border, tactic name,
+   count, technique counts. Not used anywhere in the page chrome. */
 .tactic[data-tactic="reconnaissance"]       { --tactic-hue: #56b6e2; }
 .tactic[data-tactic="resource-development"] { --tactic-hue: #b48eff; }
 .tactic[data-tactic="initial-access"]       { --tactic-hue: #ff7a90; }
@@ -531,172 +329,74 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
 .tactic[data-tactic="exfiltration"]         { --tactic-hue: #7be583; }
 .tactic[data-tactic="impact"]               { --tactic-hue: #ff4470; }
 
-.tactic.idle {
-  opacity: 0.32;
-  border-top-color: var(--border);
-}
+.tactic.idle { opacity: 0.32; border-top-color: var(--border); }
+/* Hot column: hairline emphasis on the hue (no colored glow). */
 .tactic.hot {
-  background:
-    radial-gradient(ellipse 100% 50% at 50% 100%,
-      color-mix(in srgb, var(--tactic-hue, var(--accent)) 22%, transparent) 0%,
-      transparent 75%),
-    var(--bg-card);
-  box-shadow: 0 0 24px -10px color-mix(in srgb, var(--tactic-hue, var(--accent)) 60%, transparent);
+  background: var(--row);
+  border-color: color-mix(in srgb, var(--tactic-hue, var(--accent)) 45%, var(--border));
+  box-shadow: inset 0 -2px 0 color-mix(in srgb, var(--tactic-hue, var(--accent)) 55%, transparent);
 }
-.tactic-head {
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 6px;
-  margin-bottom: 8px;
-}
-.tac-name {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9.5px;
-  letter-spacing: 1.4px;
-  text-transform: uppercase;
-  color: var(--tactic-hue, var(--text));
-  font-weight: 700;
-  line-height: 1.25;
-  margin-bottom: 3px;
-}
-.tactic.idle .tac-name { color: var(--text-dim); }
-.tac-stats {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-.tac-stats .n {
-  color: var(--tactic-hue, var(--accent));
-  font-weight: 600;
-}
-.techs {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  flex: 1;
-}
+.tactic-head { border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:8px; }
+.tac-name { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--tactic-hue, var(--text)); font-weight:600; line-height:1.25; margin-bottom:3px; letter-spacing:0.2px; }
+.tactic.idle .tac-name { color: var(--dim); }
+.tac-stats { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--dim); }
+.tac-stats .n { color: var(--tactic-hue, var(--accent)); font-weight:600; }
+.techs { display:flex; flex-direction:column; gap:4px; flex:1; }
 .tech {
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 3px;
+  border-radius: 2px;
   padding: 6px 8px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background-color 0.15s, border-color 0.15s, transform 0.15s;
   position: relative;
 }
 .tech:hover {
-  background: var(--bg-row);
-  border-color: color-mix(in srgb, var(--tactic-hue, var(--border-hi)) 60%, var(--border-hi));
+  background: var(--row);
+  border-color: color-mix(in srgb, var(--tactic-hue, var(--bhi)) 60%, var(--bhi));
   transform: translateX(1px);
 }
-.tech .tech-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 6px;
-}
-.tech .tid {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: var(--text-bright);
-  letter-spacing: 0.4px;
-}
-.tech .count {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  color: var(--tactic-hue, var(--accent));
-  font-weight: 700;
-  line-height: 1;
-}
-.tech .name {
-  font-size: 10.5px;
-  color: var(--text-dim);
-  line-height: 1.3;
-  margin-top: 3px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-/* Sparkline strip: 7-day daily mention trend inside each tech card */
-.tech .spark {
-  display: block;
-  width: 100%;
-  height: 14px;
-  margin-top: 4px;
-}
-.tech .spark polyline {
-  fill: none;
-  stroke: var(--tactic-hue, var(--accent));
-  stroke-width: 1.2;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-.tech .spark .area {
-  fill: var(--tactic-hue, var(--accent));
-  opacity: 0.18;
-  stroke: none;
-}
-.tech .spark .dot {
-  fill: var(--tactic-hue, var(--accent));
-}
+.tech .tech-head { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
+.tech .tid { font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:700; color:var(--bright); }
+.tech .count { font-family:'JetBrains Mono',monospace; font-variant-numeric:tabular-nums; font-size:14px; color:var(--tactic-hue, var(--accent)); font-weight:700; line-height:1; }
+.tech .name { font-size:10.5px; color:var(--dim); line-height:1.3; margin-top:3px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+/* Sparkline: 7-day daily mention trend inside each tech card */
+.tech .spark { display:block; width:100%; height:14px; margin-top:4px; }
+.tech .spark polyline { fill:none; stroke:var(--tactic-hue, var(--accent)); stroke-width:1.2; stroke-linejoin:round; stroke-linecap:round; }
+.tech .spark .area { fill:var(--tactic-hue, var(--accent)); opacity:0.18; stroke:none; }
+.tech .spark .dot { fill:var(--tactic-hue, var(--accent)); }
 /* Delta indicator next to the mention count */
 .tech .delta, .hot-row .hot-delta, .modal-sub .delta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9.5px;
-  font-weight: 600;
-  margin-left: 4px;
-  letter-spacing: 0.2px;
+  font-family:'JetBrains Mono',monospace; font-size:9.5px; font-weight:600; margin-left:4px; letter-spacing:0.2px;
 }
-.delta.up   { color: var(--score-crit); }
-.delta.down { color: var(--text-dim); }
-.delta.flat { color: var(--text-dim); opacity: 0.6; }
+.delta.up   { color: var(--crit); }
+.delta.down { color: var(--dim); }
+.delta.flat { color: var(--dim); opacity: 0.6; }
 .delta.new  { color: var(--accent); }
-.tech .count-wrap {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 0;
-}
-.tech .badge {
-  display: inline-block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 0.8px;
-  font-weight: 600;
-  padding: 1px 5px;
-  border-radius: 2px;
-  margin-top: 4px;
-}
-.tech.is-surging {
-  border-color: var(--score-crit);
-  background: linear-gradient(90deg, var(--bg) 60%, rgba(255, 77, 106, 0.12) 100%);
-  animation: pulse-surge 2.4s ease-in-out infinite;
-}
-.tech.is-surging .badge.surge {
-  background: var(--score-crit);
-  color: var(--text-bright);
-}
-.tech.is-surging .count { color: var(--score-crit); }
-.tech.is-fresh {
-  border-color: var(--accent);
-}
-.tech.is-fresh .badge.fresh {
-  background: var(--accent);
-  color: #0a0e14;
-}
-@keyframes pulse-surge {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 77, 106, 0); }
-  50%      { box-shadow: 0 0 10px 2px rgba(255, 77, 106, 0.45); }
-}
+.tech .count-wrap { display:inline-flex; align-items:baseline; gap:0; }
+.tech .badge { display:inline-block; font-family:'JetBrains Mono',monospace; font-size:9px; letter-spacing:0.5px; font-weight:600; padding:1px 5px; border-radius:2px; margin-top:4px; }
+.tech.is-surging { border-color: var(--crit); background: color-mix(in srgb, var(--crit) 8%, var(--bg)); }
+.tech.is-surging .badge.surge { background: var(--crit); color: var(--bright); }
+.tech.is-surging .count { color: var(--crit); }
+.tech.is-fresh { border-color: var(--accent); }
+.tech.is-fresh .badge.fresh { background: var(--accent); color: var(--bg); }
+/* Severity flag dot in a tech card - red lives on the data only. */
+.tech .crit-dot { display:inline-block; width:6px; height:6px; background:var(--crit); border-radius:50%; margin-right:4px; vertical-align:middle; }
 
-/* "Other" bucket for techniques whose tactic isn't mapped in our enrichment. */
-.tactic.other-bucket .tac-name { color: var(--text-dim); }
+/* Ungrouped row */
+.other-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 6px;
+  padding: 0 20px;
+}
+.tactic.other-bucket .tac-name { color: var(--dim); }
 
-/* Per-technique article modal (lazy-loaded on click) */
+/* Per-technique article modal */
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(5, 7, 9, 0.72);
+  background: rgba(8, 9, 12, 0.74);
   backdrop-filter: blur(4px);
   -webkit-backdrop-filter: blur(4px);
   display: flex;
@@ -704,312 +404,180 @@ header nav a:hover { color: var(--accent); border-bottom-color: var(--accent); t
   justify-content: center;
   padding: 60px 20px 20px;
   z-index: 200;
-  animation: backdrop-in 0.18s ease-out;
 }
 .modal-backdrop[hidden] { display: none; }
-@keyframes backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
+@media (prefers-reduced-motion: no-preference) {
+  .modal-backdrop { animation: backdrop-in 0.18s ease-out; }
+  .modal { animation: modal-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1); }
 }
+@keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 .modal {
-  background: var(--bg-card);
-  border: 1px solid var(--border-hi);
-  border-radius: 6px;
+  background: var(--panel);
+  border: 1px solid var(--bhi);
+  border-radius: 2px;
   width: 100%;
   max-width: 900px;
   max-height: calc(100vh - 100px);
   display: flex;
   flex-direction: column;
-  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(86, 226, 255, 0.08);
-  animation: modal-in 0.22s cubic-bezier(0.2, 0.9, 0.3, 1.1);
+  box-shadow: var(--elev);
 }
 @keyframes modal-in {
   from { opacity: 0; transform: translateY(-12px) scale(0.97); }
   to   { opacity: 1; transform: translateY(0)    scale(1); }
 }
-.modal-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  padding: 18px 22px 14px;
-  border-bottom: 1px solid var(--border);
-  gap: 14px;
-}
-.modal-tid {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-.modal-name {
-  font-family: 'Space Grotesk', system-ui, sans-serif;
-  font-size: 17px;
-  font-weight: 600;
-  color: var(--text-bright);
-  margin-bottom: 6px;
-}
-.modal-sub {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.modal-sub .accent { color: var(--accent-cyan); }
-.modal-sub .crit   { color: var(--score-crit); font-weight: 600; }
-.modal-close {
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  font-size: 26px;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0 4px;
-  transition: color 0.15s;
-}
-.modal-close:hover { color: var(--text-bright); }
-.modal-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 8px 0;
-  scrollbar-color: var(--border) var(--bg-card);
-  scrollbar-width: thin;
-}
+.modal-head { display:flex; justify-content:space-between; align-items:flex-start; padding:18px 22px 14px; border-bottom:1px solid var(--border); gap:14px; }
+.modal-tid { font-family:'JetBrains Mono',monospace; font-size:18px; font-weight:700; color:var(--accent); margin-bottom:4px; }
+.modal-name { font-family:'Space Grotesk',system-ui,sans-serif; font-size:17px; font-weight:600; color:var(--bright); margin-bottom:6px; }
+.modal-sub { font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--dim); }
+.modal-sub .accent { color: var(--accent); }
+.modal-sub .crit   { color: var(--crit); font-weight: 600; }
+.modal-close { background:transparent; border:none; color:var(--dim); font-size:26px; line-height:1; cursor:pointer; padding:0 4px; transition:color 0.15s; }
+.modal-close:hover { color: var(--bright); }
+.modal-body { flex:1; overflow-y:auto; padding:0; scrollbar-color:var(--border) var(--panel); scrollbar-width:thin; }
 .modal-body::-webkit-scrollbar { width: 8px; }
-.modal-body::-webkit-scrollbar-track { background: var(--bg-card); }
-.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+.modal-body::-webkit-scrollbar-track { background: var(--panel); }
+.modal-body::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
 
-.art {
-  display: block;
-  padding: 10px 22px;
-  border-bottom: 1px solid var(--border);
-  text-decoration: none;
-  color: inherit;
-  transition: background 0.12s;
-}
-.art:hover {
-  background: var(--bg-row);
-  text-decoration: none;
-}
+/* Article ledger rows inside the modal */
+.art { display:block; padding:11px 22px; border-bottom:1px solid var(--border); text-decoration:none; color:inherit; transition:background 0.12s; }
+.art:hover { background: var(--row); text-decoration: none; }
 .art:last-child { border-bottom: none; }
-.art-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 14px;
-  margin-bottom: 3px;
-}
-.art-title {
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--text-bright);
-  flex: 1;
-  line-height: 1.4;
-}
-.art-meta {
-  display: flex;
-  gap: 10px;
-  align-items: baseline;
-  flex-shrink: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-}
-.art-meta .score {
-  display: inline-block;
-  padding: 1px 6px;
-  border-radius: 2px;
-  font-weight: 600;
-}
-.art-meta .score.high { background: var(--accent); color: #0a0e14; }
-.art-meta .score.mid  { background: rgba(255, 181, 71, 0.18); color: var(--accent-amber); }
-.art-meta .score.lo   { background: rgba(255, 255, 255, 0.06); color: var(--text-dim); }
-.art-summary {
-  font-size: 12px;
-  color: var(--text-dim);
-  line-height: 1.45;
-  margin-top: 3px;
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
-.art-foot {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  margin-top: 4px;
-  display: flex;
-  gap: 12px;
-}
-.art-foot .src { color: var(--accent-cyan); }
+.art-head { display:flex; justify-content:space-between; align-items:baseline; gap:14px; margin-bottom:3px; }
+.art-title { font-size:13.5px; font-weight:500; color:var(--bright); flex:1; line-height:1.4; }
+.art-meta { display:flex; gap:10px; align-items:baseline; flex-shrink:0; font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--dim); }
+.art-meta .score { display:inline-block; padding:1px 6px; border-radius:2px; font-weight:600; }
+.art-meta .score.high { background: var(--accent); color: var(--bg); }
+.art-meta .score.mid  { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+.art-meta .score.lo   { background: rgba(255,255,255,0.06); color: var(--dim); }
+.art-summary { font-size:12px; color:var(--dim); line-height:1.45; margin-top:3px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.art-foot { font-family:'JetBrains Mono',monospace; font-size:10px; color:var(--dim); margin-top:4px; display:flex; gap:12px; }
+.art-foot .src { color: var(--accent); }
 
-/* Modal "context" strip (co-mentions + sub-techniques) above the article list */
-.modal-context {
-  padding: 12px 22px 8px;
-  border-bottom: 1px solid var(--border);
-  background: linear-gradient(180deg, var(--bg-row) 0%, var(--bg-card) 100%);
-}
-.modal-context .ctx-row {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  margin-bottom: 6px;
-  flex-wrap: wrap;
-}
+/* Modal context strip (co-mentions + sub-techniques) */
+.modal-context { padding:12px 22px 8px; border-bottom:1px solid var(--border); background:var(--row); }
+.modal-context[hidden] { display: none; }
+.modal-context .ctx-row { display:flex; align-items:baseline; gap:10px; margin-bottom:6px; flex-wrap:wrap; }
 .modal-context .ctx-row:last-child { margin-bottom: 0; }
-.modal-context .ctx-label {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
-  letter-spacing: 1.2px;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  font-weight: 600;
-  min-width: 80px;
-}
+.modal-context .ctx-label { font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--dim); font-weight:600; letter-spacing:0.3px; text-transform:uppercase; min-width:80px; }
 .modal-context .chip {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 5px;
-  padding: 3px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 3px;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text);
-  text-decoration: none;
-  transition: all 0.12s;
+  display:inline-flex; align-items:baseline; gap:5px;
+  padding:3px 8px; background:var(--bg); border:1px solid var(--border); border-radius:2px;
+  font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--text); text-decoration:none;
+  transition: background-color .15s, border-color .15s;
 }
-.modal-context .chip:hover {
-  border-color: var(--border-hi);
-  background: var(--bg-row);
-}
-.modal-context .chip.cve   { color: var(--accent-cyan); }
-.modal-context .chip.actor { color: var(--accent-amber); }
-.modal-context .chip.malware { color: var(--score-crit); }
+.modal-context .chip:hover { border-color:var(--bhi); background:var(--row); }
+/* Chip type tints stay on data; only sub-tech uses the emerald accent. */
+.modal-context .chip.cve   { color: var(--text); }
+.modal-context .chip.actor { color: var(--warn); }
+.modal-context .chip.malware { color: var(--crit); }
 .modal-context .chip.sub   { color: var(--accent); }
-.modal-context .chip .n {
-  font-size: 10px;
-  color: var(--text-dim);
-}
+.modal-context .chip .n { font-size:10px; color:var(--dim); }
 
-/* Navigator export + window indicator in the controls area */
-.controls .btn.export-btn {
-  margin-left: auto;
-  background: var(--bg-card);
-  border: 1px solid var(--accent-cyan);
-  color: var(--accent-cyan);
-  font-weight: 600;
-}
-.controls .btn.export-btn:hover {
-  background: var(--accent-cyan);
-  color: #0a0e14;
-}
-.controls .meta {
-  margin-left: 0;
-}
-
-/* Status footer */
-footer {
-  margin-top: 30px;
-  padding: 18px 0 0;
-  border-top: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: var(--text-dim);
-  display: flex;
-  gap: 18px;
-}
-footer a { color: var(--text-dim); }
-footer a:hover { color: var(--accent); }
+/* Status-line footer */
+.foot { display:flex; flex-wrap:wrap; gap:10px 18px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); border-top:1px solid var(--border); }
+.foot a { color: var(--dim); } .foot a:hover { color: var(--accent); }
+.foot .grow { flex:1; min-width:20px; }
 
 .empty-pane {
   padding: 40px;
   text-align: center;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  color: var(--dim);
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  font-size: 13px;
+}
+
+@media (max-width: 720px) {
+  .row > .gut { width: 38px; }
+  .seclabel, .controls, .foot, .statusbar { padding-left: 14px; padding-right: 14px; }
+  .crit-frame, .hot-strip, .kill-chain, .other-row { margin-left: 14px; margin-right: 14px; }
+  .kill-chain, .other-row { padding-left: 0; padding-right: 0; }
+  .statledger .s { min-width: 50%; }
 }
 </style>
 </head>
 <body>
-<header>
-  <span class="brand">oM noM Security Feeds</span>
-  <span class="stage-chip"><span class="live-dot"></span>MITRE LIVE</span>
-  <nav>
-    <a href="/">home</a>
-    <a href="/live">live ticker</a>
-    <a href="/trending">trending CVEs</a>
-    <a href="/pre-kev">pre-KEV</a>
-    <a href="/app">reader</a>
-  </nav>
-</header>
+<div class="page">
 
-<div class="wrap">
+  <div class="row rule">
+    <div class="gut"><svg id="brandWorm" class="worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></div>
+    <div class="main"><div class="statusbar">
+      <span class="bd">oM noM</span><span style="color:var(--faint)">//</span>
+      <nav><a href="/">home</a><a href="/live">live</a><a href="/trending">trending</a><a href="/pre-kev">pre-kev</a><a class="cur" href="/mitre-live">mitre</a><a href="/api">api</a><a href="/pro">pro</a></nav>
+      <span class="grow"></span>
+      <span class="nom">last nom <b id="lsAgo">-</b></span>
+      <a class="signin" href="/login">[ sign in ]</a>
+    </div></div>
+  </div>
 
-  <div class="status-strip">
-    <div class="status-card">
-      <div class="label">Window mentions</div>
-      <div class="value accent" id="kWindowTotal">-</div>
-      <div class="sub" id="kWindowSub">across all techniques</div>
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main">
+      <div class="seclabel"><span class="c">//</span> scan: att&amp;ck live <span class="hint">technique heat map across 55+ sources, mapped to the kill chain</span> <span class="ext"></span></div>
+      <div class="statledger">
+        <div class="s">
+          <div class="l">window mentions</div>
+          <div class="n accent" id="kWindowTotal">-</div>
+          <div class="sub" id="kWindowSub">across all techniques</div>
+        </div>
+        <div class="s">
+          <div class="l">critical</div>
+          <div class="n crit" id="kCritical">-</div>
+          <div class="sub">techs touched by KEV / 0day / score &ge;70</div>
+        </div>
+        <div class="s">
+          <div class="l">surging</div>
+          <div class="n amber" id="kSurging">-</div>
+          <div class="sub">&ge;3x baseline rate, &ge;3 mentions</div>
+        </div>
+        <div class="s">
+          <div class="l">distinct techniques</div>
+          <div class="n cyan" id="kDistinct">-</div>
+          <div class="sub">at least 1 mention in baseline</div>
+        </div>
+      </div>
     </div>
-    <div class="status-card">
-      <div class="label">Critical</div>
-      <div class="value crit" id="kCritical">-</div>
-      <div class="sub">techs touched by KEV / 0day / score &ge;70</div>
+  </div>
+
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main"><div class="controls">
+      <span class="label">window</span>
+      <button class="btn active" data-hours="24">24h</button>
+      <button class="btn"        data-hours="72">72h</button>
+      <button class="btn"        data-hours="168">7d</button>
+      <button class="btn"        data-hours="720">30d</button>
+      <button class="btn"        data-hours="2160">90d</button>
+      <span class="meta" id="metaLine">-</span>
+      <button class="btn export-btn" id="exportBtn" title="download current view as an ATT&CK Navigator v4.5 layer JSON">&#x2193; navigator layer</button>
+    </div></div>
+  </div>
+
+  <div class="row"><div class="gut">01</div><div class="main">
+    <div class="seclabel crit-label"><span class="c">//</span> critical right now <span class="hint">KEV-listed CVEs, 0-day reports, "actively exploited" tags, or score &ge;70 in this window. click to drill in.</span> <span class="ext"></span></div>
+    <div class="crit-frame"><span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+      <div class="hot-row crit-row" id="criticalRow">
+        <div class="empty-pane">loading...</div>
+      </div>
     </div>
-    <div class="status-card">
-      <div class="label">Surging</div>
-      <div class="value amber" id="kSurging">-</div>
-      <div class="sub">&ge;3x baseline rate, &ge;3 mentions</div>
+
+    <!-- Slim inline strip: surging/fresh signals collapse here instead of
+         getting a full card band. The kill chain still glows red on the
+         same techniques, so the signal isn't lost - just deduplicated. -->
+    <div class="hot-strip" id="hotStrip" hidden></div>
+  </div></div>
+
+  <div class="row"><div class="gut">02</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> kill chain <span class="hint">click a technique to open its latest article. red = surging vs baseline. green = first seen in last 7d.</span> <span class="ext"></span></div>
+    <div class="kill-chain" id="killChain">
+      <div class="empty-pane">loading...</div>
     </div>
-    <div class="status-card">
-      <div class="label">Distinct techniques</div>
-      <div class="value cyan" id="kDistinct">-</div>
-      <div class="sub">at least 1 mention in baseline</div>
-    </div>
-  </div>
+  </div></div>
 
-  <div class="controls">
-    <span class="label">Window</span>
-    <button class="btn active" data-hours="24">24h</button>
-    <button class="btn"        data-hours="72">72h</button>
-    <button class="btn"        data-hours="168">7d</button>
-    <button class="btn"        data-hours="720">30d</button>
-    <button class="btn"        data-hours="2160">90d</button>
-    <span class="meta" id="metaLine">-</span>
-    <button class="btn export-btn" id="exportBtn" title="download current view as an ATT&CK Navigator v4.5 layer JSON">&#x2193; navigator layer</button>
-  </div>
-
-  <div class="section-head crit-head">
-    <h2>:: critical right now ::</h2>
-    <span class="hint">techniques touched by KEV-listed CVEs, 0-day reports, "actively exploited" tags, or score &ge;70 articles in this window. click to drill in.</span>
-  </div>
-  <div class="hot-row crit-row" id="criticalRow">
-    <div class="empty-pane">loading...</div>
-  </div>
-
-  <!-- Slim inline strip: surging/fresh signals collapse here instead of
-       getting a full card band. The kill chain still glows red on the
-       same techniques, so the signal isn't lost - just deduplicated. -->
-  <div class="hot-strip" id="hotStrip" hidden></div>
-
-  <div class="section-head">
-    <h2>:: kill chain ::</h2>
-    <span class="hint">click a technique to open its latest article. red = surging vs baseline. green = first seen in last 7d.</span>
-  </div>
-  <div class="kill-chain" id="killChain">
-    <div class="empty-pane">loading...</div>
-  </div>
-
-  <div class="section-head" id="otherHead" style="display:none;">
-    <h2>:: ungrouped ::</h2>
-    <span class="hint">techniques in the corpus whose tactic isn't mapped in the ATT&amp;CK enrichment data</span>
-  </div>
-  <div class="other-row" id="otherRow"></div>
+  <div class="row" id="otherHead" style="display:none;"><div class="gut">03</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> ungrouped <span class="hint">techniques whose tactic isn't mapped in the ATT&amp;CK enrichment data</span> <span class="ext"></span></div>
+    <div class="other-row" id="otherRow"></div>
+  </div></div>
 
   <!-- Modal for per-technique article list (lazy-loaded on click). -->
   <div class="modal-backdrop" id="modal" hidden>
@@ -1029,11 +597,13 @@ footer a:hover { color: var(--accent); }
     </div>
   </div>
 
-  <footer>
+  <div class="row"><div class="gut"></div><div class="main"><div class="foot">
     <span>data refreshes every 30s</span>
     <span>tactics &amp; T-codes from <a href="https://attack.mitre.org/" target="_blank" rel="noopener">attack.mitre.org</a></span>
+    <span class="grow"></span>
     <span>baseline scales with window: 30d up to 7d, 60d at 30d, 180d at 90d</span>
-  </footer>
+  </div></div></div>
+
 </div>
 
 <script>
@@ -1155,7 +725,7 @@ function renderCriticalRow(d) {
     badges += `<span class="b crit">${t.critical_count} CRITICAL</span>`;
     badges += '</div>';
     const sub = t.critical_article_title
-      ? `<div class="hot-name" style="margin-top:8px; color:var(--text-dim); font-size:11.5px;">→ ${esc(t.critical_article_title)}</div>`
+      ? `<div class="hot-name" style="margin-top:8px; color:var(--text-dim); font-size:11.5px;">${esc(t.critical_article_title)}</div>`
       : '';
     html += `
       <div class="hot is-surging" role="button" tabindex="0"
@@ -1256,7 +826,7 @@ function renderKillChain(d) {
     html += `</div>`;
     html += `<div class="techs">`;
     if (techs.length === 0) {
-      html += `<div style="color:var(--border); font-size:9px; font-family:'JetBrains Mono', monospace; letter-spacing:1px; text-align:center; padding:18px 0;">- - -</div>`;
+      html += `<div style="color:var(--text-dim); opacity:0.5; font-size:11px; text-align:center; padding:18px 0;">quiet</div>`;
     } else {
       for (const t of techs.slice(0, 8)) {
         html += techCard(t);
@@ -1513,6 +1083,63 @@ function renderModalContext(d) {
 
 load();
 setInterval(load, 30000);
+</script>
+
+<script>
+// Live indicator: mirror the page's own freshness ("generated <age> ago",
+// written into #metaLine by load()) into the status-line "last nom" age, and
+// chomp the worm when fresher data lands. No green dot, no LIVE badge - the
+// age ticks and resets per the design spec. Wires to existing data only;
+// adds no new network calls.
+(function () {
+  var meta = document.getElementById('metaLine');
+  var ago  = document.getElementById('lsAgo');
+  var worm = document.getElementById('brandWorm');
+  if (!meta || !ago) return;
+
+  // Parse "... generated <n><unit> ago" out of the meta line. relTime() emits
+  // s/m/h/d units; map to seconds so we can detect a downward (fresher) step.
+  function parseGen(txt) {
+    var m = /generated\s+(-?\d+)\s*([smhd])\s+ago/i.exec(txt || '');
+    if (!m) return null;
+    var v = (+m[1]) * ({ s: 1, m: 60, h: 3600, d: 86400 }[m[2]]);
+    return v < 0 ? 0 : v;
+  }
+  function human(sec) {
+    if (sec == null) return '-';
+    if (sec < 5)     return 'just now';
+    if (sec < 60)    return Math.round(sec) + 's';
+    if (sec < 3600)  return Math.round(sec / 60) + 'm';
+    if (sec < 86400) return Math.round(sec / 3600) + 'h';
+    return Math.round(sec / 86400) + 'd';
+  }
+
+  var baseSec = null;   // age reported at last fetch
+  var baseAt  = 0;      // wall-clock when we read it
+  var prevSec = null;   // previous base, for fresher-than detection
+
+  function syncFromMeta() {
+    var g = parseGen(meta.textContent);
+    if (g == null) return;
+    if (prevSec != null && g < prevSec - 1 && worm) {
+      worm.classList.add('chomp');
+      setTimeout(function () { worm.classList.remove('chomp'); }, 520);
+    }
+    prevSec = g;
+    baseSec = g;
+    baseAt  = Date.now();
+    paint();
+  }
+  function paint() {
+    if (baseSec == null) return;
+    var live = baseSec + (Date.now() - baseAt) / 1000;
+    ago.textContent = human(live);
+  }
+
+  new MutationObserver(syncFromMeta).observe(meta, { childList: true, characterData: true, subtree: true });
+  syncFromMeta();
+  setInterval(paint, 1000);
+})();
 </script>
 </body>
 </html>

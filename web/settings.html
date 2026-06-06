@@ -4,428 +4,310 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>oM noM Security Feeds - Settings</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
-
 :root {
-  --bg: #0a0e14;
-  --bg-card: #111820;
-  --bg-hover: #1a2230;
-  --border: #1e2a3a;
-  --text: #c5cdd8;
-  --text-dim: #5a6a7a;
-  --text-bright: #e8ecf0;
-  --accent: #00e5a0;
-  --accent-dim: rgba(0,229,160,0.12);
-  --red: #ff4d6a;
-  --blue: #4da6ff;
+  --bg:#15171c; --panel:#181b21; --row:#1b1e25; --border:#2b3039; --bhi:#3b424d;
+  --text:#e9ebf0; --dim:#8d93a0; --faint:#5d636e; --bright:#ffffff;
+  --accent:#2dd49c; --accent-hi:#54e3b4; --crit:#ff5d6e; --warn:#f0b552;
+  --elev: 0 10px 30px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.05);
+  /* aliases kept so JS-injected markup + legacy rules resolve to the new palette */
+  --bg-card:var(--panel); --bg-hover:var(--row); --border-hi:var(--bhi);
+  --text-dim:var(--dim); --text-bright:var(--bright);
+  --accent-cyan:var(--accent); --red:var(--crit);
+}
+html,body { background: var(--bg); color: var(--text); font-family:'Space Grotesk',system-ui,sans-serif; font-size:15px; line-height:1.55; min-height:100vh; font-variant-numeric: tabular-nums; }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:0; opacity:0.022; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+a { color: var(--accent); text-decoration: none; }
+.mono { font-family:'JetBrains Mono',monospace; }
+::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); }
+
+.page { max-width: 980px; margin: 0 auto; border-left:1px solid var(--border); border-right:1px solid var(--border); background: linear-gradient(180deg, var(--panel), var(--bg) 320px); position:relative; z-index:1; min-height:100vh; }
+
+/* spine row: continuous left gutter + content */
+.row { display:flex; align-items:stretch; }
+.row > .gut { width:50px; flex-shrink:0; border-right:1px solid var(--border); display:flex; align-items:flex-start; justify-content:center; padding-top:14px; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--faint); }
+.row > .main { flex:1; min-width:0; }
+.rule { border-bottom:1px solid var(--border); }
+
+.worm { width:28px; height:22px; }
+.worm .seg, .worm .head { fill: var(--accent); }
+.worm .seg.s3 { opacity:0.35; } .worm .seg.s2 { opacity:0.6; } .worm .seg.s1 { opacity:0.85; }
+.worm .eye, .worm .mouth { fill: var(--bg); } .worm .glint { fill: var(--bright); }
+@media (prefers-reduced-motion: no-preference) {
+  #brandWorm { animation: bob 3.4s ease-in-out infinite; transform-origin:center; }
+  #brandWorm.chomp .mouth { animation: chomp 0.5s ease-out; transform-origin:28px 14.5px; }
+  @keyframes bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-1.5px)} }
+  @keyframes chomp { 0%,100%{transform:scaleY(0.5)} 40%{transform:scaleY(1.7) scaleX(0.9)} }
 }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 14px;
-  line-height: 1.5;
-  min-height: 100vh;
-}
+/* status-line header */
+.statusbar { display:flex; align-items:center; gap:12px; padding:13px 20px; font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--dim); flex-wrap:wrap; }
+.statusbar .bd { color:var(--bright); font-weight:600; letter-spacing:0.2px; }
+.statusbar .scan { color:var(--faint); }
+.statusbar nav { display:flex; gap:16px; margin-left:8px; }
+.statusbar nav a { color:var(--dim); font-size:11.5px; padding-bottom:2px; border-bottom:1px solid transparent; }
+.statusbar nav a:hover { color:var(--text); border-bottom-color:var(--bhi); }
+.statusbar nav a.cur { color:var(--bright); border-bottom-color:var(--accent); }
+.statusbar .grow { flex:1; border-bottom:1px dotted var(--border); height:1px; transform:translateY(-2px); min-width:20px; }
+.statusbar .nom { color:var(--dim); } .statusbar .nom b { color:var(--accent); font-weight:600; }
+.statusbar .signin { color:var(--accent); }
 
-.mono { font-family: 'JetBrains Mono', monospace; }
+/* page masthead */
+.masthead { padding:34px 20px 26px; }
+.masthead h1 { font-family:'Space Grotesk',sans-serif; font-size:clamp(24px,4vw,36px); font-weight:700; letter-spacing:-0.02em; line-height:1.06; color:var(--bright); }
+.masthead .sub { font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--dim); margin-top:14px; max-width:64ch; line-height:1.6; }
 
-header {
-  border-bottom: 1px solid var(--border);
-  padding: 16px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+/* inline-label rule */
+.seclabel { display:flex; align-items:center; gap:12px; padding:30px 20px 14px; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.seclabel .c { color:var(--faint); }
+.seclabel .note-r { color:var(--faint); text-transform:none; letter-spacing:0.3px; }
+.seclabel .ext { flex:1; border-bottom:1px solid var(--border); height:1px; }
 
-.logo {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 18px;
-  color: var(--accent);
-}
-.logo span { color: var(--text-dim); font-weight: 400; }
+.body { padding:0 20px 22px; }
+.body p.desc { color:var(--dim); font-size:13.5px; max-width:68ch; line-height:1.6; margin-bottom:6px; }
+.body p.desc b { color:var(--text); }
 
-.logo a { color: inherit; text-decoration: none; }
-
-.container { max-width: 800px; margin: 0 auto; padding: 24px; }
-
-.section {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-
-.section-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--accent);
-  margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-
-.section-desc {
-  font-size: 13px;
-  color: var(--text-dim);
-  margin-bottom: 16px;
-  line-height: 1.6;
-}
-
-.field { margin-bottom: 14px; }
-
-.field label {
-  display: block;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-bottom: 4px;
-}
-
+/* form fields - sharp, mono labels */
+.field { margin-top:14px; }
+.field label { display:block; font-family:'JetBrains Mono',monospace; font-size:11px; letter-spacing:0.4px; color:var(--dim); text-transform:uppercase; margin-bottom:6px; }
 .field input {
-  width: 100%;
-  padding: 8px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-bright);
-  font-size: 13px;
-  font-family: 'IBM Plex Sans', sans-serif;
-  outline: none;
+  width:100%; padding:9px 12px; background:var(--bg); border:1px solid var(--border);
+  border-radius:2px; color:var(--bright); font-size:13px; font-family:'JetBrains Mono',monospace;
+  outline:none; transition:border-color .15s;
 }
-
-.field input:focus { border-color: var(--accent); }
+.field input:focus { border-color:var(--accent); }
+.field input::placeholder { color:var(--faint); }
 
 button {
-  font-family: 'IBM Plex Sans', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  padding: 7px 16px;
-  border-radius: 4px;
-  border: 1px solid var(--border);
-  background: var(--bg-card);
-  color: var(--text);
-  cursor: pointer;
-  transition: all 0.15s;
+  font-family:'JetBrains Mono',monospace; font-size:12.5px; font-weight:600; letter-spacing:0.2px;
+  padding:9px 16px; border-radius:2px; border:1px solid var(--border); background:var(--row);
+  color:var(--text); cursor:pointer; transition:background-color .15s, border-color .15s, color .15s;
 }
+button:hover { background:var(--bhi); border-color:var(--faint); color:var(--bright); }
+button:active { transform:translateY(1px); }
+button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+button.primary { background:var(--accent); color:var(--bg); border-color:var(--accent); }
+button.primary:hover { background:var(--accent-hi); border-color:var(--accent-hi); color:var(--bg); }
+button.danger { border-color:var(--crit); color:var(--crit); background:transparent; }
+button.danger:hover { background:color-mix(in srgb,var(--crit) 12%,transparent); color:var(--crit); }
 
-button:hover { background: var(--bg-hover); border-color: var(--text-dim); }
-button.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); }
-button.primary:hover { filter: brightness(1.1); }
-button.danger { border-color: var(--red); color: var(--red); }
-button.danger:hover { background: rgba(255,77,106,0.1); }
+.btn-row { display:flex; gap:10px; align-items:center; margin-top:16px; }
 
-.btn-row { display: flex; gap: 8px; align-items: center; }
+/* status dot - chrome dot is emerald/dim only; err uses crit on a DATA value */
+.status-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:7px; vertical-align:middle; }
+.status-dot.ok { background:var(--accent); }
+.status-dot.err { background:var(--crit); }
+.status-dot.off { background:var(--faint); }
+.status-text { font-size:12px; font-family:'JetBrains Mono',monospace; color:var(--dim); }
 
-.status-dot {
-  display: inline-block;
-  width: 8px; height: 8px;
-  border-radius: 50%;
-  margin-right: 6px;
-}
-.status-dot.ok { background: var(--accent); }
-.status-dot.err { background: var(--red); }
-.status-dot.off { background: var(--text-dim); }
+/* reticle corner brackets - frames the credential panel */
+.reticle { position:relative; }
+.reticle .cn { position:absolute; width:13px; height:13px; border:0 solid var(--accent); pointer-events:none; }
+.reticle .tl{top:-2px;left:-2px;border-top-width:1.5px;border-left-width:1.5px;}
+.reticle .tr{top:-2px;right:-2px;border-top-width:1.5px;border-right-width:1.5px;}
+.reticle .bl{bottom:-2px;left:-2px;border-bottom-width:1.5px;border-left-width:1.5px;}
+.reticle .br{bottom:-2px;right:-2px;border-bottom-width:1.5px;border-right-width:1.5px;}
+.cred { margin:6px 20px 10px; padding:18px; border:1px solid var(--border); border-radius:2px; background:color-mix(in srgb,var(--accent) 4%,transparent); }
+.cred .field:first-child { margin-top:0; }
 
-.status-text { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+/* terminal block - app-password path hint */
+.cmd { font-family:'JetBrains Mono',monospace; font-size:12px; background:var(--bg); border:1px solid var(--border); border-left:2px solid var(--accent); padding:10px 14px; margin:10px 0 0; color:var(--text); overflow-x:auto; }
+.cmd .p { color:var(--faint); }
 
-.account-list { margin-top: 12px; }
+/* note - inline mono hint, not a rounded toast */
+.note { font-size:12px; color:var(--dim); font-family:'JetBrains Mono',monospace; margin-top:14px; padding:9px 12px; background:var(--bg); border:1px solid var(--border); border-left:2px solid var(--accent); border-radius:2px; line-height:1.55; }
 
+/* watched-accounts ledger */
+.account-list { margin-top:6px; }
 .account-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-radius: 4px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  margin-bottom: 4px;
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:9px 12px; border-bottom:1px solid var(--row); background:transparent;
 }
-
-.account-item .handle {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  color: var(--blue);
-}
-
-.account-add {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-}
-
+.account-item:first-child { border-top:1px solid var(--border); }
+.account-item .handle { font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--text); }
+.account-add { display:flex; gap:8px; margin-top:12px; }
 .account-add input {
-  flex: 1;
-  padding: 7px 12px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--text-bright);
-  font-size: 13px;
-  font-family: 'JetBrains Mono', monospace;
-  outline: none;
+  flex:1; padding:9px 12px; background:var(--bg); border:1px solid var(--border);
+  border-radius:2px; color:var(--bright); font-size:13px; font-family:'JetBrains Mono',monospace;
+  outline:none; transition:border-color .15s;
 }
+.account-add input:focus { border-color:var(--accent); }
+.account-add input::placeholder { color:var(--faint); }
 
-.account-add input:focus { border-color: var(--accent); }
-
-.toast {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  background: var(--bg-card);
-  border: 1px solid var(--accent);
-  color: var(--accent);
-  padding: 10px 16px;
-  border-radius: 4px;
-  font-size: 13px;
-  font-family: 'JetBrains Mono', monospace;
-  z-index: 200;
-  opacity: 0;
-  transform: translateY(10px);
-  transition: all 0.2s;
-}
-.toast.show { opacity: 1; transform: translateY(0); }
-.toast.error { border-color: var(--red); color: var(--red); }
-
-.note {
-  font-size: 12px;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: rgba(0,229,160,0.04);
-  border: 1px solid rgba(0,229,160,0.1);
-  border-radius: 4px;
-  line-height: 1.5;
-}
-
+/* curated researchers - ledger browser */
+.curated-wrap { margin-top:20px; }
 .curated-toggle {
-  background: transparent;
-  color: var(--text);
-  border: 1px solid var(--border);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  transition: border-color 0.12s ease, background-color 0.12s ease;
+  background:transparent; color:var(--text); border:1px solid var(--border);
+  font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:0.2px;
+  padding:9px 13px; border-radius:2px; cursor:pointer; display:inline-flex; align-items:center; gap:8px;
+  transition:border-color .15s, background-color .15s, color .15s;
 }
-.curated-toggle:hover { border-color: var(--accent-cyan); background: rgba(86,226,255,0.05); }
-.curated-toggle.open .curated-caret { transform: rotate(90deg); }
-.curated-caret {
-  display: inline-block;
-  transition: transform 0.15s ease;
-  color: var(--accent-cyan);
-}
-.curated-count {
-  color: var(--text-dim);
-  font-size: 11px;
-  margin-left: 4px;
-}
+.curated-toggle:hover { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 6%,transparent); color:var(--bright); }
+.curated-toggle:active { transform:translateY(1px); }
+.curated-toggle:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.curated-toggle.open { border-color:var(--accent); background:color-mix(in srgb,var(--accent) 9%,transparent); }
+.curated-toggle.open .curated-caret { transform:rotate(90deg); }
+.curated-caret { display:inline-flex; align-items:center; transition:transform .15s ease; color:var(--accent); }
+.curated-caret svg { display:block; }
+.curated-count { font-family:'JetBrains Mono',monospace; color:var(--faint); font-size:11px; margin-left:4px; }
 
-.curated-tools {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
-}
+.curated-tools { margin-top:12px; display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
 .curated-search {
-  flex: 1 1 280px;
-  min-width: 220px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-  padding: 8px 10px;
-  border-radius: 4px;
-  outline: none;
+  flex:1 1 280px; min-width:220px; background:var(--bg); border:1px solid var(--border);
+  color:var(--text); font-family:'JetBrains Mono',monospace; font-size:13px;
+  padding:9px 11px; border-radius:2px; outline:none; transition:border-color .15s;
 }
-.curated-search:focus { border-color: var(--accent); }
-.curated-meta {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-}
+.curated-search:focus { border-color:var(--accent); }
+.curated-search::placeholder { color:var(--faint); }
+.curated-meta { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--faint); letter-spacing:0.2px; }
 
-.curated-panel {
-  margin-top: 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: rgba(0,0,0,0.18);
-  max-height: 460px;
-  overflow-y: auto;
-}
-.curated-cat {
-  border-bottom: 1px solid var(--border);
-}
-.curated-cat:last-child { border-bottom: none; }
+.curated-panel { margin-top:12px; border:1px solid var(--border); border-radius:2px; background:var(--bg); max-height:460px; overflow-y:auto; font-family:'JetBrains Mono',monospace; color:var(--faint); }
+.curated-cat { border-bottom:1px solid var(--border); }
+.curated-cat:last-child { border-bottom:none; }
 .curated-cat-title {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--accent-cyan);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 8px 12px;
-  background: rgba(86,226,255,0.04);
-  border-bottom: 1px solid var(--border);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  font-family:'JetBrains Mono',monospace; font-size:11px; font-weight:600; color:var(--accent);
+  letter-spacing:0.6px; text-transform:uppercase; padding:8px 12px; background:var(--row);
+  border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;
 }
-.curated-cat-title .count { color: var(--text-dim); font-weight: 400; letter-spacing: 0.5px; }
+.curated-cat-title .count { font-family:'JetBrains Mono',monospace; color:var(--faint); font-weight:400; letter-spacing:0; }
 .curated-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 7px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.03);
-  transition: background-color 0.1s ease;
+  display:flex; align-items:center; gap:10px; padding:8px 12px;
+  border-bottom:1px solid var(--row); transition:background-color 0.1s ease;
 }
-.curated-row:last-child { border-bottom: none; }
-.curated-row:hover { background: rgba(255,255,255,0.025); }
-.curated-row .name {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
-  font-size: 13px;
-  color: var(--text);
-  font-weight: 500;
-  flex-shrink: 0;
-  min-width: 180px;
-}
-.curated-row .handle {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: var(--text-dim);
-  flex-shrink: 0;
-}
-.curated-row .desc {
-  font-family: 'IBM Plex Sans', system-ui, sans-serif;
-  font-size: 12px;
-  color: var(--text-dim);
-  flex: 1 1 auto;
-  min-width: 0;
-  opacity: 0.85;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.curated-row .act {
-  margin-left: auto;
-  flex-shrink: 0;
-}
+.curated-row:last-child { border-bottom:none; }
+.curated-row:hover { background:var(--row); }
+.curated-row .name { font-family:'Space Grotesk',sans-serif; font-size:13px; color:var(--text); font-weight:500; flex-shrink:0; min-width:180px; }
+.curated-row .handle { font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--dim); flex-shrink:0; }
+.curated-row .desc { font-family:'Space Grotesk',sans-serif; font-size:12px; color:var(--faint); flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.curated-row .act { margin-left:auto; flex-shrink:0; }
 .curated-row .act button {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  padding: 4px 10px;
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text);
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  font-family:'JetBrains Mono',monospace; font-size:11.5px; letter-spacing:0.2px;
+  padding:4px 10px; background:transparent; border:1px solid var(--border); color:var(--text);
+  border-radius:2px; cursor:pointer; transition:background-color .15s, border-color .15s, color .15s;
 }
-.curated-row .act button:hover {
-  background: rgba(0,229,160,0.08);
-  border-color: rgba(0,229,160,0.45);
-  color: var(--accent);
+.curated-row .act button:hover { background:color-mix(in srgb,var(--accent) 8%,transparent); border-color:var(--accent); color:var(--accent); }
+.curated-row .act button:active { transform:translateY(1px); }
+.curated-row .act button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.curated-row.added { opacity:0.55; }
+.curated-row.added .act button { cursor:not-allowed; border-color:color-mix(in srgb,var(--accent) 35%,transparent); color:var(--accent); background:color-mix(in srgb,var(--accent) 7%,transparent); }
+.curated-row.added .act button:hover { background:color-mix(in srgb,var(--accent) 7%,transparent); }
+.curated-empty { padding:24px; text-align:center; color:var(--faint); font-family:'JetBrains Mono',monospace; font-size:13px; }
+
+/* source-status ledger */
+.srcrow { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; border-bottom:1px solid var(--row); }
+.srcrow:first-child { border-top:1px solid var(--border); }
+
+/* toast - sharp, mono */
+.toast {
+  position:fixed; bottom:20px; right:20px; background:var(--panel);
+  border:1px solid var(--accent); border-left:2px solid var(--accent); color:var(--accent);
+  padding:10px 16px; border-radius:2px; font-size:12.5px; font-family:'JetBrains Mono',monospace;
+  z-index:200; opacity:0; transform:translateY(10px); transition:opacity .2s, transform .2s;
+  box-shadow:var(--elev);
 }
-.curated-row.added {
-  opacity: 0.55;
-}
-.curated-row.added .act button {
-  cursor: default;
-  border-color: rgba(0,229,160,0.3);
-  color: var(--accent);
-  background: rgba(0,229,160,0.06);
-}
-.curated-row.added .act button:hover {
-  background: rgba(0,229,160,0.06);
-}
-.curated-empty {
-  padding: 24px;
-  text-align: center;
-  color: var(--text-dim);
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
-}
+.toast.show { opacity:1; transform:translateY(0); }
+.toast.error { border-color:var(--crit); border-left-color:var(--crit); color:var(--crit); }
+
+/* footer */
+.foot { display:flex; flex-wrap:wrap; gap:10px 14px; padding:16px 20px; font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--faint); border-top:1px solid var(--border); }
+.foot a { color:var(--dim); } .foot a:hover { color:var(--accent); }
+.foot .grow { flex:1; min-width:20px; }
+
+@media (max-width:680px){ .curated-row .name{min-width:0} .masthead{padding:26px 16px 20px} }
 </style>
 </head>
 <body>
+<div class="page">
 
-<header>
-  <div class="logo"><a href="/">oM noM Security Feeds</a><span> // settings</span></div>
-  <a href="/" style="color:var(--text-dim);text-decoration:none;font-size:13px;">Back to feed</a>
-</header>
-
-<div class="container">
-
-  <div class="section">
-    <div class="section-title">Bluesky Authentication</div>
-    <div class="section-desc">
-      Bluesky search requires a free account. Create one at bsky.app, then generate
-      an App Password in Settings > App Passwords.
-    </div>
-    <div class="field">
-      <label>Identifier (handle or email)</label>
-      <input type="text" id="bskyIdentifier" placeholder="yourname.bsky.social">
-    </div>
-    <div class="field">
-      <label>App Password</label>
-      <input type="password" id="bskyPassword" placeholder="xxxx-xxxx-xxxx-xxxx">
-    </div>
-    <div class="btn-row">
-      <button class="primary" onclick="saveBluesky()">Save & Test</button>
-      <span id="bskyStatus"></span>
-    </div>
-    <div class="note">
-      Use an App Password, not your account password.
-      Your credentials are stored in config.json on your local machine only.
-    </div>
+  <div class="row rule">
+    <div class="gut"><svg id="brandWorm" class="worm" viewBox="0 0 36 28" aria-hidden="true"><circle cx="5" cy="17" r="3.0" class="seg s3"/><circle cx="10" cy="16" r="3.6" class="seg s2"/><circle cx="16" cy="14" r="4.4" class="seg s1"/><circle cx="24" cy="13" r="5.4" class="head"/><circle cx="25" cy="11" r="1.4" class="eye"/><circle cx="25.5" cy="10.5" r="0.5" class="glint"/><ellipse cx="28" cy="14.5" rx="2.2" ry="0.6" class="mouth"/></svg></div>
+    <div class="main"><div class="statusbar">
+      <span class="bd">oM noM</span><span class="scan">// scan settings</span>
+      <nav><a href="/">home</a><a href="/app">reader</a><a href="/live">live</a><a href="/trending">trending</a><a href="/pre-kev">pre-kev</a><a href="/mitre-live">mitre</a><a class="cur" href="/settings.html">settings</a></nav>
+      <span class="grow"></span>
+      <span class="nom">last nom <b id="lsAgo">-</b></span>
+      <a class="signin" href="/login.html">[ sign in ]</a>
+    </div></div>
   </div>
 
-  <div class="section">
-    <div class="section-title">Watched Bluesky Accounts</div>
-    <div class="section-desc">
-      Follow specific security researchers on Bluesky. Their posts get pulled into
-      your feed and scored like everything else. Only posts matching security keywords
-      will appear (0-score posts are dropped).
-    </div>
-    <div id="accountList" class="account-list"></div>
-    <div class="account-add">
-      <input type="text" id="newHandle" placeholder="researcher.bsky.social"
-             onkeydown="if(event.key==='Enter')addAccount()">
-      <button onclick="addAccount()">Add</button>
-    </div>
+  <div class="row rule">
+    <div class="gut"></div>
+    <div class="main"><div class="masthead">
+      <h1>Settings</h1>
+      <div class="sub">Configure Bluesky auth, follow security researchers, and check source health. Everything here writes to config.json on your local machine.</div>
+    </div></div>
+  </div>
 
-    <div class="curated-wrap" style="margin-top:18px;">
-      <button id="curatedToggle" type="button" class="curated-toggle" onclick="toggleCurated()">
-        <span class="curated-caret">▸</span> Browse curated researchers
-        <span id="curatedCount" class="curated-count"></span>
-      </button>
-      <div class="curated-tools" id="curatedTools" hidden>
-        <input type="text" id="curatedSearch" class="curated-search"
-               placeholder="filter by name, handle, or category..." oninput="renderCurated()">
-        <div class="curated-meta" id="curatedMeta"></div>
+  <div class="row"><div class="gut">01</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> bluesky authentication <span class="ext"></span></div>
+    <div class="body">
+      <p class="desc">Bluesky search requires a free account. Create one at bsky.app, then generate an App Password in Settings &gt; App Passwords.</p>
+    </div>
+    <div class="cred reticle">
+      <span class="cn tl"></span><span class="cn tr"></span><span class="cn bl"></span><span class="cn br"></span>
+      <div class="field">
+        <label>Identifier (handle or email)</label>
+        <input type="text" id="bskyIdentifier" placeholder="yourname.bsky.social">
       </div>
-      <div id="curatedPanel" class="curated-panel" hidden>loading...</div>
+      <div class="field">
+        <label>App password</label>
+        <input type="password" id="bskyPassword" placeholder="xxxx-xxxx-xxxx-xxxx">
+      </div>
+      <div class="btn-row">
+        <button class="primary" onclick="saveBluesky()">Save and test</button>
+        <span id="bskyStatus"></span>
+      </div>
+      <div class="cmd"><span class="p">&gt;</span> bsky.app/settings &rarr; App Passwords &rarr; Add App Password</div>
+      <div class="note">
+        Use an App Password, not your account password.
+        Your credentials are stored in config.json on your local machine only.
+      </div>
     </div>
-  </div>
+  </div></div>
 
-  <div class="section">
-    <div class="section-title">Source Status</div>
-    <div id="sourceStatus">loading...</div>
-  </div>
+  <div class="row"><div class="gut">02</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> watched bluesky accounts <span class="note-r">posts scored like everything else</span> <span class="ext"></span></div>
+    <div class="body">
+      <p class="desc">Follow specific security researchers on Bluesky. Their posts get pulled into your feed and scored like everything else. Only posts matching security keywords will appear (0-score posts are dropped).</p>
+    </div>
+    <div class="body" style="padding-bottom:14px">
+      <div id="accountList" class="account-list"></div>
+      <div class="account-add">
+        <input type="text" id="newHandle" placeholder="researcher.bsky.social"
+               onkeydown="if(event.key==='Enter')addAccount()">
+        <button onclick="addAccount()">Add</button>
+      </div>
+
+      <div class="curated-wrap">
+        <button id="curatedToggle" type="button" class="curated-toggle" onclick="toggleCurated()">
+          <span class="curated-caret"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3.5,2 6.5,5 3.5,8"/></svg></span> Browse curated researchers
+          <span id="curatedCount" class="curated-count"></span>
+        </button>
+        <div class="curated-tools" id="curatedTools" hidden>
+          <input type="text" id="curatedSearch" class="curated-search"
+                 placeholder="filter by name, handle, or category..." oninput="renderCurated()">
+          <div class="curated-meta" id="curatedMeta"></div>
+        </div>
+        <div id="curatedPanel" class="curated-panel" hidden>loading...</div>
+      </div>
+    </div>
+  </div></div>
+
+  <div class="row"><div class="gut">03</div><div class="main">
+    <div class="seclabel"><span class="c">//</span> source status <span class="ext"></span></div>
+    <div class="body" id="sourceStatus">loading...</div>
+  </div></div>
+
+  <div class="row"><div class="gut"></div><div class="main"><div class="foot">
+    <span>oM noM Security Feeds</span><span style="color:var(--border)">·</span><span>MIT licensed</span>
+    <span class="grow"></span>
+    <a href="/pre-kev">pre-kev</a><a href="/trending">trending</a><a href="/feed.xml">rss</a><a href="/privacy">privacy</a><a href="/terms">terms</a><a href="https://github.com/RMS2D/omnomfeeds">github</a>
+  </div></div></div>
 
 </div>
 
@@ -714,6 +596,55 @@ loadConfig();
 loadAccounts();
 loadCurated();
 loadSourceStatus();
+</script>
+
+<script>
+// Live freshness for the status line. Reuses /api/sources (the page's
+// existing freshness data): the newest last_fetch across sources drives
+// "last nom <age>", ticking every 30s. On a fresher fetch the worm chomps.
+// No green dot, no LIVE badge.
+(function(){
+  var ageEl=document.getElementById('lsAgo'), worm=document.getElementById('brandWorm');
+  if(!ageEl) return;
+  var newestMs=null, prevNewestMs=null;
+
+  function fmtAge(sec){
+    if(sec===null||sec<0) return '-';
+    if(sec<60) return 'just now';
+    if(sec<3600) return Math.floor(sec/60)+'m';
+    if(sec<86400) return Math.floor(sec/3600)+'h';
+    return Math.floor(sec/86400)+'d';
+  }
+  function paint(){
+    if(newestMs===null){ ageEl.textContent='-'; return; }
+    ageEl.textContent=fmtAge(Math.floor((Date.now()-newestMs)/1000));
+  }
+  async function pull(){
+    try{
+      var r=await fetch(API+'/api/sources');
+      if(!r.ok) return;
+      var srcs=await r.json();
+      var max=null;
+      (srcs||[]).forEach(function(s){
+        if(!s.last_fetch) return;
+        var t=new Date(s.last_fetch).getTime();
+        if(!isNaN(t)&&(max===null||t>max)) max=t;
+      });
+      if(max===null) return;
+      newestMs=max;
+      // Worm chomps when a fresher fetch lands.
+      if(prevNewestMs!==null&&newestMs>prevNewestMs&&worm){
+        worm.classList.add('chomp');
+        setTimeout(function(){worm.classList.remove('chomp');},520);
+      }
+      prevNewestMs=newestMs;
+      paint();
+    }catch(e){ /* swallow - status line falls back to '-' */ }
+  }
+  pull();
+  setInterval(pull, 60000);   // re-pull source freshness
+  setInterval(paint, 30000);  // tick the displayed age between pulls
+})();
 </script>
 </body>
 </html>

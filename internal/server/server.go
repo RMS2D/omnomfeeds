@@ -1307,7 +1307,7 @@ func (s *Server) handleAttackExport(w http.ResponseWriter, r *http.Request) {
 		Domain:     "enterprise-attack",
 		Techniques: techniques,
 		Gradient: navGradient{
-			Colors:   []string{"#0a0e14", "#00e5a0", "#ffb547", "#ff4d6a"},
+			Colors:   []string{"#15171c", "#2dd49c", "#f0b552", "#ff5d6e"},
 			MinValue: 1,
 			MaxValue: maxCount,
 		},

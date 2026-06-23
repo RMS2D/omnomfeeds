@@ -408,6 +408,38 @@ func (s *Store) Exists(url string) bool {
 	return s.db.QueryRow(`SELECT 1 FROM articles WHERE url = ? LIMIT 1`, url).Scan(&x) == nil
 }
 
+// RecentCVEArticlesForRescore returns recent non-duplicate articles mentioning
+// a CVE but not yet KEV-flagged: candidates to re-escalate when KEV grows.
+func (s *Store) RecentCVEArticlesForRescore(since time.Time) ([]models.Article, error) {
+	rows, err := s.db.Query(`
+		SELECT id, title, summary, score, tags FROM articles
+		 WHERE fetched_at >= ? AND duplicate_of IS NULL
+		   AND tags LIKE '%CVE-%' AND tags NOT LIKE '%kev:%'`, since)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []models.Article
+	for rows.Next() {
+		var a models.Article
+		var tagsJSON string
+		if err := rows.Scan(&a.ID, &a.Title, &a.Summary, &a.Score, &tagsJSON); err != nil {
+			continue
+		}
+		_ = json.Unmarshal([]byte(tagsJSON), &a.Tags)
+		out = append(out, a)
+	}
+	return out, rows.Err()
+}
+
+// UpdateScoreTags rewrites only the score and tags of one article, for the
+// daily KEV re-score.
+func (s *Store) UpdateScoreTags(id int64, score int, tags []string) error {
+	tagsJSON, _ := json.Marshal(tags)
+	_, err := s.db.Exec(`UPDATE articles SET score = ?, tags = ? WHERE id = ?`, score, string(tagsJSON), id)
+	return err
+}
+
 func (s *Store) findDuplicate(title, normURL, source string) *int64 {
 	var existID int64
 	err := s.db.QueryRow(

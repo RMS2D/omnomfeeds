@@ -71,14 +71,6 @@ func main() {
 	scorer := scoring.New()
 	scorer.UpdateKEV()
 
-	go func() {
-		ticker := time.NewTicker(24 * time.Hour)
-		defer ticker.Stop()
-		for range ticker.C {
-			scorer.UpdateKEV()
-		}
-	}()
-
 	var normalSrcs []sources.Source
 	var fastSrcs []sources.Source
 	if strings.TrimSpace(cfg.MalwareBazaar.APIKey) != "" {
@@ -266,6 +258,23 @@ func main() {
 				} else {
 					log.Printf("[wal] checkpoint %s", res)
 				}
+			}
+		}
+	}()
+
+	// Daily: refresh the KEV list, then re-escalate recent CVE articles whose
+	// CVE became KEV-listed after they were fetched (the poll path skips them).
+	go func() {
+		srv.RescoreRecentForKEV()
+		t := time.NewTicker(24 * time.Hour)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				scorer.UpdateKEV()
+				srv.RescoreRecentForKEV()
 			}
 		}
 	}()

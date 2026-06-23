@@ -627,6 +627,41 @@ func (s *Server) FetchFast() {
 	s.fetchGroup(s.fastSources)
 }
 
+// RescoreRecentForKEV re-escalates recent CVE articles whose CVE became
+// KEV-listed after they were stored. Daily; the poll path skips seen items.
+func (s *Server) RescoreRecentForKEV() {
+	since := time.Now().Add(-30 * 24 * time.Hour)
+	arts, err := s.store.RecentCVEArticlesForRescore(since)
+	if err != nil {
+		log.Printf("[kev-rescore] query: %v", err)
+		return
+	}
+	escalated := 0
+	for i := range arts {
+		score, tags := s.scorer.Score(&arts[i])
+		if score <= arts[i].Score {
+			continue
+		}
+		seen := make(map[string]bool, len(arts[i].Tags)+len(tags))
+		for _, t := range arts[i].Tags {
+			seen[t] = true
+		}
+		for _, t := range tags {
+			seen[t] = true
+		}
+		merged := make([]string, 0, len(seen))
+		for t := range seen {
+			merged = append(merged, t)
+		}
+		if err := s.store.UpdateScoreTags(arts[i].ID, score, merged); err == nil {
+			escalated++
+		}
+	}
+	if escalated > 0 {
+		log.Printf("[kev-rescore] escalated %d article(s) to KEV", escalated)
+	}
+}
+
 func (s *Server) fetchGroup(srcs []sources.Source) {
 	for _, src := range srcs {
 		go func(src sources.Source) {

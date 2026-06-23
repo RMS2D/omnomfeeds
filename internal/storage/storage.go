@@ -46,6 +46,7 @@ func New(path string) (*Store, error) {
 		"?_pragma=busy_timeout(5000)" +
 		"&_pragma=journal_mode(WAL)" +
 		"&_pragma=synchronous(NORMAL)" +
+		"&_pragma=journal_size_limit(67108864)" + // truncate WAL back to <=64MB after checkpoint
 		"&_pragma=foreign_keys(ON)"
 	db, err := sql.Open("sqlite", dsn)
 	if err != nil {
@@ -60,7 +61,9 @@ func New(path string) (*Store, error) {
 	// the other 7 service reads in parallel.
 	db.SetMaxOpenConns(8)
 	db.SetMaxIdleConns(8)
-	db.SetConnMaxLifetime(0)
+	// Recycle conns so a stale read snapshot can't pin the WAL from checkpointing.
+	db.SetConnMaxLifetime(5 * time.Minute)
+	db.SetConnMaxIdleTime(2 * time.Minute)
 	if _, err := db.Exec("PRAGMA busy_timeout = 5000"); err != nil {
 		db.Close()
 		return nil, err
@@ -1217,10 +1220,10 @@ type MitreRawCounts struct {
 	// Severity tracking: how many of the window's articles per TID are
 	// "world is going to break" class - kev-listed CVE co-tag, actively
 	// exploited tag, zero-day tag, or score >= 70.
-	CriticalCounts map[string]int             // tid -> article count meeting severity bar
-	KEVCounts      map[string]int             // tid -> article count with any kev:* tag
-	MaxScore       map[string]int             // tid -> highest score article in window
-	CriticalSample map[string]*MitreArtRef    // tid -> one representative critical article
+	CriticalCounts map[string]int          // tid -> article count meeting severity bar
+	KEVCounts      map[string]int          // tid -> article count with any kev:* tag
+	MaxScore       map[string]int          // tid -> highest score article in window
+	CriticalSample map[string]*MitreArtRef // tid -> one representative critical article
 }
 
 // MitreArtRef is the trimmed article reference attached to each T-code.
@@ -1789,12 +1792,17 @@ func (s *Store) DailyCleanup() CleanupReport {
 		r.OTX, _ = res.RowsAffected()
 	}
 
-	// PASSIVE checkpoint: non-blocking, doesn't wait for readers.
-	var busy, log_, checkpointed int
-	if err := s.db.QueryRow(`PRAGMA wal_checkpoint(PASSIVE)`).Scan(&busy, &log_, &checkpointed); err == nil {
-		r.WALCheckpoint = fmt.Sprintf("busy=%d log=%d checkpointed=%d", busy, log_, checkpointed)
-	}
+	r.WALCheckpoint, _ = s.CheckpointWAL()
 	return r
+}
+
+// CheckpointWAL forces a TRUNCATE checkpoint, resetting the WAL file to zero.
+func (s *Store) CheckpointWAL() (string, error) {
+	var busy, log_, checkpointed int
+	if err := s.db.QueryRow(`PRAGMA wal_checkpoint(TRUNCATE)`).Scan(&busy, &log_, &checkpointed); err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("busy=%d log=%d checkpointed=%d", busy, log_, checkpointed), nil
 }
 
 func scanArticles(rows *sql.Rows) ([]models.Article, error) {

@@ -249,6 +249,25 @@ func main() {
 		}
 	}()
 
+	// Force a TRUNCATE WAL checkpoint every few minutes; the passive
+	// autocheckpoint can't reclaim frames held by a long-lived reader.
+	go func() {
+		t := time.NewTicker(5 * time.Minute)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				if res, err := db.CheckpointWAL(); err != nil {
+					log.Printf("[wal] checkpoint: %v", err)
+				} else {
+					log.Printf("[wal] checkpoint %s", res)
+				}
+			}
+		}
+	}()
+
 	// Pro webhook-alert worker; hosted-mode only.
 	if cfg.Hosted.Enabled {
 		siteBase := strings.TrimSuffix(cfg.Hosted.OAuthRedirectURL, "/auth/callback")

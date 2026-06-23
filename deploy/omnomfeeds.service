@@ -10,10 +10,11 @@ Group=omnom
 WorkingDirectory=/opt/omnomfeeds
 ExecStart=/opt/omnomfeeds/bin/omnomfeeds
 EnvironmentFile=-/opt/omnomfeeds/.env
+Environment=SECFEED_CONFIG=/opt/omnomfeeds/config.json
 Restart=on-failure
 RestartSec=5
-StandardOutput=append:/var/log/omnomfeeds/app.log
-StandardError=append:/var/log/omnomfeeds/app.log
+StandardOutput=journal
+StandardError=journal
 LimitNOFILE=65535
 
 # Hardening
@@ -29,7 +30,7 @@ ProtectControlGroups=true
 ProtectClock=true
 ProtectHostname=true
 ProtectProc=invisible
-ReadWritePaths=/opt/omnomfeeds /var/log/omnomfeeds
+ReadWritePaths=/opt/omnomfeeds
 RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
 RestrictNamespaces=true
 RestrictRealtime=true

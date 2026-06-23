@@ -224,7 +224,9 @@ func main() {
 	srv := server.New(db, normalSrcs, fastSrcs, scorer, cfg, webSubFS, enr)
 
 	log.Printf("oM noM Security Feeds %s :: initial fetch from %d sources (%d fast, %d normal)...", version, total, len(fastSrcs), len(normalSrcs))
-	srv.FetchAll()
+	// Async so the HTTP port binds immediately; a slow/stuck source then only
+	// delays fresh data instead of blacking out the site (the DB serves meanwhile).
+	go srv.FetchAll()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

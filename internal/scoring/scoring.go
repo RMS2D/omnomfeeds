@@ -486,6 +486,14 @@ func (s *Scorer) Categories() []CategoryInfo {
 	return out
 }
 
+// Precompiled once; Score runs on every fetched article every poll cycle.
+var (
+	sha256Re   = regexp.MustCompile(`\b[a-f0-9]{64}\b`)
+	md5Re      = regexp.MustCompile(`\b[a-f0-9]{32}\b`)
+	artifactRe = regexp.MustCompile(`(?i)\b([a-z0-9_-]+\.(exe|dll|sys|ps1|vbs|bat|cmd|hta|js|iso|msi|lnk))\b`)
+	cveRe      = regexp.MustCompile(`(?i)cve-\d{4}-\d{4,7}`)
+)
+
 func (s *Scorer) Score(article *models.Article) (int, []string) {
 	text := strings.ToLower(article.Title + " " + article.Summary)
 	score := 0
@@ -511,18 +519,15 @@ func (s *Scorer) Score(article *models.Article) (int, []string) {
 	}
 
 	// 2. Automated IOC Extraction (Hashes)
-	sha256Re := regexp.MustCompile(`\b[a-f0-9]{64}\b`)
 	for _, hash := range sha256Re.FindAllString(text, -1) {
 		tagSet["sha256:"+hash] = true
 	}
 
-	md5Re := regexp.MustCompile(`\b[a-f0-9]{32}\b`)
 	for _, hash := range md5Re.FindAllString(text, -1) {
 		tagSet["md5:"+hash] = true
 	}
 
 	// 3. Application Control Artifact Extraction (What Ran?)
-	artifactRe := regexp.MustCompile(`(?i)\b([a-z0-9_-]+\.(exe|dll|sys|ps1|vbs|bat|cmd|hta|js|iso|msi|lnk))\b`)
 	for _, match := range artifactRe.FindAllStringSubmatch(text, -1) {
 		if len(match) > 1 {
 			tagSet["artifact:"+strings.ToLower(match[1])] = true
@@ -530,8 +535,6 @@ func (s *Scorer) Score(article *models.Article) (int, []string) {
 	}
 
 	// 4. CVE Extraction & CISA KEV Cross-Reference
-	cveRe := regexp.MustCompile(`(?i)cve-\d{4}-\d{4,7}`)
-
 	s.mu.RLock()
 	for _, cve := range cveRe.FindAllString(text, -1) {
 		cveUpper := strings.ToUpper(cve)

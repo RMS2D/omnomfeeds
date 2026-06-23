@@ -401,6 +401,13 @@ func (s *Store) Upsert(a models.Article) error {
 	return err
 }
 
+// Exists reports whether this exact URL is already stored (indexed UNIQUE
+// lookup), so the fetch loop can skip re-scoring items a feed re-lists.
+func (s *Store) Exists(url string) bool {
+	var x int
+	return s.db.QueryRow(`SELECT 1 FROM articles WHERE url = ? LIMIT 1`, url).Scan(&x) == nil
+}
+
 func (s *Store) findDuplicate(title, normURL, source string) *int64 {
 	var existID int64
 	err := s.db.QueryRow(

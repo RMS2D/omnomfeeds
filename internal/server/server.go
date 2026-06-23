@@ -657,6 +657,11 @@ func (s *Server) fetchGroup(srcs []sources.Source) {
 
 			count := 0
 			for i := range articles {
+				// Skip items we already have; feeds re-list their full window
+				// every poll, so re-scoring and re-writing them is pure waste.
+				if s.store.Exists(articles[i].URL) {
+					continue
+				}
 				score, tags := s.scorer.Score(&articles[i])
 				if score > articles[i].Score {
 					articles[i].Score = score
@@ -1781,7 +1786,7 @@ type MitreLiveResponse struct {
 	DistinctTIDs    int                     `json:"distinct_tids"`
 	FreshCount      int                     `json:"fresh_count"`
 	SurgingCount    int                     `json:"surging_count"`
-	CriticalCount   int                     `json:"critical_count"`   // techniques with any critical article
+	CriticalCount   int                     `json:"critical_count"`    // techniques with any critical article
 	KEVTouchedCount int                     `json:"kev_touched_count"` // techniques touched by any KEV-tagged article
 	Tactics         []MitreLiveTacticRow    `json:"tactics"`
 	Techniques      []MitreLiveTechniqueRow `json:"techniques"`
@@ -1789,27 +1794,27 @@ type MitreLiveResponse struct {
 }
 
 type MitreLiveTacticRow struct {
-	Tactic        string `json:"tactic"`
-	DisplayName   string `json:"display_name"`
-	Mentions      int    `json:"mentions"`
-	Techniques    int    `json:"techniques"`
-	Surging       int    `json:"surging"`
-	Fresh         int    `json:"fresh"`
+	Tactic      string `json:"tactic"`
+	DisplayName string `json:"display_name"`
+	Mentions    int    `json:"mentions"`
+	Techniques  int    `json:"techniques"`
+	Surging     int    `json:"surging"`
+	Fresh       int    `json:"fresh"`
 }
 
 type MitreLiveTechniqueRow struct {
-	TID                string  `json:"tid"`
-	Name               string  `json:"name"`
-	Tactic             string  `json:"tactic"`
-	TacticDisplay      string  `json:"tactic_display"`
-	URL                string  `json:"url"`
-	MentionsWindow     int     `json:"mentions_window"`
-	MentionsPrevious   int     `json:"mentions_previous"` // same-size window immediately before
-	MentionsBaseline   int     `json:"mentions_baseline"`
-	DeltaPercent       float64 `json:"delta_percent"` // (window-prev)/prev*100; 0 if no prev
-	SurgeRatio         float64 `json:"surge_ratio"`
-	IsFresh            bool    `json:"is_fresh"`
-	IsSurging          bool    `json:"is_surging"`
+	TID              string  `json:"tid"`
+	Name             string  `json:"name"`
+	Tactic           string  `json:"tactic"`
+	TacticDisplay    string  `json:"tactic_display"`
+	URL              string  `json:"url"`
+	MentionsWindow   int     `json:"mentions_window"`
+	MentionsPrevious int     `json:"mentions_previous"` // same-size window immediately before
+	MentionsBaseline int     `json:"mentions_baseline"`
+	DeltaPercent     float64 `json:"delta_percent"` // (window-prev)/prev*100; 0 if no prev
+	SurgeRatio       float64 `json:"surge_ratio"`
+	IsFresh          bool    `json:"is_fresh"`
+	IsSurging        bool    `json:"is_surging"`
 	// Severity / "what's bad right now" fields. CriticalCount = articles
 	// in window with kev tag / 0day tag / actively-exploited / score >= 70.
 	CriticalCount      int    `json:"critical_count"`
@@ -1819,11 +1824,11 @@ type MitreLiveTechniqueRow struct {
 	CriticalArtTitle   string `json:"critical_article_title,omitempty"`
 	CriticalArtURL     string `json:"critical_article_url,omitempty"`
 	CriticalArtSource  string `json:"critical_article_source,omitempty"`
-	FirstSeenAt        string  `json:"first_seen_at"`
-	Spark              []int   `json:"spark"` // 7 daily counts, oldest -> newest
-	LatestArticleTitle string  `json:"latest_article_title"`
-	LatestArticleURL   string  `json:"latest_article_url"`
-	LatestArticleSrc   string  `json:"latest_article_source"`
+	FirstSeenAt        string `json:"first_seen_at"`
+	Spark              []int  `json:"spark"` // 7 daily counts, oldest -> newest
+	LatestArticleTitle string `json:"latest_article_title"`
+	LatestArticleURL   string `json:"latest_article_url"`
+	LatestArticleSrc   string `json:"latest_article_source"`
 }
 
 type MitreLiveLatestRow struct {
@@ -2296,9 +2301,9 @@ func (s *Server) handleMitreNavigator(w http.ResponseWriter, r *http.Request) {
 			"showName":      true,
 			"showAggregate": false,
 		},
-		"hideDisabled":  false,
-		"techniques":    techniques,
-		"gradient":      map[string]any{"colors": []string{"#ffe07a", "#ff4470"}, "minValue": 0, "maxValue": maxCount},
+		"hideDisabled":                  false,
+		"techniques":                    techniques,
+		"gradient":                      map[string]any{"colors": []string{"#ffe07a", "#ff4470"}, "minValue": 0, "maxValue": maxCount},
 		"selectTechniquesAcrossTactics": true,
 	}
 	filename := fmt.Sprintf("omnomfeeds-mitre-%s.json", windowLabel)
